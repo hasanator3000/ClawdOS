@@ -58,7 +58,7 @@ BEGIN
       EXECUTE 'DROP POLICY workspace_select ON core.workspace';
     END IF;
 
-    EXECUTE $$
+    EXECUTE $pol$
       CREATE POLICY workspace_member_access ON core.workspace
       FOR SELECT
       USING (
@@ -68,7 +68,7 @@ BEGIN
             AND m.user_id = core.current_user_id()
         )
       )
-    $$;
+    $pol$;
   END IF;
 END $$;
 
@@ -79,7 +79,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='core' AND tablename='membership' AND policyname='workspace_member_select') THEN
       EXECUTE 'DROP POLICY workspace_member_select ON core.membership';
     END IF;
-    EXECUTE $$
+    EXECUTE $pol$
       CREATE POLICY membership_self_read ON core.membership
       FOR SELECT
       USING (
@@ -90,7 +90,7 @@ BEGIN
             AND m.user_id = core.current_user_id()
         )
       )
-    $$;
+    $pol$;
   END IF;
 END $$;
 
@@ -101,24 +101,24 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='content' AND tablename='digest' AND policyname='digest_rw') THEN
       EXECUTE 'DROP POLICY digest_rw ON content.digest';
     END IF;
-    EXECUTE $$
+    EXECUTE $pol$
       CREATE POLICY digest_workspace_access ON content.digest
       FOR ALL
       USING (EXISTS (SELECT 1 FROM core.membership m WHERE m.workspace_id = content.digest.workspace_id AND m.user_id = core.current_user_id()))
       WITH CHECK (EXISTS (SELECT 1 FROM core.membership m WHERE m.workspace_id = content.digest.workspace_id AND m.user_id = core.current_user_id()))
-    $$;
+    $pol$;
   END IF;
 
   IF to_regclass('content.news_item') IS NOT NULL THEN
     IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='content' AND tablename='news_item' AND policyname='news_item_rw') THEN
       EXECUTE 'DROP POLICY news_item_rw ON content.news_item';
     END IF;
-    EXECUTE $$
+    EXECUTE $pol$
       CREATE POLICY news_item_workspace_access ON content.news_item
       FOR ALL
       USING (EXISTS (SELECT 1 FROM core.membership m WHERE m.workspace_id = content.news_item.workspace_id AND m.user_id = core.current_user_id()))
       WITH CHECK (EXISTS (SELECT 1 FROM core.membership m WHERE m.workspace_id = content.news_item.workspace_id AND m.user_id = core.current_user_id()))
-    $$;
+    $pol$;
   END IF;
 END $$;
 
