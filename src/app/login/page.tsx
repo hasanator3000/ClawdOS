@@ -12,9 +12,9 @@ export default async function LoginPage({
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-xl border p-6 bg-white">
+      <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-fg)] p-6">
         <h1 className="text-xl font-semibold">LifeOS</h1>
-        <p className="text-sm text-gray-600 mt-1">Local sign-in (tailnet only recommended).</p>
+        <p className="text-sm text-[var(--muted)] mt-1">Local sign-in (tailnet only recommended).</p>
 
         {error ? (
           <div className="mt-4 rounded-lg bg-red-50 text-red-700 text-sm p-3">{error}</div>
@@ -22,31 +22,31 @@ export default async function LoginPage({
 
         <form className="mt-6 space-y-3" action={signIn}>
           <label className="block">
-            <span className="text-sm text-gray-700">Username</span>
+            <span className="text-sm text-[var(--muted-2)]">Username</span>
             <input
               name="username"
               required
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black"
+              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-[var(--input-fg)] placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
               placeholder="ag"
               autoComplete="username"
             />
           </label>
 
           <label className="block">
-            <span className="text-sm text-gray-700">Password</span>
+            <span className="text-sm text-[var(--muted-2)]">Password</span>
             <input
               name="password"
               type="password"
               required
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black"
+              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-[var(--input-fg)] placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
               autoComplete="current-password"
             />
           </label>
 
-          <button className="w-full rounded-md bg-black text-white py-2">Sign in</button>
+          <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Sign in</button>
         </form>
 
-        <p className="text-xs text-gray-500 mt-6">
+        <p className="text-xs text-[var(--muted)] mt-6">
           Users are created via ops script (argon2id password hashes). No public signup.
         </p>
       </div>

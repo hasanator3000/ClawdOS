@@ -41,7 +41,7 @@ export default async function NewsPage() {
     <div>
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold">News</h1>
-        <div className="text-sm text-slate-400">Workspace: {workspace.name}</div>
+        <div className="text-sm text-[var(--muted)]">Workspace: {workspace.name}</div>
       </div>
 
       <ul className="mt-6 space-y-3">
@@ -57,13 +57,13 @@ export default async function NewsPage() {
                   n.title
                 )}
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-[var(--muted)]">
                 {n.published_at ? new Date(n.published_at).toLocaleString() : ''}
               </div>
             </div>
-            <div className="mt-1 text-xs text-slate-400">
+            <div className="mt-1 text-xs text-[var(--muted)]">
               {n.topic}
-              {n.summary ? <span className="ml-2 text-slate-300">— {n.summary}</span> : null}
+              {n.summary ? <span className="ml-2 text-[var(--muted-2)]">— {n.summary}</span> : null}
             </div>
           </li>
         ))}

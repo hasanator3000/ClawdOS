@@ -14,11 +14,11 @@ export default async function Sidebar() {
     <aside className="w-72 border-r p-4 flex flex-col gap-4">
       <div>
         <div className="font-semibold">LifeOS</div>
-        <div className="text-xs text-slate-300 truncate">{session.username}</div>
+        <div className="text-xs text-[var(--muted)] truncate">{session.username}</div>
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs uppercase tracking-wide text-slate-400">Workspace</div>
+        <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Workspace</div>
         <div className="rounded-lg border bg-gray-50">
           {workspaces.map((ws) => {
             const isActive = ws.id === active?.id
@@ -29,12 +29,12 @@ export default async function Sidebar() {
                   className={`w-full text-left px-3 py-2 text-sm hover:bg-white ${isActive ? 'font-medium bg-white' : ''}`}
                 >
                   {ws.name}
-                  <span className="ml-2 text-xs text-slate-400">({ws.type})</span>
+                  <span className="ml-2 text-xs text-[var(--muted)]">({ws.type})</span>
                 </button>
               </form>
             )
           })}
-          {workspaces.length === 0 ? <div className="px-3 py-2 text-sm text-slate-400">No workspaces</div> : null}
+          {workspaces.length === 0 ? <div className="px-3 py-2 text-sm text-[var(--muted)]">No workspaces</div> : null}
         </div>
       </div>
 
