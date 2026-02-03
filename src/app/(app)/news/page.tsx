@@ -13,7 +13,7 @@ export default async function NewsPage() {
     return (
       <div>
         <h1 className="text-xl font-semibold">News</h1>
-        <p className="text-sm text-slate-300 mt-2">No workspaces found for this user.</p>
+        <p className="text-sm text-[var(--muted)] mt-2">No workspaces found for this user.</p>
       </div>
     )
   }
@@ -68,7 +68,7 @@ export default async function NewsPage() {
           </li>
         ))}
 
-        {news.length === 0 ? <li className="text-sm text-slate-300">No news items yet.</li> : null}
+        {news.length === 0 ? <li className="text-sm text-[var(--muted)]">No news items yet.</li> : null}
       </ul>
     </div>
   )
