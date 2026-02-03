@@ -128,8 +128,23 @@ ALTER TABLE IF EXISTS core.membership ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS content.digest ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS content.news_item ENABLE ROW LEVEL SECURITY;
 
+-- Compatibility views in public so the app can keep using unqualified table names for now.
+-- (These are TEMPORARY until the code is updated to core./content.)
+CREATE OR REPLACE VIEW public.app_user AS SELECT * FROM core."user";
+CREATE OR REPLACE VIEW public.workspace AS SELECT * FROM core.workspace;
+CREATE OR REPLACE VIEW public.workspace_member AS SELECT * FROM core.membership;
+CREATE OR REPLACE VIEW public.digest AS SELECT * FROM content.digest;
+CREATE OR REPLACE VIEW public.news_item AS SELECT * FROM content.news_item;
+
+-- Grants for app role
+GRANT USAGE ON SCHEMA core, content TO lifeos;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA core TO lifeos;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA content TO lifeos;
+ALTER DEFAULT PRIVILEGES IN SCHEMA core GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO lifeos;
+ALTER DEFAULT PRIVILEGES IN SCHEMA content GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO lifeos;
+
 INSERT INTO core.schema_migration(schema_name, version, description)
-VALUES ('core', 2, 'Move public tables to core/content namespaces and rebind RLS')
+VALUES ('core', 2, 'Move public tables to core/content namespaces and rebind RLS; add compatibility views')
 ON CONFLICT (schema_name, version) DO NOTHING;
 
 COMMIT;
