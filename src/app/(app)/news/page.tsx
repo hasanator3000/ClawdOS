@@ -13,7 +13,7 @@ export default async function NewsPage() {
     return (
       <div>
         <h1 className="text-xl font-semibold">News</h1>
-        <p className="text-sm text-gray-600 mt-2">No workspaces found for this user.</p>
+        <p className="text-sm text-slate-300 mt-2">No workspaces found for this user.</p>
       </div>
     )
   }
@@ -40,7 +40,7 @@ export default async function NewsPage() {
     <div>
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold">News</h1>
-        <div className="text-sm text-gray-500">Workspace: {workspace.name}</div>
+        <div className="text-sm text-slate-400">Workspace: {workspace.name}</div>
       </div>
 
       <ul className="mt-6 space-y-3">
@@ -56,15 +56,15 @@ export default async function NewsPage() {
                   n.title
                 )}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-slate-400">
                 {n.published_at ? new Date(n.published_at).toLocaleString() : ''}
               </div>
             </div>
-            <div className="mt-1 text-xs text-gray-500">{n.source ?? ''}</div>
+            <div className="mt-1 text-xs text-slate-400">{n.source ?? ''}</div>
           </li>
         ))}
 
-        {news.length === 0 ? <li className="text-sm text-gray-600">No news items yet.</li> : null}
+        {news.length === 0 ? <li className="text-sm text-slate-300">No news items yet.</li> : null}
       </ul>
     </div>
   )

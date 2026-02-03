@@ -12,7 +12,7 @@ export default async function TodayPage() {
     return (
       <div>
         <h1 className="text-xl font-semibold">Today</h1>
-        <p className="text-sm text-gray-600 mt-2">No workspaces found for this user.</p>
+        <p className="text-sm text-slate-300 mt-2">No workspaces found for this user.</p>
       </div>
     )
   }
@@ -38,7 +38,7 @@ export default async function TodayPage() {
     <div>
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold">Today</h1>
-        <div className="text-sm text-gray-500">Workspace: {workspace.name}</div>
+        <div className="text-sm text-slate-400">Workspace: {workspace.name}</div>
       </div>
 
       <ul className="mt-6 space-y-3">
@@ -46,13 +46,13 @@ export default async function TodayPage() {
           <li key={d.id} className="rounded-lg border p-4">
             <div className="flex items-baseline justify-between gap-4">
               <div className="font-medium">{d.title ?? `Digest ${d.date}`}</div>
-              <div className="text-xs text-gray-500">{d.date}</div>
+              <div className="text-xs text-slate-400">{d.date}</div>
             </div>
-            {d.summary ? <p className="mt-2 text-sm text-gray-700">{d.summary}</p> : null}
+            {d.summary ? <p className="mt-2 text-sm text-slate-200">{d.summary}</p> : null}
           </li>
         ))}
 
-        {digests.length === 0 ? <li className="text-sm text-gray-600">No digests yet.</li> : null}
+        {digests.length === 0 ? <li className="text-sm text-slate-300">No digests yet.</li> : null}
       </ul>
     </div>
   )
