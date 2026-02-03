@@ -43,15 +43,18 @@ async function ensureMembership(workspaceId, username, role='member') {
   return res.rows[0]
 }
 
-const agWs = await ensureWorkspace('ag', 'AG', 'personal', 'ag')
-const germanWs = await ensureWorkspace('german', 'German', 'personal', 'german')
+const agUser = process.env.AG_USERNAME || 'ag'
+const germanUser = process.env.GERMAN_USERNAME || 'german'
+
+const agWs = await ensureWorkspace('ag', 'AG', 'personal', agUser)
+const germanWs = await ensureWorkspace('german', 'German', 'personal', germanUser)
 const sharedWs = await ensureWorkspace('shared', 'Shared', 'shared', null)
 
-await ensureMembership(agWs.id, 'ag', 'owner')
-await ensureMembership(sharedWs.id, 'ag', 'owner')
+await ensureMembership(agWs.id, agUser, 'owner')
+await ensureMembership(sharedWs.id, agUser, 'owner')
 
-await ensureMembership(germanWs.id, 'german', 'owner')
-await ensureMembership(sharedWs.id, 'german', 'member')
+await ensureMembership(germanWs.id, germanUser, 'owner')
+await ensureMembership(sharedWs.id, germanUser, 'member')
 
 console.log(JSON.stringify({ workspaces: { ag: agWs, german: germanWs, shared: sharedWs } }, null, 2))
 await pool.end()
