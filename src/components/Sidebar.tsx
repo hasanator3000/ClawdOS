@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { getActiveWorkspaceId, getWorkspacesForUser } from '@/lib/workspaces'
 import { setActiveWorkspace } from '@/app/(app)/actions'
-import { signOut } from '@/app/auth/actions'
 
 export default async function Sidebar() {
   const session = await getSession()
@@ -34,7 +33,9 @@ export default async function Sidebar() {
               </form>
             )
           })}
-          {workspaces.length === 0 ? <div className="px-3 py-2 text-sm text-[var(--muted)]">No workspaces</div> : null}
+          {workspaces.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-[var(--muted)]">No workspaces</div>
+          ) : null}
         </div>
       </div>
 
@@ -45,15 +46,16 @@ export default async function Sidebar() {
         <Link className="block rounded-md px-3 py-2 hover:bg-[var(--hover)]" href="/news">
           News
         </Link>
-        <Link className="block rounded-md px-3 py-2 hover:bg-[var(--hover)]" href="/settings">
-          Settings
-        </Link>
       </nav>
 
+      {/* Replaces the old Sign out button */}
       <div className="mt-auto">
-        <form action={signOut}>
-          <button className="w-full rounded-md border px-3 py-2 text-sm">Sign out</button>
-        </form>
+        <Link
+          className="block w-full rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--hover)]"
+          href="/settings"
+        >
+          Settings
+        </Link>
       </div>
     </aside>
   )

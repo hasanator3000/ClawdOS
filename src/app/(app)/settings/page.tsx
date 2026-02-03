@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
-import { getPool, withUser } from '@/lib/db'
+import { withUser } from '@/lib/db'
+import { signOut } from '@/app/auth/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +10,6 @@ export default async function SettingsPage() {
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
-  const pool = getPool()
   const res = await withUser(session.userId, async (client) => {
     return client.query('select telegram_user_id, password_updated_at, created_at from core."user" where id=$1', [
       session.userId,
@@ -61,6 +61,14 @@ export default async function SettingsPage() {
         <h2 className="font-medium">Account</h2>
         <div className="mt-2 text-sm text-[var(--muted)]">Created: {new Date(row.created_at).toLocaleString()}</div>
         <div className="mt-3 text-sm text-[var(--muted)]">Username changes are not implemented yet.</div>
+
+        <div className="mt-4">
+          <form action={signOut}>
+            <button className="w-full rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--hover)]">
+              Sign out
+            </button>
+          </form>
+        </div>
       </section>
     </div>
   )
