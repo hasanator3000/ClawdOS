@@ -20,7 +20,7 @@ export default async function NewsPage() {
 
   const news = await withUser(session.userId, async (client) => {
     const res = await client.query(
-      `select id, title, url, source, published_at, created_at
+      `select id, title, url, topic, summary, published_at, created_at
        from content.news_item
        where workspace_id = $1
        order by published_at desc nulls last, created_at desc
@@ -30,8 +30,9 @@ export default async function NewsPage() {
     return res.rows as Array<{
       id: string
       title: string
-      url: string | null
-      source: string | null
+      url: string
+      topic: string
+      summary: string
       published_at: string | null
     }>
   })
@@ -60,7 +61,10 @@ export default async function NewsPage() {
                 {n.published_at ? new Date(n.published_at).toLocaleString() : ''}
               </div>
             </div>
-            <div className="mt-1 text-xs text-slate-400">{n.source ?? ''}</div>
+            <div className="mt-1 text-xs text-slate-400">
+              {n.topic}
+              {n.summary ? <span className="ml-2 text-slate-300">— {n.summary}</span> : null}
+            </div>
           </li>
         ))}
 
