@@ -1,0 +1,5 @@
+schema: finance
+description: "Финансы — счета, транзакции, категории, бюджеты, активы"
+version: 1
+last_updated: 2026-02-03
+tables: {}

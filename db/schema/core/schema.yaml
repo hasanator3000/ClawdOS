@@ -1,0 +1,7 @@
+schema: core
+description: "Ядро системы — пользователи, воркспейсы, права, аудит, файлы"
+version: 1
+last_updated: 2026-02-03
+tables: {}
+functions: {}
+triggers: {}

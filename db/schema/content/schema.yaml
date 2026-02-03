@@ -1,0 +1,5 @@
+schema: content
+description: "Контент — дайджесты, новости, заметки, закладки"
+version: 1
+last_updated: 2026-02-03
+tables: {}

@@ -1,0 +1,39 @@
+registry_version: 1
+last_updated: 2026-02-03
+schemas:
+  core:
+    version: 1
+    status: stable
+    tables: []
+    functions: []
+    triggers: []
+  content:
+    version: 1
+    status: stable
+    depends_on: [core]
+    tables: []
+  finance:
+    version: 1
+    status: development
+    depends_on: [core]
+    tables: []
+  biz:
+    version: 1
+    status: development
+    depends_on: [core]
+    tables: []
+  docs:
+    version: 1
+    status: development
+    depends_on: [core]
+    tables: []
+  analytics:
+    version: 1
+    status: experimental
+    depends_on: [core]
+    tables: []
+  ai:
+    version: 1
+    status: experimental
+    depends_on: [core]
+    tables: []
