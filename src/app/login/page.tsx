@@ -26,7 +26,7 @@ export default async function LoginPage({
             <input
               name="username"
               required
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="ag"
               autoComplete="username"
             />
@@ -38,7 +38,7 @@ export default async function LoginPage({
               name="password"
               type="password"
               required
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black"
               autoComplete="current-password"
             />
           </label>
