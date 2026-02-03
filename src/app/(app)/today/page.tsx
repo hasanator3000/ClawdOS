@@ -19,14 +19,19 @@ export default async function TodayPage() {
 
   const digests = await withUser(session.userId, async (client) => {
     const res = await client.query(
-      `select id, date, title, summary, created_at
+      `select
+         id,
+         date,
+         title,
+         left(body, 280) as summary,
+         created_at
        from content.digest
        where workspace_id = $1
        order by date desc
        limit 30`,
       [workspace.id]
     )
-    return res.rows as Array<{ id: string; date: string; title: string | null; summary: string | null }>
+    return res.rows as Array<{ id: string; date: string; title: string; summary: string | null }>
   })
 
   return (
