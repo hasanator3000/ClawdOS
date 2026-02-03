@@ -1,26 +1,27 @@
 # LifeOS Ops (VPS, no public domain)
 
-Goal: run LifeOS on the same VPS securely without exposing the raw IP to the public internet.
+Goal: run LifeOS on the same VPS securely.
 
 ## Threat model (practical)
-- Keep the web app bound to localhost.
+- Default: keep the web app bound to localhost.
 - Only allow access from your devices.
-- Avoid opening port 3000 (or 80/443) publicly.
+- If you must expose by raw IP, require an access token gate and preferably add HTTPS later.
 
 ## Recommended access
 
 ### A) Tailscale (best)
+(keeps the app private; preferred)
+
 1. Install on VPS:
    ```bash
    curl -fsSL https://tailscale.com/install.sh | sh
    tailscale up
    ```
 2. Install on your laptop/phone and join same tailnet.
-3. Access patterns:
 
 **A1: SSH tunnel over tailnet**
 ```bash
-ssh -L 3000:127.0.0.1:3100 root@<vps-tailscale-ip>
+ssh -L 3100:127.0.0.1:3100 root@<vps-tailscale-ip>
 # open http://localhost:3100
 ```
 
@@ -28,25 +29,46 @@ ssh -L 3000:127.0.0.1:3100 root@<vps-tailscale-ip>
 On VPS:
 ```bash
 # assumes app listens on 127.0.0.1:3100
-sudo tailscale serve --http=3000 3000
+sudo tailscale serve --http=3100 127.0.0.1:3100
 ```
-Then open `http://<vpsname>.<tailnet>.ts.net:3100` (or whatever Serve prints), only inside tailnet.
 
 > Avoid Tailscale Funnel unless you explicitly want public access.
 
 ### B) Plain SSH tunnel (works, but relies on open SSH)
 If you already expose SSH:
 ```bash
-ssh -L 3000:127.0.0.1:3100 root@<vps-ip>
+ssh -L 3100:127.0.0.1:3100 root@<vps-ip>
+```
+
+### C) Expose by IP + token gate (what we use if you want http://IP:PORT)
+This exposes a port on the server, but every request requires `ACCESS_TOKEN`.
+
+1) Set token in `.env.local`:
+```bash
+ACCESS_TOKEN=$(openssl rand -base64 32)
+```
+
+2) Run dev server bound to all interfaces:
+```bash
+npm run dev -- --hostname 0.0.0.0 --port 3100
+```
+
+3) Open:
+- `http://<SERVER_IP>:3100/access`
+
+4) Firewall (if using ufw):
+```bash
+sudo ufw allow 3100/tcp
 ```
 
 ## Deployment layout
 This repo: `/root/clawd/apps/lifeos`
 
-### Environment
+## Environment
 Create `.env.local`:
 - `DATABASE_URL=postgres://lifeos:lifeos@localhost:5432/lifeos`
 - `SESSION_PASSWORD=<openssl rand -base64 48>`
+- (optional) `ACCESS_TOKEN=<openssl rand -base64 32>`
 
 ## Postgres (Docker)
 
@@ -88,7 +110,7 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=/root/clawd/apps/lifeos
 Environment=NODE_ENV=production
-Environment=PORT=3000
+Environment=PORT=3100
 EnvironmentFile=/root/clawd/apps/lifeos/.env.local
 ExecStart=/usr/bin/npm start
 Restart=always
@@ -105,23 +127,6 @@ sudo systemctl enable --now lifeos
 sudo systemctl status lifeos
 ```
 
-### 3) Bind to localhost only
-By default Next.js binds to 0.0.0.0 unless configured. Run it behind a local proxy or set host binding.
-Simplest approach: run via a reverse proxy that listens only on 127.0.0.1, or use firewall rules.
-
-If you want strict localhost binding, run Next with:
-```bash
-next start -H 127.0.0.1 -p 3000
-```
-You can modify `package.json` start script accordingly.
-
 ## Firewall
-- Keep port 5432 closed to the internet.
-- Keep port 3000 closed to the internet.
-- If using Tailscale Serve, it’s tailnet-only by default.
-
-## RLS (DB tenancy)
-- App sets `set_config('app.user_id', <uuid>, true)` for each transaction.
-- RLS policies restrict reads/writes by workspace membership.
-- This protects against accidental cross-tenant queries.
-
+- Keep Postgres (5432) closed to the internet.
+- If you enable IP access, open only the chosen app port (e.g. 3100) and consider restricting by source IP.
