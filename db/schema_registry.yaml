@@ -4,14 +4,16 @@ schemas:
   core:
     version: 1
     status: stable
-    tables: []
-    functions: []
+    # NOTE: currently implemented as public.* tables, scheduled to migrate to core.*
+    tables: [app_user, workspace, workspace_member]
+    functions: [app_current_user_id]
     triggers: []
   content:
     version: 1
     status: stable
     depends_on: [core]
-    tables: []
+    # NOTE: currently implemented as public.* tables, scheduled to migrate to content.*
+    tables: [digest, news_item]
   finance:
     version: 1
     status: development

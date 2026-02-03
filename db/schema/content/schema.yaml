@@ -1,5 +1,54 @@
 schema: content
-description: "Контент — дайджесты, новости, заметки, закладки"
+description: "Контент — дайджесты и новости"
 version: 1
 last_updated: 2026-02-03
-tables: {}
+
+# NOTE: Пока таблицы в public.* (локальный этап). Позже переедем в content.*.
+
+tables:
+  digest:
+    schema: public
+    description: "Дайджесты дня (текст)"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      workspace_id:
+        type: uuid
+        nullable: false
+        references: public.workspace(id)
+        on_delete: CASCADE
+      date: { type: date, nullable: false }
+      title: { type: text, nullable: false }
+      body: { type: text, nullable: false }
+      created_at: { type: timestamptz, nullable: false, default: now() }
+    constraints:
+      - { name: digest_workspace_id_date_key, type: unique, columns: [workspace_id, date] }
+    rls:
+      enabled: true
+      policies:
+        - { name: digest_rw, for: ALL, using: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())", with_check: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())" }
+
+  news_item:
+    schema: public
+    description: "Новости (лента)"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      workspace_id:
+        type: uuid
+        nullable: false
+        references: public.workspace(id)
+        on_delete: CASCADE
+      topic:
+        type: text
+        nullable: false
+        check: "topic IN ('world','ai','other')"
+      title: { type: text, nullable: false }
+      url: { type: text, nullable: false }
+      summary: { type: text, nullable: false }
+      published_at: { type: timestamptz, nullable: true }
+      created_at: { type: timestamptz, nullable: false, default: now() }
+    indexes:
+      - { name: news_item_ws_topic_created_idx, columns: [workspace_id, topic, created_at], unique: false }
+    rls:
+      enabled: true
+      policies:
+        - { name: news_item_rw, for: ALL, using: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())", with_check: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())" }
