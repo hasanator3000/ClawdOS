@@ -7,6 +7,7 @@ export type SessionData = {
   pendingUserId?: string
   pendingUsername?: string
   pendingChallengeId?: string
+  pendingNewPassword?: string
 }
 
 const sessionOptions = {

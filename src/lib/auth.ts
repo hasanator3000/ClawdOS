@@ -30,7 +30,7 @@ function generateCode(len = 6) {
   return out
 }
 
-export async function createAuthChallenge(userId: string, kind: 'login' | 'recovery') {
+export async function createAuthChallenge(userId: string, kind: 'login' | 'recovery' | 'link') {
   const pool = getPool()
   const code = generateCode(6)
   const res = await pool.query(
@@ -42,7 +42,7 @@ export async function createAuthChallenge(userId: string, kind: 'login' | 'recov
   return { id: res.rows[0].id as string, code, expiresAt: res.rows[0].expires_at as string }
 }
 
-export async function consumeAuthChallenge(id: string, code: string, kind: 'login' | 'recovery') {
+export async function consumeAuthChallenge(id: string, code: string, kind: 'login' | 'recovery' | 'link') {
   const pool = getPool()
   const res = await pool.query(
     `update core.auth_challenge

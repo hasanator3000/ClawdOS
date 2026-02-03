@@ -45,6 +45,9 @@ export default async function Sidebar() {
         <Link className="block rounded-md px-3 py-2 hover:bg-[var(--hover)]" href="/news">
           News
         </Link>
+        <Link className="block rounded-md px-3 py-2 hover:bg-[var(--hover)]" href="/settings">
+          Settings
+        </Link>
       </nav>
 
       <div className="mt-auto">
