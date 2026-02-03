@@ -46,6 +46,12 @@ export default async function LoginPage({
           <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Sign in</button>
         </form>
 
+        <div className="mt-4 text-sm">
+          <a className="underline text-[var(--muted-2)]" href="/recover">
+            Forgot password?
+          </a>
+        </div>
+
         <p className="text-xs text-[var(--muted)] mt-6">
           Users are created via ops script (argon2id password hashes). No public signup.
         </p>
