@@ -32,10 +32,18 @@ export function useChat(options: UseChatOptions) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const requestSeqRef = useRef(0)
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!content.trim() || isLoading) return
+      if (!content.trim()) return
+
+      // If a request is in-flight, cancel it so the UI stays responsive.
+      if (isLoading) {
+        abortControllerRef.current?.abort()
+      }
+
+      const requestSeq = ++requestSeqRef.current
 
       setError(null)
 
@@ -115,6 +123,7 @@ export function useChat(options: UseChatOptions) {
         let inLifeosBlock = false
 
         const appendAssistant = (delta: string) => {
+          if (requestSeq !== requestSeqRef.current) return
           if (!delta) return
 
           // Add to buffer for tag-aware filtering (server filters most, this is fallback)
@@ -198,6 +207,7 @@ export function useChat(options: UseChatOptions) {
         }
 
         const finalizeAssistant = () => {
+          if (requestSeq !== requestSeqRef.current) return
           // Flush any remaining displayBuffer (if stream ended mid-tag, show what we have)
           if (!inLifeosBlock && displayBuffer) {
             setMessages((prev) =>
@@ -297,14 +307,18 @@ export function useChat(options: UseChatOptions) {
           return
         }
 
+        if (requestSeq !== requestSeqRef.current) return
+
         const errorMessage = err instanceof Error ? err.message : 'Failed to send message'
         setError(errorMessage)
         setMessages((prev) =>
           prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg))
         )
       } finally {
-        setIsLoading(false)
-        abortControllerRef.current = null
+        if (requestSeq === requestSeqRef.current) {
+          setIsLoading(false)
+          abortControllerRef.current = null
+        }
       }
     },
     [conversationId, isLoading, options.workspaceId, options.workspaceName, options.currentPage]
@@ -312,6 +326,9 @@ export function useChat(options: UseChatOptions) {
 
   const stopGeneration = useCallback(() => {
     abortControllerRef.current?.abort()
+    // Invalidate current stream updates
+    requestSeqRef.current += 1
+    setIsLoading(false)
   }, [])
 
   const clearMessages = useCallback(() => {

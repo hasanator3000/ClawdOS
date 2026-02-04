@@ -12,13 +12,17 @@ export const dynamic = 'force-dynamic'
 const MAX_MESSAGE_LENGTH = 10_000
 
 function detectNavigationTarget(message: string): string | null {
-  const m = message.toLowerCase()
+  const m = message.toLowerCase().trim()
 
   // Direct path shortcut
-  if (ALLOWED_PATHS.has(m.trim())) return m.trim()
+  if (ALLOWED_PATHS.has(m)) return m
 
   const wantsOpen = /\b(открой|перейди|зайди|open|go to|navigate)\b/.test(m)
-  if (!wantsOpen) return null
+
+  // If the message is short and looks like a section name, treat it as navigation too.
+  const looksLikeSectionOnly = m.length <= 40 && /^(таски|задачи|tasks|news|новости|settings|настройки|today|сегодня|дашборд|dashboard)(\s.*)?$/.test(m)
+
+  if (!wantsOpen && !looksLikeSectionOnly) return null
 
   if (/(таск|таски|задач|tasks?)\b/.test(m)) return '/tasks'
   if (/(новост|news)\b/.test(m)) return '/news'

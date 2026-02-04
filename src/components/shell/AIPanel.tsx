@@ -204,7 +204,8 @@ export function AIPanel({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={workspaceId ? 'Ask Clawdbot...' : 'Select a workspace first'}
-              disabled={!workspaceId || isLoading}
+              // Allow typing even while the previous request is streaming
+              disabled={!workspaceId}
               className="flex-1 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--border)]"
             />
             {isLoading ? (
