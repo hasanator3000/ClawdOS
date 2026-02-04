@@ -109,6 +109,54 @@ export function useChat(options: UseChatOptions) {
           )
         }
 
+        const tryExecuteLifeOSActions = async (fullText: string) => {
+          // Look for <lifeos>{...}</lifeos> blocks and execute a small, safe whitelist.
+          const blocks = Array.from(fullText.matchAll(/<lifeos>([\s\S]*?)<\/lifeos>/g)).map((m) => m[1])
+          if (blocks.length === 0) return
+
+          const ALLOWED_PATHS = new Set(['/today', '/news', '/tasks', '/settings'])
+
+          for (const raw of blocks) {
+            let payload: any
+            try {
+              payload = JSON.parse(raw)
+            } catch {
+              continue
+            }
+
+            const actions: any[] = Array.isArray(payload?.actions) ? payload.actions : []
+            for (const a of actions) {
+              const k = a?.k
+              if (k === 'navigate') {
+                const to = String(a?.to || '')
+                if (ALLOWED_PATHS.has(to)) window.location.assign(to)
+              }
+              if (k === 'task.create') {
+                const title = String(a?.title || '').trim()
+                if (!title) continue
+                await fetch('/api/actions/task', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    title,
+                    description: a?.description ? String(a.description) : undefined,
+                    priority: typeof a?.priority === 'number' ? a.priority : undefined,
+                  }),
+                })
+              }
+              if (k === 'task.complete' || k === 'task.reopen') {
+                const taskId = String(a?.taskId || '')
+                if (!taskId) continue
+                await fetch('/api/actions/task', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ op: k === 'task.complete' ? 'complete' : 'reopen', taskId }),
+                })
+              }
+            }
+          }
+        }
+
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -146,7 +194,14 @@ export function useChat(options: UseChatOptions) {
           }
         }
 
+        // Finalize message first
         finalizeAssistant()
+
+        // Execute any post-response LifeOS actions (best-effort)
+        try {
+          const final = messages.find((m) => m.id === assistantMessageId)?.content
+          if (final) await tryExecuteLifeOSActions(final)
+        } catch {}
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           // Request was cancelled

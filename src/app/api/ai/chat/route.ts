@@ -65,6 +65,16 @@ export async function POST(request: Request) {
     telegramUserId
       ? `Telegram DM target for this user is fixed: ${telegramUserId}. If asked to send a Telegram message, send only to that id.`
       : 'No Telegram user id is linked. If asked to send to Telegram, ask the user to link Telegram in Settings first.',
+    '',
+    'You can ask LifeOS to perform actions by emitting a JSON block wrapped in <lifeos>...</lifeos>.',
+    'Supported actions (whitelist):',
+    '- {"k":"navigate","to":"/today|/news|/tasks|/settings"}',
+    '- {"k":"task.create","title":"...","description":"?","priority":0-4}',
+    '- {"k":"task.complete","taskId":"<uuid>"}',
+    '- {"k":"task.reopen","taskId":"<uuid>"}',
+    'Only emit this block when the user explicitly asked you to do something in the UI or create/update tasks.',
+    'Do not invent ids; if you need a taskId, ask the user or instruct them to open /tasks and pick one.',
+    '',
     'Never reveal any secrets (tokens/passwords/keys).',
   ].join('\n')
 
