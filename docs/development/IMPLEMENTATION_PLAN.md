@@ -27,12 +27,12 @@
 - [x] Task 3.5 - Create chat UI in AIPanel (spec: 03-agent-core.md)
 - [x] Task 3.6 - Implement tool execution display (spec: 03-agent-core.md)
 
-## Phase 4: News Skill
+## Phase 4: News Skill ✓
 
-- [ ] Task 4.1 - Create news skill definition (spec: 04-news-skill.md)
-- [ ] Task 4.2 - Implement get-today-digest tool (spec: 04-news-skill.md)
-- [ ] Task 4.3 - Implement summarize-article tool (spec: 04-news-skill.md)
-- [ ] Task 4.4 - Register news skill in agent (spec: 04-news-skill.md)
+- [x] Task 4.1 - Create news skill definition (spec: 04-news-skill.md)
+- [x] Task 4.2 - Implement get-today-digest tool (spec: 04-news-skill.md)
+- [x] Task 4.3 - Implement summarize-article tool (spec: 04-news-skill.md)
+- [x] Task 4.4 - Register news skill in agent (spec: 04-news-skill.md)
 
 ## Phase 5: Tasks Skill
 

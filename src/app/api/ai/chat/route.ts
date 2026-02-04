@@ -5,12 +5,12 @@ import { withUser } from '@/lib/db'
 import {
   createConversation,
   createMessage,
-  createToolCall,
-  updateToolCallStatus,
   getConversationById,
   getMessagesByConversation,
 } from '@/lib/ai/repository'
 import type { StreamEvent, AgentContext } from '@/lib/ai/types'
+import { skillRegistry } from '@/lib/ai/skills/registry'
+import '@/lib/ai/skills' // Auto-register skills
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -23,18 +23,43 @@ function getSystemPrompt(context: AgentContext): string {
 Current context:
 - Workspace: ${context.workspaceName}
 - Current page: ${context.currentPage}
-- User ID: ${context.userId}
 
-You have access to various skills (tools) to help the user:
-- Create and manage tasks
-- Access news and digests
-- Search and retrieve information
-- Create notes and documents
+You have access to tools to help the user:
 
-Be helpful, concise, and proactive. When the user asks you to do something, use the appropriate tool if available.
-If you don't have a tool for something, explain what you can do instead.
+NEWS TOOLS:
+- get_today_digest: Get today's news digest
+- get_recent_digests: Get recent digests
+- get_news_items: Get recent news items
+- search_news: Search news by keyword
+
+TASK TOOLS:
+- create_task: Create a new task (e.g., "create task: buy groceries")
+- list_tasks: List current tasks (e.g., "what are my tasks?")
+- complete_task: Mark a task as done (e.g., "mark X done")
+- update_task: Update task details
+- delete_task: Delete a task
+- get_overdue_tasks: Get tasks past their due date
+
+IMPORTANT:
+- When the user asks about news, digests, or what's happening, use the NEWS TOOLS.
+- When the user asks to create, list, complete, or manage tasks, use the TASK TOOLS.
+- Always use tools when you can provide real data instead of generic responses.
+- Be helpful, concise, and proactive.
 
 ${context.memories?.length ? `\nRelevant memories:\n${context.memories.join('\n')}` : ''}`
+}
+
+// Convert skill tools to Anthropic format
+function getAnthropicTools(): Anthropic.Tool[] {
+  return skillRegistry.getAllTools().map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    input_schema: {
+      type: 'object' as const,
+      properties: tool.parameters.properties as Record<string, unknown>,
+      required: tool.parameters.required || [],
+    },
+  }))
 }
 
 export async function POST(request: Request) {
@@ -97,12 +122,13 @@ export async function POST(request: Request) {
       return { conversation, previousMessages }
     })
 
-    // Capture userId for use in stream (we already validated it exists)
+    // Capture userId and workspaceId for use in stream
     const userId = session.userId
+    const workspaceId = context.workspaceId
 
     // Build messages for Anthropic API
     const agentContext: AgentContext = {
-      workspaceId: context.workspaceId,
+      workspaceId,
       workspaceName: context.workspaceName,
       userId,
       currentPage: context.currentPage,
@@ -112,6 +138,9 @@ export async function POST(request: Request) {
       ...result.previousMessages,
       { role: 'user', content: message },
     ]
+
+    // Get tools
+    const tools = getAnthropicTools()
 
     // Create streaming response
     const stream = new ReadableStream({
@@ -126,29 +155,129 @@ export async function POST(request: Request) {
           let fullContent = ''
           let inputTokens = 0
           let outputTokens = 0
+          let currentMessages = [...messages]
+          let continueLoop = true
 
-          const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 4096,
-            system: getSystemPrompt(agentContext),
-            messages,
-            stream: true,
-          })
+          while (continueLoop) {
+            const response = await anthropic.messages.create({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 4096,
+              system: getSystemPrompt(agentContext),
+              messages: currentMessages,
+              tools: tools.length > 0 ? tools : undefined,
+              stream: true,
+            })
 
-          for await (const event of response) {
-            if (event.type === 'content_block_delta') {
-              if (event.delta.type === 'text_delta') {
-                fullContent += event.delta.text
-                sendEvent({ type: 'token', content: event.delta.text })
+            let currentToolUse: { id: string; name: string; input: string } | null = null
+            let stopReason: string | null = null
+            const toolResults: Anthropic.ToolResultBlockParam[] = []
+
+            for await (const event of response) {
+              if (event.type === 'content_block_start') {
+                if (event.content_block.type === 'tool_use') {
+                  currentToolUse = {
+                    id: event.content_block.id,
+                    name: event.content_block.name,
+                    input: '',
+                  }
+                  sendEvent({
+                    type: 'tool_start',
+                    toolName: event.content_block.name,
+                    toolCallId: event.content_block.id,
+                    input: {},
+                  })
+                }
+              } else if (event.type === 'content_block_delta') {
+                if (event.delta.type === 'text_delta') {
+                  fullContent += event.delta.text
+                  sendEvent({ type: 'token', content: event.delta.text })
+                } else if (event.delta.type === 'input_json_delta' && currentToolUse) {
+                  currentToolUse.input += event.delta.partial_json
+                }
+              } else if (event.type === 'content_block_stop') {
+                if (currentToolUse) {
+                  // Execute the tool
+                  let toolInput: Record<string, unknown> = {}
+                  try {
+                    toolInput = JSON.parse(currentToolUse.input || '{}')
+                  } catch {
+                    toolInput = {}
+                  }
+
+                  // Execute tool with database context
+                  const toolResult = await withUser(userId, async (client) => {
+                    return skillRegistry.executeTool(currentToolUse!.name, toolInput, {
+                      workspaceId,
+                      userId,
+                      client,
+                    })
+                  })
+
+                  sendEvent({
+                    type: 'tool_end',
+                    toolCallId: currentToolUse.id,
+                    output: toolResult.success ? (toolResult.data as Record<string, unknown>) : null,
+                    error: toolResult.error || null,
+                  })
+
+                  toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: currentToolUse.id,
+                    content: JSON.stringify(toolResult.success ? toolResult.data : { error: toolResult.error }),
+                  })
+
+                  currentToolUse = null
+                }
+              } else if (event.type === 'message_delta') {
+                if (event.usage) {
+                  outputTokens += event.usage.output_tokens
+                }
+                stopReason = event.delta.stop_reason || null
+              } else if (event.type === 'message_start') {
+                if (event.message.usage) {
+                  inputTokens += event.message.usage.input_tokens
+                }
               }
-            } else if (event.type === 'message_delta') {
-              if (event.usage) {
-                outputTokens = event.usage.output_tokens
-              }
-            } else if (event.type === 'message_start') {
-              if (event.message.usage) {
-                inputTokens = event.message.usage.input_tokens
-              }
+            }
+
+            // Check if we need to continue with tool results
+            if (stopReason === 'tool_use' && toolResults.length > 0) {
+              // Add assistant message with tool use to context
+              currentMessages = [
+                ...currentMessages,
+                {
+                  role: 'assistant' as const,
+                  content: [
+                    ...(fullContent ? [{ type: 'text' as const, text: fullContent }] : []),
+                    ...toolResults.map((tr) => ({
+                      type: 'tool_use' as const,
+                      id: tr.tool_use_id,
+                      name:
+                        tools.find(
+                          (t) =>
+                            toolResults.find((r) => r.tool_use_id === tr.tool_use_id) &&
+                            t.name ===
+                              messages
+                                .flatMap((m) =>
+                                  typeof m.content === 'string' ? [] : m.content
+                                )
+                                .find(
+                                  (c): c is Anthropic.ToolUseBlockParam =>
+                                    c.type === 'tool_use' && c.id === tr.tool_use_id
+                                )?.name
+                        )?.name || 'unknown',
+                      input: {},
+                    })),
+                  ],
+                },
+                {
+                  role: 'user' as const,
+                  content: toolResults,
+                },
+              ]
+              fullContent = '' // Reset for next iteration
+            } else {
+              continueLoop = false
             }
           }
 
