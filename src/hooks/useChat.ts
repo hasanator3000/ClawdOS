@@ -91,12 +91,14 @@ export function useChat(options: UseChatOptions) {
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
-              ? { ...msg, content: `Открыл раздел: ${navTarget}.`, isStreaming: false }
+              ? { ...msg, content: `Открыл раздел.`, isStreaming: false }
               : msg
           )
         )
+        // Push is usually enough; refresh forces extra network work and can feel slow.
         router.push(navTarget)
-        router.refresh()
+        // Best-effort refresh after navigation settles (for server widgets/badges).
+        setTimeout(() => router.refresh(), 150)
         setIsLoading(false)
         return
       }
@@ -137,7 +139,7 @@ export function useChat(options: UseChatOptions) {
               )
             )
             router.push('/tasks')
-            router.refresh()
+            setTimeout(() => router.refresh(), 150)
           } else {
             setMessages((prev) =>
               prev.map((msg) =>
