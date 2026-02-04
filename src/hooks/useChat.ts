@@ -138,7 +138,8 @@ export function useChat(options: UseChatOptions) {
                   : msg
               )
             )
-            router.push('/tasks')
+            // Do not force navigation to /tasks on create unless user asked.
+            // Just refresh widgets; if user is already on /tasks, it will update via the event.
             setTimeout(() => router.refresh(), 150)
           } else {
             setMessages((prev) =>

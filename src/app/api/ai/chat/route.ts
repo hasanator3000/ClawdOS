@@ -376,8 +376,7 @@ export async function POST(request: Request) {
             )
           )
 
-          // If the user implicitly asked for tasks view, navigate; otherwise refresh widgets.
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/tasks' })}\n\n`))
+          // Do not force navigation to /tasks on create. The UI can decide where to show it.
 
           controller.enqueue(encoder.encode('data: [DONE]\n\n'))
           controller.close()
