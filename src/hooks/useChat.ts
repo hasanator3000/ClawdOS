@@ -94,21 +94,13 @@ export function useChat(options: UseChatOptions) {
         const decoder = new TextDecoder()
         let buffer = ''
 
-        let assistantFullText = '' // Full text including <lifeos> blocks for action execution
         let displayBuffer = '' // Buffer for incomplete tags during streaming
         let inLifeosBlock = false
-
-        // Tool call accumulation (arguments come in chunks)
-        const toolCallsMap = new Map<string, { name: string; arguments: string }>()
-        const executedTools = new Set<string>()
 
         const appendAssistant = (delta: string) => {
           if (!delta) return
 
-          // Always accumulate full text for later action execution
-          assistantFullText += delta
-
-          // Add to buffer for tag-aware filtering
+          // Add to buffer for tag-aware filtering (server filters most, this is fallback)
           displayBuffer += delta
           let visibleDelta = ''
 
@@ -206,62 +198,6 @@ export function useChat(options: UseChatOptions) {
           }
         }
 
-        const tryExecuteLifeOSActions = async (fullText: string) => {
-          // Look for <lifeos>...</lifeos> blocks and execute a small, safe whitelist.
-          // We accept either raw JSON or ```json fenced blocks inside.
-          const matches = Array.from(fullText.matchAll(/<lifeos>([\s\S]*?)<\/lifeos>/g))
-          if (matches.length === 0) return
-
-          const blocks = matches
-            .map((m) => m[1].trim())
-            .map((s) => {
-              const fenced = s.match(/```json\s*([\s\S]*?)\s*```/i)
-              return (fenced?.[1] ?? s).trim()
-            })
-
-          const ALLOWED_PATHS = new Set(['/today', '/news', '/tasks', '/settings'])
-
-          for (const raw of blocks) {
-            let payload: any
-            try {
-              payload = JSON.parse(raw)
-            } catch {
-              continue
-            }
-
-            const actions: any[] = Array.isArray(payload?.actions) ? payload.actions : []
-            for (const a of actions) {
-              const k = a?.k
-              if (k === 'navigate') {
-                const to = String(a?.to || '')
-                if (ALLOWED_PATHS.has(to)) window.location.assign(to)
-              }
-              if (k === 'task.create') {
-                const title = String(a?.title || '').trim()
-                if (!title) continue
-                await fetch('/api/actions/task', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    title,
-                    description: a?.description ? String(a.description) : undefined,
-                    priority: typeof a?.priority === 'number' ? a.priority : undefined,
-                  }),
-                })
-              }
-              if (k === 'task.complete' || k === 'task.reopen') {
-                const taskId = String(a?.taskId || '')
-                if (!taskId) continue
-                await fetch('/api/actions/task', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ op: k === 'task.complete' ? 'complete' : 'reopen', taskId }),
-                })
-              }
-            }
-          }
-        }
-
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -292,102 +228,27 @@ export function useChat(options: UseChatOptions) {
                 continue
               }
 
+              // Handle navigation events from server
+              if (evt?.type === 'navigation' && evt?.target) {
+                console.log('Server navigation:', evt.target)
+                window.location.assign(evt.target)
+                continue
+              }
+
               // OpenAI chat.completions streaming shape
               const choice = evt?.choices?.[0]
               const delta = choice?.delta
 
-              // Handle text content
+              // Handle text content (already filtered by server)
               if (typeof delta?.content === 'string') {
                 appendAssistant(delta.content)
-              }
-
-              // Handle tool calls (arguments come in chunks, must accumulate)
-              if (Array.isArray(delta?.tool_calls)) {
-                for (const toolCall of delta.tool_calls) {
-                  const index = toolCall.index ?? 0
-                  const toolId = `tool_${index}`
-
-                  // Accumulate tool call data
-                  if (!toolCallsMap.has(toolId)) {
-                    toolCallsMap.set(toolId, { name: '', arguments: '' })
-                  }
-
-                  const accumulated = toolCallsMap.get(toolId)!
-
-                  if (toolCall.function?.name) {
-                    accumulated.name = toolCall.function.name
-                  }
-
-                  if (toolCall.function?.arguments) {
-                    accumulated.arguments += toolCall.function.arguments
-                  }
-                }
-              }
-
-              // Check if any tool calls are complete (finish_reason will tell us)
-              const finishReason = choice?.finish_reason
-              if (finishReason === 'tool_calls' || finishReason === 'stop') {
-                // Execute accumulated tool calls
-                for (const [toolId, toolData] of toolCallsMap.entries()) {
-                  if (executedTools.has(toolId)) continue // Already executed
-                  if (!toolData.name || !toolData.arguments) continue // Not complete
-
-                  let args: any = {}
-                  try {
-                    args = JSON.parse(toolData.arguments)
-                  } catch {
-                    console.warn('Failed to parse tool arguments:', toolData.arguments)
-                    continue
-                  }
-
-                  executedTools.add(toolId)
-
-                  // Execute tool (whitelisted actions)
-                  const ALLOWED_PAGES = new Set(['/today', '/news', '/tasks', '/settings'])
-
-                  if (toolData.name === 'navigate_page' && args.page && ALLOWED_PAGES.has(args.page)) {
-                    console.log('Navigating to:', args.page)
-                    window.location.assign(args.page)
-                  } else if (toolData.name === 'create_task' && args.title) {
-                    console.log('Creating task:', args.title)
-                    await fetch('/api/actions/task', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        title: String(args.title),
-                        description: args.description ? String(args.description) : undefined,
-                        priority: typeof args.priority === 'number' ? args.priority : undefined,
-                      }),
-                    }).catch((err) => console.error('Task creation failed:', err))
-                  } else if (toolData.name === 'complete_task' && args.taskId) {
-                    console.log('Completing task:', args.taskId)
-                    await fetch('/api/actions/task', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ op: 'complete', taskId: String(args.taskId) }),
-                    }).catch((err) => console.error('Task completion failed:', err))
-                  } else if (toolData.name === 'reopen_task' && args.taskId) {
-                    console.log('Reopening task:', args.taskId)
-                    await fetch('/api/actions/task', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ op: 'reopen', taskId: String(args.taskId) }),
-                    }).catch((err) => console.error('Task reopen failed:', err))
-                  }
-                }
               }
             }
           }
         }
 
-        // Finalize message first
+        // Finalize message
         finalizeAssistant()
-
-        // Execute any post-response LifeOS actions (best-effort)
-        // Note: <lifeos> blocks are already filtered during streaming, so no need to remove them here
-        try {
-          if (assistantFullText) await tryExecuteLifeOSActions(assistantFullText)
-        } catch {}
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           // Request was cancelled

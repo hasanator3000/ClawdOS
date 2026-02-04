@@ -10,60 +10,48 @@ interface GlitchTextProps {
 const GLITCH_CHARS = '#$@%&*!~+=?<>[]{}|/\\^`'
 
 export default function GlitchText({ text, className = '' }: GlitchTextProps) {
-  const [displayText, setDisplayText] = useState(text)
+  const [displayText, setDisplayText] = useState('')
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const [isAnimating, setIsAnimating] = useState(true)
 
   useEffect(() => {
-    if (!isAnimating) {
-      setDisplayText(text)
-      return
-    }
-
-    let iteration = 0
     const letters = text.split('')
 
     const animate = () => {
       setDisplayText(
         letters
-          .map((letter, index) => {
+          .map((letter) => {
             if (letter === ' ') return ' '
 
-            if (index < iteration) {
-              return letter
-            }
+            // 70% вероятность показать настоящую букву, 30% - случайный символ
+            const showReal = Math.random() > 0.3
 
-            return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)]
+            if (showReal) {
+              return letter
+            } else {
+              return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)]
+            }
           })
           .join('')
       )
-
-      iteration += 1 / 3
-
-      if (iteration >= letters.length) {
-        setDisplayText(text)
-        setIsAnimating(false)
-      }
     }
 
-    intervalRef.current = setInterval(animate, 50)
+    // Запускаем анимацию сразу
+    animate()
+
+    // Продолжаем менять символы постоянно (быстрее для эффекта)
+    intervalRef.current = setInterval(animate, 80)
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
       }
     }
-  }, [text, isAnimating])
-
-  const handleMouseEnter = () => {
-    setIsAnimating(true)
-  }
+  }, [text])
 
   return (
     <span
       className={className}
-      onMouseEnter={handleMouseEnter}
-      style={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}
+      style={{ fontFamily: 'monospace', letterSpacing: '0.1em', fontWeight: 600 }}
     >
       {displayText}
     </span>
