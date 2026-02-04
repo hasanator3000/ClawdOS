@@ -78,3 +78,32 @@
 
 ---
 
+## 2026-02-04 - UI Polish: Dark Mode Error/Success Messages
+
+**What was done:**
+- Added CSS variables for error/success states (`--error-bg`, `--error-fg`, `--success-bg`, `--success-fg`)
+- Light theme: soft red/green backgrounds with dark text
+- Dark theme: semi-transparent backgrounds with light text
+- Updated all error messages across auth pages to use CSS variables
+
+**Files modified:**
+- `src/app/globals.css` (added error/success CSS variables)
+- `src/app/login/page.tsx`
+- `src/app/login/verify/page.tsx`
+- `src/app/recover/page.tsx` (error + success)
+- `src/app/recover/verify/page.tsx`
+- `src/app/(app)/settings/password/page.tsx`
+- `src/app/(app)/settings/password/verify/page.tsx`
+- `src/app/(app)/settings/telegram/page.tsx`
+- `src/app/(app)/settings/telegram/verify/page.tsx`
+
+**Verification:**
+- `npx tsc --noEmit` - passed
+- `npm run build` - passed
+
+**Learnings:**
+- Error/success messages need theme-aware colors for good dark mode UX
+- Use semi-transparent backgrounds in dark mode to integrate better with the UI
+
+---
+

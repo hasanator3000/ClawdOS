@@ -19,6 +19,10 @@
   --input-fg: #0f172a;
   --input-placeholder: #94a3b8;
   --ring: #0f172a;
+  --error-bg: #fef2f2;
+  --error-fg: #b91c1c;
+  --success-bg: #f0fdf4;
+  --success-fg: #15803d;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -36,6 +40,10 @@
     --input-fg: #e2e8f0;
     --input-placeholder: #64748b;
     --ring: #e2e8f0;
+    --error-bg: rgba(185, 28, 28, 0.15);
+    --error-fg: #fca5a5;
+    --success-bg: rgba(21, 128, 61, 0.15);
+    --success-fg: #86efac;
   }
 }
 

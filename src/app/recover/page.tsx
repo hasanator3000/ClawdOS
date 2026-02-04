@@ -40,10 +40,10 @@ export default async function RecoverPage({
         <p className="text-sm text-[var(--muted)] mt-1">If Telegram is linked, we will send a recovery code.</p>
 
         {error ? (
-          <div className="mt-4 rounded-lg bg-red-50 text-red-700 text-sm p-3">{error}</div>
+          <div className="mt-4 rounded-lg bg-[var(--error-bg)] text-[var(--error-fg)] text-sm p-3">{error}</div>
         ) : null}
         {sent ? (
-          <div className="mt-4 rounded-lg bg-emerald-50 text-emerald-800 text-sm p-3">
+          <div className="mt-4 rounded-lg bg-[var(--success-bg)] text-[var(--success-fg)] text-sm p-3">
             If Telegram is linked, a code was sent.
           </div>
         ) : null}

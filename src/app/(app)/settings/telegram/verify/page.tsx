@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/auth/session'
 import { consumeAuthChallenge } from '@/lib/auth'
 import { withUser } from '@/lib/db'
 
@@ -50,7 +50,7 @@ export default async function VerifyTelegramPage({
       <h1 className="text-xl font-semibold">Verify Telegram link</h1>
       <p className="text-sm text-[var(--muted)]">Enter the code we sent to Telegram.</p>
 
-      {error ? <div className="rounded-lg bg-red-50 text-red-700 text-sm p-3">{error}</div> : null}
+      {error ? <div className="rounded-lg bg-[var(--error-bg)] text-[var(--error-fg)] text-sm p-3">{error}</div> : null}
 
       <form className="space-y-3" action={verify}>
         <label className="block">

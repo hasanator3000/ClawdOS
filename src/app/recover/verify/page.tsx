@@ -40,7 +40,7 @@ export default async function RecoverVerifyPage({
         <p className="text-sm text-[var(--muted)] mt-1">Enter the code from Telegram and choose a new password.</p>
 
         {error ? (
-          <div className="mt-4 rounded-lg bg-red-50 text-red-700 text-sm p-3">{error}</div>
+          <div className="mt-4 rounded-lg bg-[var(--error-bg)] text-[var(--error-fg)] text-sm p-3">{error}</div>
         ) : null}
 
         <form className="mt-6 space-y-3" action={setPassword}>

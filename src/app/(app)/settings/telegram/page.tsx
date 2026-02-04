@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
-import { createAuthChallenge, enqueueTelegram, consumeAuthChallenge } from '@/lib/auth'
+import { getSession } from '@/lib/auth/session'
+import { createAuthChallenge, enqueueTelegram } from '@/lib/auth'
 import { withUser } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -50,7 +50,7 @@ export default async function TelegramSettingsPage({
         Current: {current ? <span className="text-[var(--muted-2)]">{current}</span> : 'not linked'}
       </p>
 
-      {error ? <div className="rounded-lg bg-red-50 text-red-700 text-sm p-3">{error}</div> : null}
+      {error ? <div className="rounded-lg bg-[var(--error-bg)] text-[var(--error-fg)] text-sm p-3">{error}</div> : null}
 
       <form className="space-y-3" action={startLink}>
         <label className="block">

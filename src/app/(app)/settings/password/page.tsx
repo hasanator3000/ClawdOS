@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
-import { verifyUser, updatePassword, createAuthChallenge, consumeAuthChallenge, enqueueTelegram } from '@/lib/auth'
+import { getSession } from '@/lib/auth/session'
+import { verifyUser, updatePassword, createAuthChallenge, enqueueTelegram } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +53,7 @@ export default async function PasswordSettingsPage({
   return (
     <div className="max-w-lg space-y-4">
       <h1 className="text-xl font-semibold">Change password</h1>
-      {error ? <div className="rounded-lg bg-red-50 text-red-700 text-sm p-3">{error}</div> : null}
+      {error ? <div className="rounded-lg bg-[var(--error-bg)] text-[var(--error-fg)] text-sm p-3">{error}</div> : null}
 
       <form className="space-y-3" action={startPasswordChange}>
         <label className="block">
