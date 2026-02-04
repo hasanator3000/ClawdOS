@@ -66,21 +66,87 @@ export async function POST(request: Request) {
       ? `Telegram DM target for this user is fixed: ${telegramUserId}. If asked to send a Telegram message, send only to that id.`
       : 'No Telegram user id is linked. If asked to send to Telegram, ask the user to link Telegram in Settings first.',
     '',
-    'You can ask LifeOS to perform actions by emitting a JSON block wrapped in <lifeos>...</lifeos>.',
-    'Format: <lifeos>{"actions":[...]}</lifeos>',
-    'Supported actions (whitelist):',
-    '- {"k":"navigate","to":"/today|/news|/tasks|/settings"}',
-    '- {"k":"task.create","title":"...","description":"?","priority":0-4}',
-    '- {"k":"task.complete","taskId":"<uuid>"}',
-    '- {"k":"task.reopen","taskId":"<uuid>"}',
-    'Example: <lifeos>{"actions":[{"k":"navigate","to":"/tasks"},{"k":"task.create","title":"Buy milk"}]}</lifeos>',
-    'Only emit this block when the user explicitly asked you to do something in the UI or create/update tasks.',
-    'Do not invent ids; if you need a taskId, ask the user or instruct them to open /tasks and pick one.',
+    'You have tools to control LifeOS:',
+    '- navigate_page(page): Navigate to /today, /news, /tasks, or /settings',
+    '- create_task(title, description?, priority?): Create a new task',
+    '- complete_task(taskId): Mark task as done',
+    '- reopen_task(taskId): Reopen a completed task',
+    '',
+    'When the user asks you to do something (open a page, create a task, etc.), USE THE TOOLS silently.',
+    'Your text response should be natural language only, like: "Opening tasks page" or "Created task: Buy milk".',
+    'Do NOT write code or JSON in your response - just call the tools and describe what you did.',
+    'Do not invent taskIds - if you need one, ask the user to tell you which task.',
     '',
     'Never reveal any secrets (tokens/passwords/keys).',
   ].join('\n')
 
   const { url, token } = getGateway()
+
+  // Define tools for Clawdbot (OpenAI-compatible format)
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'navigate_page',
+        description: 'Navigate to a different page in LifeOS',
+        parameters: {
+          type: 'object',
+          properties: {
+            page: {
+              type: 'string',
+              enum: ['/today', '/news', '/tasks', '/settings'],
+              description: 'The page to navigate to',
+            },
+          },
+          required: ['page'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'create_task',
+        description: 'Create a new task',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'Task title' },
+            description: { type: 'string', description: 'Optional task description' },
+            priority: { type: 'number', minimum: 0, maximum: 4, description: 'Priority 0-4' },
+          },
+          required: ['title'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'complete_task',
+        description: 'Mark a task as completed',
+        parameters: {
+          type: 'object',
+          properties: {
+            taskId: { type: 'string', format: 'uuid', description: 'Task UUID' },
+          },
+          required: ['taskId'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'reopen_task',
+        description: 'Reopen a completed task',
+        parameters: {
+          type: 'object',
+          properties: {
+            taskId: { type: 'string', format: 'uuid', description: 'Task UUID' },
+          },
+          required: ['taskId'],
+        },
+      },
+    },
+  ]
 
   const upstream = await fetch(`${url}/v1/chat/completions`, {
     method: 'POST',
@@ -97,6 +163,7 @@ export async function POST(request: Request) {
         { role: 'system', content: system },
         { role: 'user', content: message },
       ],
+      tools,
     }),
   })
 

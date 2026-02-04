@@ -98,6 +98,10 @@ export function useChat(options: UseChatOptions) {
         let displayBuffer = '' // Buffer for incomplete tags during streaming
         let inLifeosBlock = false
 
+        // Tool call accumulation (arguments come in chunks)
+        const toolCallsMap = new Map<string, { name: string; arguments: string }>()
+        const executedTools = new Set<string>()
+
         const appendAssistant = (delta: string) => {
           if (!delta) return
 
@@ -289,8 +293,89 @@ export function useChat(options: UseChatOptions) {
               }
 
               // OpenAI chat.completions streaming shape
-              const delta = evt?.choices?.[0]?.delta?.content
-              if (typeof delta === 'string') appendAssistant(delta)
+              const choice = evt?.choices?.[0]
+              const delta = choice?.delta
+
+              // Handle text content
+              if (typeof delta?.content === 'string') {
+                appendAssistant(delta.content)
+              }
+
+              // Handle tool calls (arguments come in chunks, must accumulate)
+              if (Array.isArray(delta?.tool_calls)) {
+                for (const toolCall of delta.tool_calls) {
+                  const index = toolCall.index ?? 0
+                  const toolId = `tool_${index}`
+
+                  // Accumulate tool call data
+                  if (!toolCallsMap.has(toolId)) {
+                    toolCallsMap.set(toolId, { name: '', arguments: '' })
+                  }
+
+                  const accumulated = toolCallsMap.get(toolId)!
+
+                  if (toolCall.function?.name) {
+                    accumulated.name = toolCall.function.name
+                  }
+
+                  if (toolCall.function?.arguments) {
+                    accumulated.arguments += toolCall.function.arguments
+                  }
+                }
+              }
+
+              // Check if any tool calls are complete (finish_reason will tell us)
+              const finishReason = choice?.finish_reason
+              if (finishReason === 'tool_calls' || finishReason === 'stop') {
+                // Execute accumulated tool calls
+                for (const [toolId, toolData] of toolCallsMap.entries()) {
+                  if (executedTools.has(toolId)) continue // Already executed
+                  if (!toolData.name || !toolData.arguments) continue // Not complete
+
+                  let args: any = {}
+                  try {
+                    args = JSON.parse(toolData.arguments)
+                  } catch {
+                    console.warn('Failed to parse tool arguments:', toolData.arguments)
+                    continue
+                  }
+
+                  executedTools.add(toolId)
+
+                  // Execute tool (whitelisted actions)
+                  const ALLOWED_PAGES = new Set(['/today', '/news', '/tasks', '/settings'])
+
+                  if (toolData.name === 'navigate_page' && args.page && ALLOWED_PAGES.has(args.page)) {
+                    console.log('Navigating to:', args.page)
+                    window.location.assign(args.page)
+                  } else if (toolData.name === 'create_task' && args.title) {
+                    console.log('Creating task:', args.title)
+                    await fetch('/api/actions/task', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        title: String(args.title),
+                        description: args.description ? String(args.description) : undefined,
+                        priority: typeof args.priority === 'number' ? args.priority : undefined,
+                      }),
+                    }).catch((err) => console.error('Task creation failed:', err))
+                  } else if (toolData.name === 'complete_task' && args.taskId) {
+                    console.log('Completing task:', args.taskId)
+                    await fetch('/api/actions/task', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ op: 'complete', taskId: String(args.taskId) }),
+                    }).catch((err) => console.error('Task completion failed:', err))
+                  } else if (toolData.name === 'reopen_task' && args.taskId) {
+                    console.log('Reopening task:', args.taskId)
+                    await fetch('/api/actions/task', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ op: 'reopen', taskId: String(args.taskId) }),
+                    }).catch((err) => console.error('Task reopen failed:', err))
+                  }
+                }
+              }
             }
           }
         }
