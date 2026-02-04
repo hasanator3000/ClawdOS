@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { withUser } from '@/lib/db'
-import { getSession } from '@/lib/session'
-import { getActiveWorkspace } from '@/lib/active-workspace'
+import { getSession } from '@/lib/auth/session'
+import { getActiveWorkspace } from '@/lib/workspace'
+import { findNewsByWorkspace } from '@/lib/db/repositories/news.repository'
 
 export default async function NewsPage() {
   const session = await getSession()
@@ -18,24 +19,9 @@ export default async function NewsPage() {
     )
   }
 
-  const news = await withUser(session.userId, async (client) => {
-    const res = await client.query(
-      `select id, title, url, topic, summary, published_at, created_at
-       from content.news_item
-       where workspace_id = $1
-       order by published_at desc nulls last, created_at desc
-       limit 50`,
-      [workspace.id]
-    )
-    return res.rows as Array<{
-      id: string
-      title: string
-      url: string
-      topic: string
-      summary: string
-      published_at: string | null
-    }>
-  })
+  const news = await withUser(session.userId, (client) =>
+    findNewsByWorkspace(client, workspace.id)
+  )
 
   return (
     <div>
@@ -46,7 +32,7 @@ export default async function NewsPage() {
 
       <ul className="mt-6 space-y-3">
         {news.map((n) => (
-          <li key={n.id} className="rounded-lg border p-4">
+          <li key={n.id} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
             <div className="flex items-baseline justify-between gap-4">
               <div className="font-medium">
                 {n.url ? (
@@ -58,7 +44,7 @@ export default async function NewsPage() {
                 )}
               </div>
               <div className="text-xs text-[var(--muted)]">
-                {n.published_at ? new Date(n.published_at).toLocaleString() : ''}
+                {n.publishedAt ? new Date(n.publishedAt).toLocaleString() : ''}
               </div>
             </div>
             <div className="mt-1 text-xs text-[var(--muted)]">
