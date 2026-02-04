@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition, useCallback, useRef } from 'react'
 import { setActiveWorkspace } from '@/app/(app)/actions'
 import type { Workspace } from '@/types/workspace'
-import GlitchText from '@/components/ui/GlitchText'
+// (logo) GlitchText removed; using static mark
 
 const PINS_STORAGE_KEY = 'lifeos.pinned-workspaces'
 
@@ -164,8 +164,16 @@ export default function SidebarClient({
     <aside className="w-72 border-r border-[var(--border)] bg-[var(--card)] text-[var(--card-fg)] flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-[var(--border)]">
-        <Link href="/today" className="font-semibold text-lg hover:opacity-80 transition-opacity block">
-          <GlitchText text="LifeOS" />
+        <Link
+          href="/today"
+          className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity"
+          aria-label="LifeOS Dashboard"
+        >
+          <span
+            className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 shadow-sm"
+            aria-hidden
+          />
+          <span className="font-semibold text-lg tracking-tight">LifeOS</span>
         </Link>
       </div>
 
