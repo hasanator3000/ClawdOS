@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
 import { withUser } from '@/lib/db'
+import { getActiveWorkspace } from '@/lib/workspace'
+import {
+  createTask as createTaskRepo,
+  completeTask as completeTaskRepo,
+  reopenTask as reopenTaskRepo,
+} from '@/lib/db/repositories/task.repository'
 
 export const dynamic = 'force-dynamic'
 
 const MAX_MESSAGE_LENGTH = 10_000
+
+// Whitelisted navigation paths
+const ALLOWED_PATHS = new Set(['/today', '/news', '/tasks', '/settings'])
 
 function getGateway() {
   const url = process.env.CLAWDBOT_URL || 'http://127.0.0.1:18789'
@@ -18,6 +27,209 @@ async function getTelegramUserIdForSessionUser(userId: string): Promise<string |
     const res = await client.query('select telegram_user_id from core."user" where id=$1', [userId])
     return (res.rows[0]?.telegram_user_id as string | null) ?? null
   })
+}
+
+// Execute privileged actions (task mutations) on server under session + RLS
+async function executeActions(
+  actions: any[],
+  userId: string
+): Promise<{ navigation?: string; results: any[] }> {
+  let navigationTarget: string | undefined
+  const results: any[] = []
+
+  for (const action of actions) {
+    const k = action?.k
+
+    // Navigation: return target to client (non-privileged)
+    if (k === 'navigate') {
+      const to = String(action?.to || '')
+      if (ALLOWED_PATHS.has(to)) {
+        navigationTarget = to
+        results.push({ action: 'navigate', to })
+      }
+    }
+
+    // Task actions: execute on server with RLS
+    if (k === 'task.create') {
+      const title = String(action?.title || '').trim()
+      if (!title) continue
+
+      try {
+        const workspace = await getActiveWorkspace()
+        if (!workspace) {
+          results.push({ action: 'task.create', error: 'No workspace' })
+          continue
+        }
+
+        const task = await withUser(userId, async (client) => {
+          return createTaskRepo(client, {
+            title,
+            description: action?.description ? String(action.description) : undefined,
+            priority: typeof action?.priority === 'number' ? action.priority : undefined,
+            workspaceId: workspace.id,
+          })
+        })
+
+        results.push({ action: 'task.create', taskId: task.id })
+      } catch (err) {
+        results.push({ action: 'task.create', error: String(err) })
+      }
+    }
+
+    if (k === 'task.complete') {
+      const taskId = String(action?.taskId || '')
+      if (!taskId) continue
+
+      try {
+        await withUser(userId, async (client) => completeTaskRepo(client, taskId))
+        results.push({ action: 'task.complete', taskId })
+      } catch (err) {
+        results.push({ action: 'task.complete', error: String(err) })
+      }
+    }
+
+    if (k === 'task.reopen') {
+      const taskId = String(action?.taskId || '')
+      if (!taskId) continue
+
+      try {
+        await withUser(userId, async (client) => reopenTaskRepo(client, taskId))
+        results.push({ action: 'task.reopen', taskId })
+      } catch (err) {
+        results.push({ action: 'task.reopen', error: String(err) })
+      }
+    }
+  }
+
+  return { navigation: navigationTarget, results }
+}
+
+// Process stream: filter <lifeos> blocks, execute actions, stream clean text
+async function processStreamWithActions(
+  upstreamResponse: Response,
+  userId: string
+): Promise<ReadableStream> {
+  const reader = upstreamResponse.body?.getReader()
+  if (!reader) throw new Error('No upstream body')
+
+  const decoder = new TextDecoder()
+  const encoder = new TextEncoder()
+
+  let fullAssistantText = '' // Accumulate full text for action parsing
+  let buffer = ''
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+
+          // SSE frames separated by blank line
+          const frames = buffer.split('\n\n')
+          buffer = frames.pop() || ''
+
+          for (const frame of frames) {
+            const dataLines = frame
+              .split('\n')
+              .filter((l) => l.startsWith('data: '))
+              .map((l) => l.slice(6).trim())
+
+            for (const data of dataLines) {
+              if (!data || data === '[DONE]') {
+                // Send [DONE] and parse actions
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+
+                // Extract and execute actions from full text
+                const matches = Array.from(fullAssistantText.matchAll(/<lifeos>([\s\S]*?)<\/lifeos>/g))
+                if (matches.length > 0) {
+                  const blocks = matches
+                    .map((m) => m[1].trim())
+                    .map((s) => {
+                      const fenced = s.match(/```json\s*([\s\S]*?)\s*```/i)
+                      return (fenced?.[1] ?? s).trim()
+                    })
+
+                  for (const raw of blocks) {
+                    let payload: any
+                    try {
+                      payload = JSON.parse(raw)
+                    } catch {
+                      continue
+                    }
+
+                    const actions: any[] = Array.isArray(payload?.actions) ? payload.actions : []
+                    if (actions.length > 0) {
+                      const result = await executeActions(actions, userId)
+
+                      // Send navigation instruction to client if present
+                      if (result.navigation) {
+                        const navEvent = {
+                          type: 'navigation',
+                          target: result.navigation,
+                        }
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(navEvent)}\n\n`))
+                      }
+                    }
+                  }
+                }
+                continue
+              }
+
+              let evt: any
+              try {
+                evt = JSON.parse(data)
+              } catch {
+                // Forward non-JSON events as-is
+                controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+                continue
+              }
+
+              const choice = evt?.choices?.[0]
+              const delta = choice?.delta
+
+              if (typeof delta?.content === 'string') {
+                // Accumulate full text
+                fullAssistantText += delta.content
+
+                // Filter out <lifeos> blocks from displayed content
+                const filtered = filterLifeosBlocks(delta.content)
+
+                // Send filtered delta to client
+                if (filtered) {
+                  const filteredEvt = {
+                    ...evt,
+                    choices: [
+                      {
+                        ...choice,
+                        delta: { ...delta, content: filtered },
+                      },
+                    ],
+                  }
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(filteredEvt)}\n\n`))
+                }
+              } else {
+                // Forward other events as-is
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Stream processing error:', err)
+      } finally {
+        controller.close()
+      }
+    },
+  })
+}
+
+// Simple filter: remove <lifeos>...</lifeos> blocks (handles complete blocks only)
+// For cross-chunk split handling, client-side filtering remains as fallback
+function filterLifeosBlocks(text: string): string {
+  return text.replace(/<lifeos>[\s\S]*?<\/lifeos>/g, '')
 }
 
 // POST /api/ai/chat
@@ -66,87 +278,27 @@ export async function POST(request: Request) {
       ? `Telegram DM target for this user is fixed: ${telegramUserId}. If asked to send a Telegram message, send only to that id.`
       : 'No Telegram user id is linked. If asked to send to Telegram, ask the user to link Telegram in Settings first.',
     '',
-    'You have tools to control LifeOS:',
-    '- navigate_page(page): Navigate to /today, /news, /tasks, or /settings',
-    '- create_task(title, description?, priority?): Create a new task',
-    '- complete_task(taskId): Mark task as done',
-    '- reopen_task(taskId): Reopen a completed task',
+    'You can control LifeOS by embedding action commands in your response.',
+    'Format: <lifeos>{"actions":[...]}</lifeos>',
     '',
-    'When the user asks you to do something (open a page, create a task, etc.), USE THE TOOLS silently.',
-    'Your text response should be natural language only, like: "Opening tasks page" or "Created task: Buy milk".',
-    'Do NOT write code or JSON in your response - just call the tools and describe what you did.',
-    'Do not invent taskIds - if you need one, ask the user to tell you which task.',
+    'Available actions:',
+    '1. Navigate: {"k":"navigate","to":"/tasks"}  (allowed: /today, /news, /tasks, /settings)',
+    '2. Create task: {"k":"task.create","title":"Task title","description":"Optional","priority":2}',
+    '3. Complete task: {"k":"task.complete","taskId":"uuid-here"}',
+    '4. Reopen task: {"k":"task.reopen","taskId":"uuid-here"}',
     '',
-    'Never reveal any secrets (tokens/passwords/keys).',
+    'Examples:',
+    '- User: "открой таски" → You: "Opening tasks page <lifeos>{\\"actions\\":[{\\"k\\":\\"navigate\\",\\"to\\":\\"/tasks\\"}]}</lifeos>"',
+    '- User: "создай задачу купить молоко" → You: "Created task <lifeos>{\\"actions\\":[{\\"k\\":\\"task.create\\",\\"title\\":\\"Купить молоко\\"}]}</lifeos>"',
+    '',
+    'Important:',
+    '- Put <lifeos> blocks AFTER your human-readable response',
+    '- Multiple actions: {"actions":[{...},{...}]}',
+    '- Never invent taskIds - if unknown, ask user',
+    '- Never reveal secrets (tokens/passwords)',
   ].join('\n')
 
   const { url, token } = getGateway()
-
-  // Define tools for Clawdbot (OpenAI-compatible format)
-  const tools = [
-    {
-      type: 'function',
-      function: {
-        name: 'navigate_page',
-        description: 'Navigate to a different page in LifeOS',
-        parameters: {
-          type: 'object',
-          properties: {
-            page: {
-              type: 'string',
-              enum: ['/today', '/news', '/tasks', '/settings'],
-              description: 'The page to navigate to',
-            },
-          },
-          required: ['page'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'create_task',
-        description: 'Create a new task',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: { type: 'string', description: 'Task title' },
-            description: { type: 'string', description: 'Optional task description' },
-            priority: { type: 'number', minimum: 0, maximum: 4, description: 'Priority 0-4' },
-          },
-          required: ['title'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'complete_task',
-        description: 'Mark a task as completed',
-        parameters: {
-          type: 'object',
-          properties: {
-            taskId: { type: 'string', format: 'uuid', description: 'Task UUID' },
-          },
-          required: ['taskId'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'reopen_task',
-        description: 'Reopen a completed task',
-        parameters: {
-          type: 'object',
-          properties: {
-            taskId: { type: 'string', format: 'uuid', description: 'Task UUID' },
-          },
-          required: ['taskId'],
-        },
-      },
-    },
-  ]
 
   const upstream = await fetch(`${url}/v1/chat/completions`, {
     method: 'POST',
@@ -163,7 +315,6 @@ export async function POST(request: Request) {
         { role: 'system', content: system },
         { role: 'user', content: message },
       ],
-      tools,
     }),
   })
 
@@ -176,7 +327,10 @@ export async function POST(request: Request) {
   }
 
   if (stream) {
-    return new Response(upstream.body, {
+    // Process stream: filter <lifeos> blocks and execute actions server-side
+    const processedStream = await processStreamWithActions(upstream, session.userId)
+
+    return new Response(processedStream, {
       status: 200,
       headers: {
         'Content-Type': 'text/event-stream; charset=utf-8',
