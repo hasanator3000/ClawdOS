@@ -27,6 +27,32 @@ interface UseChatOptions {
 
 export function useChat(options: UseChatOptions) {
   const router = useRouter()
+
+  const detectClientNav = (input: string): string | null => {
+    const m = input.toLowerCase().trim()
+    const wantsOpen = /\b(открой|перейди|зайди|open|go to|navigate)\b/.test(m)
+    const looksLikeSectionOnly = m.length <= 40 && /^(таски|задачи|tasks|news|новости|settings|настройки|today|сегодня|дашборд|dashboard)(\s.*)?$/.test(m)
+    if (!wantsOpen && !looksLikeSectionOnly) return null
+
+    if (/(таск|таски|задач|tasks?)\b/.test(m)) return '/tasks'
+    if (/(новост|news)\b/.test(m)) return '/news'
+    if (/(настройк|settings)\b/.test(m)) {
+      if (/(телеграм|telegram)\b/.test(m)) return '/settings/telegram'
+      if (/(парол|password)\b/.test(m)) return '/settings/password'
+      return '/settings'
+    }
+    if (/(сегодня|дашборд|dashboard|today)\b/.test(m)) return '/today'
+    return null
+  }
+
+  const extractClientTaskTitle = (input: string): string | null => {
+    const s = input.trim()
+    const ru = s.match(/^(создай|добавь)\s+(задач[ауи]?|таск)\s*[:\-—]?\s*(.+)$/i)
+    if (ru) return ru[3].trim().replace(/^"|"$/g, '')
+    const en = s.match(/^(create|add)\s+(a\s+)?task\s*[:\-—]?\s*(.+)$/i)
+    if (en) return en[3].trim().replace(/^"|"$/g, '')
+    return null
+  }
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -66,6 +92,85 @@ export function useChat(options: UseChatOptions) {
 
       setMessages((prev) => [...prev, userMessage, assistantMessage])
       setIsLoading(true)
+
+      // Client fast-path: do obvious UI actions immediately (no LLM round-trip).
+      // This makes "open tab" and "create task" feel instant.
+      const navTarget = detectClientNav(content)
+      const quickTitle = extractClientTaskTitle(content)
+
+      if (navTarget) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: `Открыл раздел: ${navTarget}.`, isStreaming: false }
+              : msg
+          )
+        )
+        router.push(navTarget)
+        router.refresh()
+        setIsLoading(false)
+        return
+      }
+
+      if (quickTitle) {
+        if (!options.workspaceId) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: 'Не выбран workspace — сначала выбери workspace слева.', isStreaming: false }
+                : msg
+            )
+          )
+          setIsLoading(false)
+          return
+        }
+
+        try {
+          const res = await fetch('/api/actions/task', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: quickTitle }),
+          })
+
+          if (res.ok) {
+            const data = (await res.json()) as any
+            const task = data?.task
+            window.dispatchEvent(
+              new CustomEvent('lifeos:task-refresh', {
+                detail: { actions: [{ action: 'task.create', taskId: task?.id, task }] },
+              })
+            )
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: `Создал задачу: ${quickTitle}.`, isStreaming: false }
+                  : msg
+              )
+            )
+            router.push('/tasks')
+            router.refresh()
+          } else {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: 'Не смог создать задачу (ошибка API).', isStreaming: false }
+                  : msg
+              )
+            )
+          }
+        } catch {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: 'Не смог создать задачу (network error).', isStreaming: false }
+                : msg
+            )
+          )
+        } finally {
+          setIsLoading(false)
+        }
+        return
+      }
 
       // Create abort controller for this request
       abortControllerRef.current = new AbortController()
