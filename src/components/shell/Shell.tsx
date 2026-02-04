@@ -5,6 +5,9 @@ import { AIPanel } from './AIPanel'
 import { AIPanelToggle } from './AIPanelToggle'
 import { useCommandPalette } from '@/hooks/useCommandPalette'
 import { useAIPanel } from '@/hooks/useAIPanel'
+import { useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { SECTIONS } from '@/lib/nav/sections'
 
 interface ShellProps {
   children: React.ReactNode
@@ -19,6 +22,21 @@ interface ShellProps {
 export function Shell({ children, workspaceName, workspaceId }: ShellProps) {
   const commandPalette = useCommandPalette()
   const aiPanel = useAIPanel()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  // Warm-up: prefetch common sections to make navigation feel instant.
+  useEffect(() => {
+    for (const s of SECTIONS) {
+      if (s.path !== pathname) {
+        try {
+          router.prefetch(s.path)
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [router, pathname])
 
   return (
     <>
