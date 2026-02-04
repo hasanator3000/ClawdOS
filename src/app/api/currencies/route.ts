@@ -14,9 +14,10 @@ const CACHE_TTL = 5 * 60 * 1000
 
 async function fetchFiatRates(): Promise<CurrencyRate[]> {
   try {
-    // Using frankfurter.app - free, no API key required
-    // Base currency is RUB (Russian Ruble) since user seems Russian
-    const response = await fetch('https://api.frankfurter.app/latest?from=RUB&to=USD,EUR')
+    // Frankfurter moved from .app to .dev (the .app endpoint may return 404).
+    // We'll use the new API. Base currency is RUB (user is Russian).
+    // Docs: https://frankfurter.dev (public API: https://api.frankfurter.dev)
+    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=RUB&symbols=USD,EUR')
 
     if (!response.ok) {
       console.error('Frankfurter API error:', response.status)
