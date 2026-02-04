@@ -28,13 +28,14 @@ export function AIPanel({
   const [input, setInput] = useState('')
   const pathname = usePathname()
 
-  // Get current page name from pathname
+  // Page label for UI only
   const pageName = getPageName(pathname)
 
   const { messages, isLoading, error, sendMessage, stopGeneration, clearMessages } = useChat({
     workspaceId: workspaceId || '',
     workspaceName: workspaceName || 'Unknown',
-    currentPage: pageName,
+    // Pass the actual route path so the agent + refresh logic are correct
+    currentPage: pathname,
   })
 
   // Scroll to bottom when messages change

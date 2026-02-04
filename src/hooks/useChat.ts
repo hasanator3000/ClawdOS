@@ -21,6 +21,7 @@ export interface ChatMessage {
 interface UseChatOptions {
   workspaceId: string
   workspaceName: string
+  /** Current route pathname (e.g. "/tasks") */
   currentPage: string
 }
 
@@ -100,6 +101,15 @@ export function useChat(options: UseChatOptions) {
         // Navigation must be deferred until the stream ends, otherwise the page transition
         // will tear down this request and we may miss follow-up events (e.g. task.refresh).
         let pendingNavigation: string | null = null
+        let refreshTimer: ReturnType<typeof setTimeout> | null = null
+
+        const scheduleRefresh = () => {
+          if (refreshTimer) return
+          refreshTimer = setTimeout(() => {
+            refreshTimer = null
+            router.refresh()
+          }, 50)
+        }
 
         let displayBuffer = '' // Buffer for incomplete tags during streaming
         let inLifeosBlock = false
@@ -246,12 +256,17 @@ export function useChat(options: UseChatOptions) {
               // Handle task refresh events
               if (evt?.type === 'task.refresh') {
                 console.log('Task refresh event:', evt.actions)
-                // Dispatch custom event for TaskList to pick up
+
+                // Dispatch custom event for client lists (TaskList) to patch state instantly
                 window.dispatchEvent(
                   new CustomEvent('lifeos:task-refresh', {
                     detail: { actions: evt.actions },
                   })
                 )
+
+                // Also refresh server components (sidebar badges, today widgets, etc.)
+                // Debounced to avoid over-refreshing while streaming.
+                scheduleRefresh()
                 continue
               }
 
@@ -273,6 +288,8 @@ export function useChat(options: UseChatOptions) {
         // Execute deferred navigation after the stream ends, so we don't miss events.
         if (pendingNavigation) {
           router.push(pendingNavigation)
+          // Ensure server-rendered parts on the destination reflect the latest data.
+          scheduleRefresh()
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
