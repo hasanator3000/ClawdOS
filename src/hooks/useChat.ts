@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 
 export interface ChatMessage {
   id: string
@@ -24,6 +25,7 @@ interface UseChatOptions {
 }
 
 export function useChat(options: UseChatOptions) {
+  const router = useRouter()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -93,6 +95,11 @@ export function useChat(options: UseChatOptions) {
 
         const decoder = new TextDecoder()
         let buffer = ''
+
+        // Server can emit structured events during streaming.
+        // Navigation must be deferred until the stream ends, otherwise the page transition
+        // will tear down this request and we may miss follow-up events (e.g. task.refresh).
+        let pendingNavigation: string | null = null
 
         let displayBuffer = '' // Buffer for incomplete tags during streaming
         let inLifeosBlock = false
@@ -230,8 +237,9 @@ export function useChat(options: UseChatOptions) {
 
               // Handle navigation events from server
               if (evt?.type === 'navigation' && evt?.target) {
-                console.log('Server navigation:', evt.target)
-                window.location.assign(evt.target)
+                const target = String(evt.target)
+                console.log('Server navigation (deferred):', target)
+                pendingNavigation = target
                 continue
               }
 
@@ -261,6 +269,11 @@ export function useChat(options: UseChatOptions) {
 
         // Finalize message
         finalizeAssistant()
+
+        // Execute deferred navigation after the stream ends, so we don't miss events.
+        if (pendingNavigation) {
+          router.push(pendingNavigation)
+        }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           // Request was cancelled
