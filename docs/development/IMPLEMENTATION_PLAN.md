@@ -34,17 +34,18 @@
 - [x] Task 4.3 - Implement summarize-article tool (spec: 04-news-skill.md)
 - [x] Task 4.4 - Register news skill in agent (spec: 04-news-skill.md)
 
-## Phase 5: Tasks Skill
+## Phase 5: Tasks Skill ✓
 
-- [ ] Task 5.1 - Create tasks schema and tables (spec: 05-tasks-skill.md)
-- [ ] Task 5.2 - Create tasks repository (spec: 05-tasks-skill.md)
-- [ ] Task 5.3 - Create /tasks page with list view (spec: 05-tasks-skill.md)
-- [ ] Task 5.4 - Create task CRUD actions (spec: 05-tasks-skill.md)
-- [ ] Task 5.5 - Create tasks skill definition (spec: 05-tasks-skill.md)
-- [ ] Task 5.6 - Implement create-task tool (spec: 05-tasks-skill.md)
-- [ ] Task 5.7 - Implement list-tasks tool (spec: 05-tasks-skill.md)
-- [ ] Task 5.8 - Implement complete-task tool (spec: 05-tasks-skill.md)
+- [x] Task 5.1 - Create tasks schema and tables (spec: 05-tasks-skill.md)
+- [x] Task 5.2 - Create tasks repository (spec: 05-tasks-skill.md)
+- [x] Task 5.3 - Create /tasks page with list view (spec: 05-tasks-skill.md)
+- [x] Task 5.4 - Create task CRUD actions (spec: 05-tasks-skill.md)
+- [x] Task 5.5 - Create tasks skill definition (spec: 05-tasks-skill.md)
+- [x] Task 5.6 - Implement create-task tool (spec: 05-tasks-skill.md)
+- [x] Task 5.7 - Implement list-tasks tool (spec: 05-tasks-skill.md)
+- [x] Task 5.8 - Implement complete-task tool (spec: 05-tasks-skill.md)
 
 ---
 *Plan created: 2026-02-04*
-*Total tasks: 28*
+*Completed: 2026-02-04*
+*Total tasks: 28/28 ✓*
