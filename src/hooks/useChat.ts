@@ -94,22 +94,112 @@ export function useChat(options: UseChatOptions) {
         const decoder = new TextDecoder()
         let buffer = ''
 
-        let assistantFullText = ''
+        let assistantFullText = '' // Full text including <lifeos> blocks for action execution
+        let displayBuffer = '' // Buffer for incomplete tags during streaming
+        let inLifeosBlock = false
 
         const appendAssistant = (delta: string) => {
           if (!delta) return
+
+          // Always accumulate full text for later action execution
           assistantFullText += delta
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId ? { ...msg, content: msg.content + delta } : msg
+
+          // Add to buffer for tag-aware filtering
+          displayBuffer += delta
+          let visibleDelta = ''
+
+          // Process buffer with tag detection (handles split tags across chunks)
+          while (displayBuffer.length > 0) {
+            if (!inLifeosBlock) {
+              // Look for opening tag
+              const openIdx = displayBuffer.indexOf('<lifeos>')
+
+              if (openIdx === -1) {
+                // No complete opening tag found
+                // Check if buffer ends with partial tag start to avoid displaying incomplete tags
+                let keepLen = 0
+                for (let len = Math.min(7, displayBuffer.length); len > 0; len--) {
+                  if ('<lifeos>'.startsWith(displayBuffer.slice(-len))) {
+                    keepLen = len
+                    break
+                  }
+                }
+
+                if (keepLen > 0) {
+                  // Keep potential tag start in buffer
+                  visibleDelta += displayBuffer.slice(0, -keepLen)
+                  displayBuffer = displayBuffer.slice(-keepLen)
+                  break
+                } else {
+                  // No potential tag, flush everything
+                  visibleDelta += displayBuffer
+                  displayBuffer = ''
+                  break
+                }
+              } else {
+                // Found opening tag
+                visibleDelta += displayBuffer.slice(0, openIdx)
+                displayBuffer = displayBuffer.slice(openIdx + 8) // Skip '<lifeos>'
+                inLifeosBlock = true
+              }
+            } else {
+              // Inside block, look for closing tag
+              const closeIdx = displayBuffer.indexOf('</lifeos>')
+
+              if (closeIdx === -1) {
+                // No complete closing tag found
+                // Check if buffer ends with partial closing tag start
+                let keepLen = 0
+                for (let len = Math.min(8, displayBuffer.length); len > 0; len--) {
+                  if ('</lifeos>'.startsWith(displayBuffer.slice(-len))) {
+                    keepLen = len
+                    break
+                  }
+                }
+
+                if (keepLen > 0) {
+                  // Keep potential tag start in buffer
+                  displayBuffer = displayBuffer.slice(-keepLen)
+                  break
+                } else {
+                  // No potential closing tag, discard all (we're inside the block)
+                  displayBuffer = ''
+                  break
+                }
+              } else {
+                // Found closing tag
+                displayBuffer = displayBuffer.slice(closeIdx + 9) // Skip '</lifeos>'
+                inLifeosBlock = false
+              }
+            }
+          }
+
+          // Update visible message content (only non-<lifeos> text)
+          if (visibleDelta) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId ? { ...msg, content: msg.content + visibleDelta } : msg
+              )
             )
-          )
+          }
         }
 
         const finalizeAssistant = () => {
-          setMessages((prev) =>
-            prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg))
-          )
+          // Flush any remaining displayBuffer (if stream ended mid-tag, show what we have)
+          if (!inLifeosBlock && displayBuffer) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: msg.content + displayBuffer, isStreaming: false }
+                  : msg
+              )
+            )
+            displayBuffer = ''
+          } else {
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg))
+            )
+          }
         }
 
         const tryExecuteLifeOSActions = async (fullText: string) => {
@@ -209,17 +299,9 @@ export function useChat(options: UseChatOptions) {
         finalizeAssistant()
 
         // Execute any post-response LifeOS actions (best-effort)
+        // Note: <lifeos> blocks are already filtered during streaming, so no need to remove them here
         try {
           if (assistantFullText) await tryExecuteLifeOSActions(assistantFullText)
-
-          // Hide <lifeos> blocks from the visible transcript.
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId
-                ? { ...msg, content: msg.content.replace(/<lifeos>[\s\S]*?<\/lifeos>/g, '').trim() }
-                : msg
-            )
-          )
         } catch {}
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
