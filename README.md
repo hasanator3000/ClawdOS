@@ -1,116 +1,90 @@
-# LifeOS (Local Next.js + Local Postgres)
+# LifeOS
 
-Multi-tenant personal OS scaffold intended to run on the same VPS:
-- Next.js (App Router)
-- Local PostgreSQL (docker-compose)
-- DB-enforced tenancy with Postgres RLS (via `app.user_id` session variable)
-- Local auth: username + password (argon2id hash stored in DB)
-- Minimal UI:
-  - Sidebar workspace switcher (AG / German / Shared)
-  - Pages: **Today** (digests) and **News** (news items)
+AI-first personal operating system. Self-hosted, multi-tenant, powered by Next.js and PostgreSQL.
 
-## Security / access model (recommended)
+## Features
 
-Do **not** expose the app publicly on a raw VPS IP.
-Recommended secure access patterns:
+- **AI Agent Core** - Chat interface with tool execution (Clawdbot)
+- **Multi-workspace** - Isolated data per workspace with PostgreSQL RLS
+- **Local Auth** - Username/password with Argon2id + optional Telegram 2FA
+- **Command Palette** - Quick navigation with `Cmd+K`
+- **Dark Mode** - Automatic theme based on system preference
 
-### Option A: Tailscale (tailnet-only)
-- Install Tailscale on the VPS and on your client machine.
-- Bind the app to `127.0.0.1` and access via:
-  - an SSH tunnel over Tailscale, or
-  - Tailscale Serve to publish it only inside the tailnet.
+## Tech Stack
 
-### Option B: SSH tunnel
-Run the app bound to localhost and forward a local port:
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- **Backend**: PostgreSQL 16 with Row-Level Security
+- **Auth**: iron-session, Argon2id password hashing
+- **Deployment**: Self-hosted (VPS + Tailscale recommended)
+
+## Quick Start
 
 ```bash
-ssh -L 3000:127.0.0.1:3000 root@<vps>
-# open http://localhost:3000
-```
-
-## 1) Configure environment
-
-```bash
-cd apps/lifeos
+# 1. Configure environment
 cp .env.local.example .env.local
-# edit .env.local
-```
+# Edit .env.local with your DATABASE_URL and SESSION_PASSWORD
 
-Generate `SESSION_PASSWORD` (must be long, random). Example:
-
-```bash
-openssl rand -base64 48
-```
-
-## 2) Start Postgres
-
-```bash
-cd apps/lifeos
+# 2. Start PostgreSQL
 ./scripts/db-up.sh
-```
 
-## 3) Run migrations
-
-```bash
-cd apps/lifeos
+# 3. Run migrations
 export DATABASE_URL=postgres://lifeos:lifeos@localhost:5432/lifeos
 node scripts/migrate.mjs
-```
 
-This creates schema under `app.*` and seeds the **AG**, **German**, **Shared** workspaces.
+# 4. Create a user
+node scripts/create-user.mjs myuser 'MySecurePassword123'
 
-### RLS model (how it works)
-RLS policies depend on a per-transaction setting `app.user_id`.
-The app sets it automatically via `withUser(userId, fn)`.
-
-## 4) Create users (local auth)
-
-Create/update users (argon2id hash stored in DB):
-
-```bash
-cd apps/lifeos
-export DATABASE_URL=postgres://lifeos:lifeos@localhost:5432/lifeos
-node scripts/create-user.mjs ag '<STRONG_PASSWORD>'
-node scripts/create-user.mjs german '<STRONG_PASSWORD>'
-```
-
-## 5) Assign memberships (AG/German/Shared)
-
-```bash
-cd apps/lifeos
-export DATABASE_URL=postgres://lifeos:lifeos@localhost:5432/lifeos
-node scripts/assign-default-memberships.mjs ag german
-```
-
-This assigns:
-- `ag` → workspaces `ag` + `shared`
-- `german` → workspaces `german` + `shared`
-
-## 6) Run the app
-
-```bash
-cd apps/lifeos
+# 5. Start development server
 npm run dev
 ```
 
-Open (via tailnet-only / tunnel): <http://localhost:3000>
+Open http://localhost:3000
 
-## Ops notes
+## Project Structure
 
-### Running in production
-Typical pattern:
-- run Postgres via docker compose
-- build Next.js and run `next start` behind a local-only reverse proxy (or just localhost)
-- access only via Tailscale or SSH tunnel
+```
+lifeos/
+├── src/
+│   ├── app/           # Next.js App Router pages
+│   ├── components/    # React components
+│   ├── lib/           # Services, repositories, utilities
+│   └── hooks/         # React hooks
+├── db/
+│   ├── migrations/    # SQL migrations
+│   └── schema/        # Schema definitions
+├── scripts/           # Utility scripts
+├── docs/              # Documentation
+│   ├── architecture.md
+│   ├── principles.md
+│   ├── roadmap.md
+│   └── development/   # Dev planning docs
+└── public/            # Static assets
+```
 
-### Environment variables
-- `DATABASE_URL`: connection string for Postgres
-- `SESSION_PASSWORD`: cookie encryption key for `iron-session` (keep secret)
+## Documentation
 
-### Workspace switching
-Active workspace is stored in a cookie `lifeos.active_workspace`.
+- [Architecture](docs/ARCHITECTURE.md) - System design and data flow
+- [Principles](docs/PRINCIPLES.md) - Development guidelines
+- [Operations](docs/OPS.md) - Deployment and maintenance
+- [Roadmap](docs/ROADMAP.md) - Feature planning
 
-## Next steps / TODO
-- Add admin-only UI to manage memberships
-- Add create/edit flows for digests/news
-- Add background job for generating daily digests
+## Security
+
+> **Important**: Do not expose this app publicly on a raw VPS IP.
+
+Recommended access patterns:
+
+1. **Tailscale** - Bind to localhost, access via tailnet
+2. **SSH Tunnel** - `ssh -L 3000:127.0.0.1:3000 user@vps`
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `SESSION_PASSWORD` | Cookie encryption key (generate with `openssl rand -base64 48`) |
+| `ACCESS_TOKEN` | Optional gate token for additional access control |
+
+## License
+
+Private - All rights reserved.

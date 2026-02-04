@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
     "argon2": "^0.44.0",
     "iron-session": "^8.0.4",
     "next": "16.1.6",
