@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import type { StreamEvent } from '@/lib/ai/types'
 
 export interface ChatMessage {
   id: string
@@ -77,8 +76,14 @@ export function useChat(options: UseChatOptions) {
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to send message')
+          // Best-effort error parsing; upstream may return plain text.
+          const text = await response.text().catch(() => '')
+          try {
+            const j = JSON.parse(text) as { error?: string }
+            throw new Error(j.error || 'Failed to send message')
+          } catch {
+            throw new Error(text || 'Failed to send message')
+          }
         }
 
         const reader = response.body?.getReader()
@@ -89,104 +94,59 @@ export function useChat(options: UseChatOptions) {
         const decoder = new TextDecoder()
         let buffer = ''
 
+        const appendAssistant = (delta: string) => {
+          if (!delta) return
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId ? { ...msg, content: msg.content + delta } : msg
+            )
+          )
+        }
+
+        const finalizeAssistant = () => {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg))
+          )
+        }
+
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
 
           buffer += decoder.decode(value, { stream: true })
 
-          // Process complete SSE events
-          const lines = buffer.split('\n\n')
-          buffer = lines.pop() || ''
+          // SSE frames separated by blank line
+          const frames = buffer.split('\n\n')
+          buffer = frames.pop() || ''
 
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
+          for (const frame of frames) {
+            const dataLines = frame
+              .split('\n')
+              .filter((l) => l.startsWith('data: '))
+              .map((l) => l.slice(6).trim())
 
-            try {
-              const event: StreamEvent = JSON.parse(line.slice(6))
-
-              switch (event.type) {
-                case 'token':
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? { ...msg, content: msg.content + event.content }
-                        : msg
-                    )
-                  )
-                  break
-
-                case 'tool_start':
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? {
-                            ...msg,
-                            toolCalls: [
-                              ...(msg.toolCalls || []),
-                              {
-                                id: event.toolCallId,
-                                name: event.toolName,
-                                status: 'running' as const,
-                                input: event.input,
-                              },
-                            ],
-                          }
-                        : msg
-                    )
-                  )
-                  break
-
-                case 'tool_end':
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? {
-                            ...msg,
-                            toolCalls: msg.toolCalls?.map((tc) =>
-                              tc.id === event.toolCallId
-                                ? {
-                                    ...tc,
-                                    status: event.error ? ('error' as const) : ('success' as const),
-                                    output: event.output || undefined,
-                                    error: event.error || undefined,
-                                  }
-                                : tc
-                            ),
-                          }
-                        : msg
-                    )
-                  )
-                  break
-
-                case 'done':
-                  // Update conversation ID and finalize message
-                  if (!conversationId) {
-                    // Extract conversation ID from the message (we'll need to track this)
-                  }
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? { ...msg, id: event.messageId, isStreaming: false }
-                        : msg
-                    )
-                  )
-                  break
-
-                case 'error':
-                  setError(event.error)
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg
-                    )
-                  )
-                  break
+            for (const data of dataLines) {
+              if (!data) continue
+              if (data === '[DONE]') {
+                finalizeAssistant()
+                continue
               }
-            } catch {
-              // Ignore JSON parse errors for incomplete chunks
+
+              let evt: any
+              try {
+                evt = JSON.parse(data)
+              } catch {
+                continue
+              }
+
+              // OpenAI chat.completions streaming shape
+              const delta = evt?.choices?.[0]?.delta?.content
+              if (typeof delta === 'string') appendAssistant(delta)
             }
           }
         }
+
+        finalizeAssistant()
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           // Request was cancelled
