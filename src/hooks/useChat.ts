@@ -94,8 +94,11 @@ export function useChat(options: UseChatOptions) {
         const decoder = new TextDecoder()
         let buffer = ''
 
+        let assistantFullText = ''
+
         const appendAssistant = (delta: string) => {
           if (!delta) return
+          assistantFullText += delta
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMessageId ? { ...msg, content: msg.content + delta } : msg
@@ -110,9 +113,17 @@ export function useChat(options: UseChatOptions) {
         }
 
         const tryExecuteLifeOSActions = async (fullText: string) => {
-          // Look for <lifeos>{...}</lifeos> blocks and execute a small, safe whitelist.
-          const blocks = Array.from(fullText.matchAll(/<lifeos>([\s\S]*?)<\/lifeos>/g)).map((m) => m[1])
-          if (blocks.length === 0) return
+          // Look for <lifeos>...</lifeos> blocks and execute a small, safe whitelist.
+          // We accept either raw JSON or ```json fenced blocks inside.
+          const matches = Array.from(fullText.matchAll(/<lifeos>([\s\S]*?)<\/lifeos>/g))
+          if (matches.length === 0) return
+
+          const blocks = matches
+            .map((m) => m[1].trim())
+            .map((s) => {
+              const fenced = s.match(/```json\s*([\s\S]*?)\s*```/i)
+              return (fenced?.[1] ?? s).trim()
+            })
 
           const ALLOWED_PATHS = new Set(['/today', '/news', '/tasks', '/settings'])
 
@@ -199,8 +210,16 @@ export function useChat(options: UseChatOptions) {
 
         // Execute any post-response LifeOS actions (best-effort)
         try {
-          const final = messages.find((m) => m.id === assistantMessageId)?.content
-          if (final) await tryExecuteLifeOSActions(final)
+          if (assistantFullText) await tryExecuteLifeOSActions(assistantFullText)
+
+          // Hide <lifeos> blocks from the visible transcript.
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: msg.content.replace(/<lifeos>[\s\S]*?<\/lifeos>/g, '').trim() }
+                : msg
+            )
+          )
         } catch {}
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
