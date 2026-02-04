@@ -234,7 +234,7 @@ create table if not exists core.memory (
   -- Memory content
   type            text not null,           -- 'fact', 'preference', 'instruction', 'entity'
   content         text not null,           -- The memory itself
-  embedding       vector(1536),            -- For semantic search (optional)
+  -- embedding       vector(1536),            -- For semantic search (optional, requires pgvector extension)
 
   -- Source tracking
   source_conversation_id uuid references core.conversation(id) on delete set null,

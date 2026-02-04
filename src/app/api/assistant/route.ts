@@ -12,35 +12,28 @@ function getGateway() {
   return { url: url.replace(/\/$/, ''), token }
 }
 
-// POST /api/ai/chat
-// Safe server-side proxy to Clawdbot Gateway OpenAI-compatible endpoint.
-// - Never exposes gateway token to the browser
-// - Requires LifeOS session
-// - Streams SSE back to the client
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   const session = await getSession()
-  if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session.userId) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
 
-  const body = (await request.json().catch(() => null)) as
+  const body = (await req.json().catch(() => null)) as
     | {
         message?: string
+        workspaceId?: string | null
         conversationId?: string | null
-        context?: {
-          workspaceId?: string
-          workspaceName?: string
-          currentPage?: string
-        }
         stream?: boolean
       }
     | null
 
   const message = String(body?.message || '').trim()
-  if (!message) return NextResponse.json({ error: 'Missing message' }, { status: 400 })
+  if (!message) return NextResponse.json({ error: 'empty_message' }, { status: 400 })
   if (message.length > MAX_MESSAGE_LENGTH) {
-    return NextResponse.json({ error: 'Message too long' }, { status: 400 })
+    return NextResponse.json({ error: 'message_too_long' }, { status: 400 })
   }
 
-  const workspaceId = body?.context?.workspaceId ? String(body.context.workspaceId) : null
+  const workspaceId = body?.workspaceId ? String(body.workspaceId) : null
   const stream = body?.stream !== false
 
   const { url, token } = getGateway()
@@ -50,11 +43,13 @@ export async function POST(request: Request) {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      // Pin the agent used by the gateway.
       'x-clawdbot-agent-id': 'main',
     },
     body: JSON.stringify({
       model: 'clawdbot',
       stream,
+      // Stable session key derivation inside the gateway.
       user: `lifeos:${session.userId}${workspaceId ? `:ws:${workspaceId}` : ''}`,
       messages: [{ role: 'user', content: message }],
     }),
@@ -63,11 +58,16 @@ export async function POST(request: Request) {
   if (!upstream.ok) {
     const text = await upstream.text().catch(() => '')
     return NextResponse.json(
-      { error: 'Upstream error', status: upstream.status, detail: text.slice(0, 2000) },
+      {
+        error: 'upstream_error',
+        status: upstream.status,
+        detail: text.slice(0, 2000),
+      },
       { status: 502 }
     )
   }
 
+  // Streaming SSE passthrough
   if (stream) {
     return new Response(upstream.body, {
       status: 200,
@@ -79,11 +79,7 @@ export async function POST(request: Request) {
     })
   }
 
+  // Non-stream JSON
   const json = await upstream.json()
   return NextResponse.json(json)
-}
-
-// Conversation history is not implemented in this minimal proxy.
-export async function GET() {
-  return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
