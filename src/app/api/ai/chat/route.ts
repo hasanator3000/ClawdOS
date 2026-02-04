@@ -5,6 +5,7 @@ import {
   createTask as createTaskRepo,
   completeTask as completeTaskRepo,
   reopenTask as reopenTaskRepo,
+  deleteTask as deleteTaskRepo,
 } from '@/lib/db/repositories/task.repository'
 
 export const dynamic = 'force-dynamic'
@@ -32,6 +33,36 @@ function detectNavigationTarget(message: string): string | null {
     return '/settings'
   }
   if (/(сегодня|дашборд|dashboard|today)\b/.test(m)) return '/today'
+
+  return null
+}
+
+type TasksFilter = 'active' | 'completed' | 'all'
+
+function detectTasksFilterTarget(message: string): TasksFilter | null {
+  const m = message.toLowerCase().trim()
+
+  // ru
+  if (/(выполнен|сделан|completed)/.test(m)) return 'completed'
+  if (/(активн|текущ|active)/.test(m)) return 'active'
+  if (/(все|all)/.test(m) && /(таск|задач|tasks?)/.test(m)) return 'all'
+
+  // if message is just "all" we ignore (too ambiguous)
+  return null
+}
+
+function extractTaskTitle(message: string): string | null {
+  const m = message.trim()
+
+  // Common RU patterns:
+  // "создай задачу купить молоко"
+  // "добавь таск: купить молоко"
+  const ru = m.match(/^(создай|добавь)\s+(задач[ауи]?|таск)\s*[:\-—]?\s*(.+)$/i)
+  if (ru) return ru[3].trim().replace(/^"|"$/g, '')
+
+  // EN patterns:
+  const en = m.match(/^(create|add)\s+(a\s+)?task\s*[:\-—]?\s*(.+)$/i)
+  if (en) return en[3].trim().replace(/^"|"$/g, '')
 
   return null
 }
@@ -148,6 +179,18 @@ async function executeActions(
         results.push({ action: 'task.reopen', taskId, task })
       } catch (err) {
         results.push({ action: 'task.reopen', error: String(err) })
+      }
+    }
+
+    if (k === 'task.delete') {
+      const taskId = String(action?.taskId || '')
+      if (!taskId) continue
+
+      try {
+        const ok = await withUser(userId, async (client) => deleteTaskRepo(client, taskId))
+        results.push({ action: 'task.delete', taskId, success: Boolean(ok) })
+      } catch (err) {
+        results.push({ action: 'task.delete', error: String(err) })
       }
     }
   }
@@ -338,6 +381,64 @@ export async function POST(request: Request) {
   // Fast-path: deterministic navigation for common "open tab" commands.
   // This makes navigation reliable even if the model fails to emit <lifeos> blocks.
   const navTarget = detectNavigationTarget(message)
+
+  // Fast-path: quick task creation (deterministic) for "create/add task ..." commands.
+  const quickTitle = extractTaskTitle(message)
+
+  if (quickTitle) {
+    if (!workspaceId) return NextResponse.json({ error: 'No workspace selected' }, { status: 400 })
+
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const task = await withUser(session.userId!, async (client) => {
+            return createTaskRepo(client, { title: quickTitle, workspaceId })
+          })
+
+          const content = `Создал задачу: ${task.title}.`
+          const evt = {
+            id: 'lifeos-task-create',
+            object: 'chat.completion.chunk',
+            choices: [{ index: 0, delta: { role: 'assistant', content } }],
+          }
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+
+          // Update task lists immediately
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: 'task.refresh', actions: [{ action: 'task.create', taskId: task.id, task }] })}\n\n`
+            )
+          )
+
+          // If the user implicitly asked for tasks view, navigate; otherwise refresh widgets.
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/tasks' })}\n\n`))
+
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+          controller.close()
+        } catch (err) {
+          const evt = {
+            id: 'lifeos-task-create-error',
+            object: 'chat.completion.chunk',
+            choices: [{ index: 0, delta: { role: 'assistant', content: 'Не смог создать задачу.' } }],
+          }
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+          controller.close()
+        }
+      },
+    })
+
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
+    })
+  }
+
   if (navTarget) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
@@ -384,6 +485,7 @@ export async function POST(request: Request) {
     '2. Create task: {"k":"task.create","title":"Task title","description":"Optional","priority":2}',
     '3. Complete task: {"k":"task.complete","taskId":"uuid-here"}',
     '4. Reopen task: {"k":"task.reopen","taskId":"uuid-here"}',
+    '5. Delete task: {"k":"task.delete","taskId":"uuid-here"}',
     '',
     'Examples:',
     '- User: "открой таски" → You: "Opening tasks page <lifeos>{\\"actions\\":[{\\"k\\":\\"navigate\\",\\"to\\":\\"/tasks\\"}]}</lifeos>"',

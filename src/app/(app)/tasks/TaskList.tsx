@@ -32,7 +32,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
   const [filter, setFilter] = useState<FilterStatus>('active')
   const [isPending, startTransition] = useTransition()
 
-  // Listen for task updates from chat AI
+  // Listen for task updates + filter changes from chat AI
   useEffect(() => {
     const handleTaskRefresh = (event: CustomEvent) => {
       const actions = event.detail?.actions || []
@@ -51,8 +51,19 @@ export function TaskList({ initialTasks }: TaskListProps) {
       }
     }
 
+    const handleFilter = (event: CustomEvent) => {
+      const value = event.detail?.value
+      if (value === 'active' || value === 'completed' || value === 'all') {
+        setFilter(value)
+      }
+    }
+
     window.addEventListener('lifeos:task-refresh', handleTaskRefresh as EventListener)
-    return () => window.removeEventListener('lifeos:task-refresh', handleTaskRefresh as EventListener)
+    window.addEventListener('lifeos:tasks-filter', handleFilter as EventListener)
+    return () => {
+      window.removeEventListener('lifeos:task-refresh', handleTaskRefresh as EventListener)
+      window.removeEventListener('lifeos:tasks-filter', handleFilter as EventListener)
+    }
   }, [])
 
   const filteredTasks = tasks.filter((task) => {

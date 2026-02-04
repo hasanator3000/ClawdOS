@@ -263,6 +263,17 @@ export function useChat(options: UseChatOptions) {
                 continue
               }
 
+              // Handle tasks filter events
+              if (evt?.type === 'tasks.filter' && evt?.value) {
+                const value = String(evt.value)
+                window.dispatchEvent(new CustomEvent('lifeos:tasks-filter', { detail: { value } }))
+                // If we're not on /tasks, navigate there.
+                if (options.currentPage !== '/tasks') {
+                  pendingNavigation = '/tasks'
+                }
+                continue
+              }
+
               // Handle task refresh events
               if (evt?.type === 'task.refresh') {
                 console.log('Task refresh event:', evt.actions)
