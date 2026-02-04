@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
 import { withUser } from '@/lib/db'
-import { getActiveWorkspace } from '@/lib/workspace'
 import {
   createTask as createTaskRepo,
   completeTask as completeTaskRepo,
@@ -32,7 +31,8 @@ async function getTelegramUserIdForSessionUser(userId: string): Promise<string |
 // Execute privileged actions (task mutations) on server under session + RLS
 async function executeActions(
   actions: any[],
-  userId: string
+  userId: string,
+  workspaceId: string | null
 ): Promise<{ navigation?: string; results: any[] }> {
   let navigationTarget: string | undefined
   const results: any[] = []
@@ -54,23 +54,22 @@ async function executeActions(
       const title = String(action?.title || '').trim()
       if (!title) continue
 
-      try {
-        const workspace = await getActiveWorkspace()
-        if (!workspace) {
-          results.push({ action: 'task.create', error: 'No workspace' })
-          continue
-        }
+      if (!workspaceId) {
+        results.push({ action: 'task.create', error: 'No workspace' })
+        continue
+      }
 
+      try {
         const task = await withUser(userId, async (client) => {
           return createTaskRepo(client, {
             title,
             description: action?.description ? String(action.description) : undefined,
             priority: typeof action?.priority === 'number' ? action.priority : undefined,
-            workspaceId: workspace.id,
+            workspaceId,
           })
         })
 
-        results.push({ action: 'task.create', taskId: task.id })
+        results.push({ action: 'task.create', taskId: task.id, task })
       } catch (err) {
         results.push({ action: 'task.create', error: String(err) })
       }
@@ -81,8 +80,8 @@ async function executeActions(
       if (!taskId) continue
 
       try {
-        await withUser(userId, async (client) => completeTaskRepo(client, taskId))
-        results.push({ action: 'task.complete', taskId })
+        const task = await withUser(userId, async (client) => completeTaskRepo(client, taskId))
+        results.push({ action: 'task.complete', taskId, task })
       } catch (err) {
         results.push({ action: 'task.complete', error: String(err) })
       }
@@ -93,8 +92,8 @@ async function executeActions(
       if (!taskId) continue
 
       try {
-        await withUser(userId, async (client) => reopenTaskRepo(client, taskId))
-        results.push({ action: 'task.reopen', taskId })
+        const task = await withUser(userId, async (client) => reopenTaskRepo(client, taskId))
+        results.push({ action: 'task.reopen', taskId, task })
       } catch (err) {
         results.push({ action: 'task.reopen', error: String(err) })
       }
@@ -107,7 +106,8 @@ async function executeActions(
 // Process stream: filter <lifeos> blocks, execute actions, stream clean text
 async function processStreamWithActions(
   upstreamResponse: Response,
-  userId: string
+  userId: string,
+  workspaceId: string | null
 ): Promise<ReadableStream> {
   const reader = upstreamResponse.body?.getReader()
   if (!reader) throw new Error('No upstream body')
@@ -162,7 +162,9 @@ async function processStreamWithActions(
 
                     const actions: any[] = Array.isArray(payload?.actions) ? payload.actions : []
                     if (actions.length > 0) {
-                      const result = await executeActions(actions, userId)
+                      console.log('[LifeOS] Executing actions:', actions)
+                      const result = await executeActions(actions, userId, workspaceId)
+                      console.log('[LifeOS] Actions result:', result)
 
                       // Send navigation instruction to client if present
                       if (result.navigation) {
@@ -171,6 +173,18 @@ async function processStreamWithActions(
                           target: result.navigation,
                         }
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(navEvent)}\n\n`))
+                      }
+
+                      // Notify client about task mutations for UI refresh
+                      const taskActions = result.results.filter((r) =>
+                        r.action?.startsWith('task.')
+                      )
+                      if (taskActions.length > 0) {
+                        const refreshEvent = {
+                          type: 'task.refresh',
+                          actions: taskActions,
+                        }
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(refreshEvent)}\n\n`))
                       }
                     }
                   }
@@ -289,7 +303,7 @@ export async function POST(request: Request) {
     '',
     'Examples:',
     '- User: "открой таски" → You: "Opening tasks page <lifeos>{\\"actions\\":[{\\"k\\":\\"navigate\\",\\"to\\":\\"/tasks\\"}]}</lifeos>"',
-    '- User: "создай задачу купить молоко" → You: "Created task <lifeos>{\\"actions\\":[{\\"k\\":\\"task.create\\",\\"title\\":\\"Купить молоко\\"}]}</lifeos>"',
+    '- User: "создай задачу купить молоко" → You: "Created task <lifeos>{\\"actions\\":[{\\"k\\":\\"task.create\\",\\"title\\":\\"Купить молоко\\"},{\\"k\\":\\"navigate\\",\\"to\\":\\"/tasks\\"}]}</lifeos>"',
     '',
     'Important:',
     '- Put <lifeos> blocks AFTER your human-readable response',
@@ -328,7 +342,7 @@ export async function POST(request: Request) {
 
   if (stream) {
     // Process stream: filter <lifeos> blocks and execute actions server-side
-    const processedStream = await processStreamWithActions(upstream, session.userId)
+    const processedStream = await processStreamWithActions(upstream, session.userId, workspaceId)
 
     return new Response(processedStream, {
       status: 200,

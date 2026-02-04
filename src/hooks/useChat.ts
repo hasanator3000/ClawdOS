@@ -235,6 +235,18 @@ export function useChat(options: UseChatOptions) {
                 continue
               }
 
+              // Handle task refresh events
+              if (evt?.type === 'task.refresh') {
+                console.log('Task refresh event:', evt.actions)
+                // Dispatch custom event for TaskList to pick up
+                window.dispatchEvent(
+                  new CustomEvent('lifeos:task-refresh', {
+                    detail: { actions: evt.actions },
+                  })
+                )
+                continue
+              }
+
               // OpenAI chat.completions streaming shape
               const choice = evt?.choices?.[0]
               const delta = choice?.delta

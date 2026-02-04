@@ -21,15 +21,15 @@ Goal: run LifeOS on the same VPS securely.
 
 **A1: SSH tunnel over tailnet**
 ```bash
-ssh -L 3100:127.0.0.1:3100 root@<vps-tailscale-ip>
-# open http://localhost:3100
+ssh -L 3000:127.0.0.1:3000 root@<vps-tailscale-ip>
+# open http://localhost:3000
 ```
 
 **A2: Tailscale Serve (tailnet-only)**
 On VPS:
 ```bash
-# assumes app listens on 127.0.0.1:3100
-sudo tailscale serve --http=3100 127.0.0.1:3100
+# assumes app listens on 127.0.0.1:3000
+sudo tailscale serve --http=3000 127.0.0.1:3000
 ```
 
 > Avoid Tailscale Funnel unless you explicitly want public access.
@@ -37,7 +37,7 @@ sudo tailscale serve --http=3100 127.0.0.1:3100
 ### B) Plain SSH tunnel (works, but relies on open SSH)
 If you already expose SSH:
 ```bash
-ssh -L 3100:127.0.0.1:3100 root@<vps-ip>
+ssh -L 3000:127.0.0.1:3000 root@<vps-ip>
 ```
 
 ### C) Expose by IP + token gate (what we use if you want http://IP:PORT)
@@ -50,15 +50,15 @@ ACCESS_TOKEN=$(openssl rand -base64 32)
 
 2) Run dev server bound to all interfaces:
 ```bash
-npm run dev -- --hostname 0.0.0.0 --port 3100
+npm run dev -- --hostname 0.0.0.0 --port 3000
 ```
 
 3) Open:
-- `http://<SERVER_IP>:3100/access`
+- `http://<SERVER_IP>:3000/access`
 
 4) Firewall (if using ufw):
 ```bash
-sudo ufw allow 3100/tcp
+sudo ufw allow 3000/tcp
 ```
 
 ## Deployment layout
@@ -110,7 +110,7 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=/root/clawd/apps/lifeos
 Environment=NODE_ENV=production
-Environment=PORT=3100
+Environment=PORT=3000
 EnvironmentFile=/root/clawd/apps/lifeos/.env.local
 ExecStart=/usr/bin/npm start
 Restart=always
@@ -129,4 +129,4 @@ sudo systemctl status lifeos
 
 ## Firewall
 - Keep Postgres (5432) closed to the internet.
-- If you enable IP access, open only the chosen app port (e.g. 3100) and consider restricting by source IP.
+- If you enable IP access, open only the chosen app port (e.g. 3000) and consider restricting by source IP.
