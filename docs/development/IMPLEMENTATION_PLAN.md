@@ -18,14 +18,14 @@
 - [x] Task 2.4 - Create files schema with file metadata table (spec: 02-data-contracts.md)
 - [x] Task 2.5 - Create repositories for new tables (spec: 02-data-contracts.md)
 
-## Phase 3: Agent Core
+## Phase 3: Agent Core ✓
 
-- [ ] Task 3.1 - Create ai schema (conversation, message, tool_call) (spec: 03-agent-core.md)
-- [ ] Task 3.2 - Create AI repository layer (spec: 03-agent-core.md)
-- [ ] Task 3.3 - Create chat API endpoint (spec: 03-agent-core.md)
-- [ ] Task 3.4 - Create SSE streaming endpoint (spec: 03-agent-core.md)
-- [ ] Task 3.5 - Create chat UI in AIPanel (spec: 03-agent-core.md)
-- [ ] Task 3.6 - Implement tool execution display (spec: 03-agent-core.md)
+- [x] Task 3.1 - Create ai schema (conversation, message, tool_call) (spec: 03-agent-core.md)
+- [x] Task 3.2 - Create AI repository layer (spec: 03-agent-core.md)
+- [x] Task 3.3 - Create chat API endpoint (spec: 03-agent-core.md)
+- [x] Task 3.4 - Create SSE streaming endpoint (spec: 03-agent-core.md)
+- [x] Task 3.5 - Create chat UI in AIPanel (spec: 03-agent-core.md)
+- [x] Task 3.6 - Implement tool execution display (spec: 03-agent-core.md)
 
 ## Phase 4: News Skill
 

@@ -9,13 +9,14 @@ import { useAIPanel } from '@/hooks/useAIPanel'
 interface ShellProps {
   children: React.ReactNode
   workspaceName?: string
+  workspaceId?: string
 }
 
 /**
  * Shell component wraps the app with command palette and AI panel.
  * This is a client component that manages shell state.
  */
-export function Shell({ children, workspaceName }: ShellProps) {
+export function Shell({ children, workspaceName, workspaceId }: ShellProps) {
   const commandPalette = useCommandPalette()
   const aiPanel = useAIPanel()
 
@@ -47,6 +48,7 @@ export function Shell({ children, workspaceName }: ShellProps) {
             onClose={aiPanel.close}
             onWidthChange={aiPanel.setWidth}
             workspaceName={workspaceName}
+            workspaceId={workspaceId}
           />
         </div>
       )}

@@ -11,5 +11,9 @@ interface ShellWrapperProps {
 export async function ShellWrapper({ children }: ShellWrapperProps) {
   const workspace = await getActiveWorkspace()
 
-  return <Shell workspaceName={workspace?.name}>{children}</Shell>
+  return (
+    <Shell workspaceName={workspace?.name} workspaceId={workspace?.id}>
+      {children}
+    </Shell>
+  )
 }
