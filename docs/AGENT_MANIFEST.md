@@ -50,7 +50,7 @@ This document exists to prevent coding agents (Claude Code/Cursor/etc.) from inv
    - Use `withUser(userId, ...)` so `app.user_id` is set and RLS policies apply.
 
 ## Ports / endpoints (typical)
-- LifeOS Web: `http://<host>:3100`
+- LifeOS Web: `http://<host>:3000`
 - Clawdbot Gateway (local only): `http://127.0.0.1:18789`
 - Clawdbot OpenAI-compatible HTTP (if enabled): `POST /v1/chat/completions`
 - Clawdbot tools invoke: `POST /tools/invoke`

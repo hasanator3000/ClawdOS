@@ -2,7 +2,7 @@
   "lifeos": {
     "repo": "/root/clawd/apps/lifeos",
     "web": {
-      "defaultPort": 3100,
+      "defaultPort": 3000,
       "routes": {
         "app": ["/today", "/news", "/tasks", "/settings"],
         "api": {
