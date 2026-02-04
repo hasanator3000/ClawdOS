@@ -18,7 +18,7 @@ async function main() {
   const client = await pool.connect()
   try {
     await client.query('begin')
-    await client.query(`create table if not exists app._migrations (
+    await client.query(`create table if not exists core._migrations (
       id text primary key,
       applied_at timestamptz not null default now()
     )`)
@@ -30,13 +30,13 @@ async function main() {
 
     for (const file of files) {
       const id = file
-      const already = await client.query('select 1 from app._migrations where id=$1', [id])
+      const already = await client.query('select 1 from core._migrations where id=$1', [id])
       if (already.rowCount) continue
 
       const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8')
       console.log('Applying', file)
       await client.query(sql)
-      await client.query('insert into app._migrations (id) values ($1)', [id])
+      await client.query('insert into core._migrations (id) values ($1)', [id])
     }
 
     await client.query('commit')
