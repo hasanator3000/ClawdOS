@@ -13,31 +13,35 @@ let cache: { rates: CurrencyRate[]; timestamp: number } | null = null
 const CACHE_TTL = 5 * 60 * 1000
 
 async function fetchFiatRates(): Promise<CurrencyRate[]> {
+  // Note: Frankfurter (ECB) doesn't provide RUB, so using it as base will 404.
+  // Use a public JSON currency feed for RUB→(USD, EUR) and invert to get RUB per 1 unit.
   try {
-    // Frankfurter moved from .app to .dev (the .app endpoint may return 404).
-    // We'll use the new API. Base currency is RUB (user is Russian).
-    // Docs: https://frankfurter.dev (public API: https://api.frankfurter.dev)
-    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=RUB&symbols=USD,EUR')
+    const response = await fetch(
+      'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/rub.json',
+      { cache: 'no-store' }
+    )
 
     if (!response.ok) {
-      console.error('Frankfurter API error:', response.status)
+      console.error('Currency API (jsdelivr) error:', response.status)
       return []
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as any
+    const rub = data?.rub
+    const rubToUsd = typeof rub?.usd === 'number' ? rub.usd : null // 1 RUB = X USD
+    const rubToEur = typeof rub?.eur === 'number' ? rub.eur : null // 1 RUB = X EUR
 
-    // Convert to our format (show how many RUB per 1 USD/EUR)
     return [
       {
         symbol: 'USD',
         name: 'US Dollar',
-        rate: data.rates.USD ? 1 / data.rates.USD : 0,
+        rate: rubToUsd ? 1 / rubToUsd : 0, // RUB per 1 USD
         type: 'fiat',
       },
       {
         symbol: 'EUR',
         name: 'Euro',
-        rate: data.rates.EUR ? 1 / data.rates.EUR : 0,
+        rate: rubToEur ? 1 / rubToEur : 0, // RUB per 1 EUR
         type: 'fiat',
       },
     ]
