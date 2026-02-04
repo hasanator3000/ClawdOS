@@ -65,7 +65,7 @@ export default async function VerifyTelegramPage({
           />
         </label>
 
-        <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Confirm</button>
+        <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2 hover:opacity-90 transition-opacity">Confirm</button>
       </form>
     </div>
   )

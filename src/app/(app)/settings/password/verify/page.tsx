@@ -61,7 +61,7 @@ export default async function VerifyPasswordPage({
           />
         </label>
 
-        <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Update password</button>
+        <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2 hover:opacity-90 transition-opacity">Update password</button>
       </form>
     </div>
   )

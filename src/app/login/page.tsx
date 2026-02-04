@@ -43,7 +43,7 @@ export default async function LoginPage({
             />
           </label>
 
-          <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Sign in</button>
+          <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2 hover:opacity-90 transition-opacity">Sign in</button>
         </form>
 
         <div className="mt-4 text-sm">

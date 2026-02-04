@@ -63,7 +63,7 @@ export default async function VerifyLoginPage({
             />
           </label>
 
-          <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Continue</button>
+          <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2 hover:opacity-90 transition-opacity">Continue</button>
         </form>
       </div>
     </main>

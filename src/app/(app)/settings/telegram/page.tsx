@@ -64,7 +64,7 @@ export default async function TelegramSettingsPage({
           />
         </label>
 
-        <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Send code</button>
+        <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2 hover:opacity-90 transition-opacity">Send code</button>
       </form>
 
       <p className="text-sm text-[var(--muted)]">

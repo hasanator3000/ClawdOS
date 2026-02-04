@@ -49,7 +49,7 @@ export default async function AccessPage({
         <p className="text-sm text-[var(--muted)] mt-1">This instance is gated. Enter the access token.</p>
 
         {error ? (
-          <div className="mt-4 rounded-lg bg-red-50 text-red-700 text-sm p-3">{error}</div>
+          <div className="mt-4 rounded-lg bg-[var(--error-bg)] text-[var(--error-fg)] text-sm p-3">{error}</div>
         ) : null}
 
         <form className="mt-6 space-y-3" action={setAccessToken}>
@@ -66,7 +66,7 @@ export default async function AccessPage({
             />
           </label>
 
-          <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2">Continue</button>
+          <button className="w-full rounded-md bg-[var(--fg)] text-[var(--bg)] py-2 hover:opacity-90 transition-opacity">Continue</button>
         </form>
 
         <p className="text-xs text-[var(--muted)] mt-6">

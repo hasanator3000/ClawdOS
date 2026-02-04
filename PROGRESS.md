@@ -52,6 +52,40 @@
 
 ---
 
+## 2026-02-04 - Phase 2: Data Contracts Complete
+
+**What was done:**
+- Created migration 002_data_contracts.sql with:
+  - event_log table (monotonic revision tracking)
+  - entity and entity_link tables (universal data storage)
+  - user_setting and workspace_setting tables
+  - folder and file tables (file metadata)
+- All tables have RLS policies matching existing patterns
+- Created repositories:
+  - event-log.repository.ts
+  - entity.repository.ts
+  - settings.repository.ts
+  - file.repository.ts
+
+**Files created:**
+- `db/migrations/002_data_contracts.sql`
+- `src/lib/db/repositories/event-log.repository.ts`
+- `src/lib/db/repositories/entity.repository.ts`
+- `src/lib/db/repositories/settings.repository.ts`
+- `src/lib/db/repositories/file.repository.ts`
+
+**Files modified:**
+- `src/lib/db/repositories/index.ts` (exports)
+
+**Verification:**
+- `npx tsc --noEmit` - passed
+- `npm run build` - passed
+
+**Next:**
+- Phase 3: Agent Core
+
+---
+
 ## 2026-02-04 - UI Polish: Design Issues Cleanup
 
 **What was done:**
@@ -104,6 +138,34 @@
 **Learnings:**
 - Error/success messages need theme-aware colors for good dark mode UX
 - Use semi-transparent backgrounds in dark mode to integrate better with the UI
+
+---
+
+## 2026-02-04 - UI Polish: Button Hover Effects & Access Page
+
+**What was done:**
+- Added hover effects to all primary buttons (`hover:opacity-90 transition-opacity`)
+- Fixed error message styling in access page (was using hardcoded colors)
+- Consistent button UX across all auth flows
+
+**Files modified:**
+- `src/app/access/page.tsx` (error styling + button hover)
+- `src/app/login/page.tsx` (button hover)
+- `src/app/login/verify/page.tsx` (button hover)
+- `src/app/recover/page.tsx` (button hover)
+- `src/app/recover/verify/page.tsx` (button hover)
+- `src/app/(app)/settings/password/page.tsx` (button hover)
+- `src/app/(app)/settings/password/verify/page.tsx` (button hover)
+- `src/app/(app)/settings/telegram/page.tsx` (button hover)
+- `src/app/(app)/settings/telegram/verify/page.tsx` (button hover)
+
+**Verification:**
+- `npx tsc --noEmit` - passed
+- `npm run build` - passed
+
+**Learnings:**
+- Primary buttons need visual feedback on hover for good UX
+- Opacity-based hover is simple and theme-agnostic
 
 ---
 
