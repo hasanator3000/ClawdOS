@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { createTask, completeTask, reopenTask, deleteTask } from './actions'
 
@@ -31,6 +31,29 @@ export function TaskList({ initialTasks }: TaskListProps) {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [filter, setFilter] = useState<FilterStatus>('active')
   const [isPending, startTransition] = useTransition()
+
+  // Listen for task updates from chat AI
+  useEffect(() => {
+    const handleTaskRefresh = (event: CustomEvent) => {
+      const actions = event.detail?.actions || []
+      console.log('[TaskList] Received task refresh:', actions)
+
+      for (const result of actions) {
+        if (result.task) {
+          if (result.action === 'task.create') {
+            // Add new task to the top
+            setTasks((prev) => [result.task, ...prev])
+          } else if (result.action === 'task.complete' || result.action === 'task.reopen') {
+            // Update existing task
+            setTasks((prev) => prev.map((t) => (t.id === result.task.id ? result.task : t)))
+          }
+        }
+      }
+    }
+
+    window.addEventListener('lifeos:task-refresh', handleTaskRefresh as EventListener)
+    return () => window.removeEventListener('lifeos:task-refresh', handleTaskRefresh as EventListener)
+  }, [])
 
   const filteredTasks = tasks.filter((task) => {
     if (filter === 'active') return task.status !== 'done' && task.status !== 'cancelled'
