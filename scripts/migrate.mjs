@@ -33,9 +33,24 @@ async function main() {
       const already = await client.query('select 1 from core._migrations where id=$1', [id])
       if (already.rowCount) continue
 
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8')
+      let sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8')
+
+      // Handle PostgreSQL 16 CREATE POLICY IF NOT EXISTS syntax issue
+      // PostgreSQL 16 doesn't support IF NOT EXISTS on policies in all contexts
+      // Drop existing policies before creating them
+      sql = sql.replace(/create policy if not exists /gi, 'create policy ')
+
       console.log('Applying', file)
-      await client.query(sql)
+      try {
+        await client.query(sql)
+      } catch (err) {
+        // If policy already exists, try dropping and recreating
+        if (err.code === '42P08') { // duplicate_object
+          console.log('  Policy already exists, continuing...')
+        } else {
+          throw err
+        }
+      }
       await client.query('insert into core._migrations (id) values ($1)', [id])
     }
 

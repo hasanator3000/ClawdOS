@@ -163,7 +163,9 @@ export default function SidebarClient({
     <aside className="w-72 border-r border-[var(--border)] bg-[var(--card)] text-[var(--card-fg)] flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-[var(--border)]">
-        <div className="font-semibold text-lg">LifeOS</div>
+        <Link href="/today" className="font-semibold text-lg hover:opacity-80 transition-opacity">
+          LifeOS
+        </Link>
       </div>
 
       {/* Content */}
@@ -326,6 +328,32 @@ export default function SidebarClient({
         {/* Dropdown menu */}
         {userMenuOpen && (
           <div className="absolute bottom-full left-0 right-0 mb-1 mx-2 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden">
+            {/* Close button */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+              <span className="text-xs text-[var(--muted)] uppercase tracking-wide">Menu</span>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen(false)}
+                className="p-1 hover:bg-[var(--hover)] rounded transition-colors text-[var(--muted)] hover:text-[var(--fg)]"
+                aria-label="Close menu"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
             <Link
               href="/settings"
               onClick={() => setUserMenuOpen(false)}
