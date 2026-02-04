@@ -11,8 +11,56 @@ export const dynamic = 'force-dynamic'
 
 const MAX_MESSAGE_LENGTH = 10_000
 
+function detectNavigationTarget(message: string): string | null {
+  const m = message.toLowerCase()
+
+  // Direct path shortcut
+  if (ALLOWED_PATHS.has(m.trim())) return m.trim()
+
+  const wantsOpen = /\b(открой|перейди|зайди|open|go to|navigate)\b/.test(m)
+  if (!wantsOpen) return null
+
+  if (/(таск|таски|задач|tasks?)\b/.test(m)) return '/tasks'
+  if (/(новост|news)\b/.test(m)) return '/news'
+  if (/(настройк|settings)\b/.test(m)) {
+    if (/(телеграм|telegram)\b/.test(m)) return '/settings/telegram'
+    if (/(парол|password)\b/.test(m)) return '/settings/password'
+    return '/settings'
+  }
+  if (/(сегодня|дашборд|dashboard|today)\b/.test(m)) return '/today'
+
+  return null
+}
+
+function navLabel(pathname: string): string {
+  switch (pathname) {
+    case '/today':
+      return 'Dashboard'
+    case '/news':
+      return 'News'
+    case '/tasks':
+      return 'Tasks'
+    case '/settings':
+      return 'Settings'
+    case '/settings/telegram':
+      return 'Telegram settings'
+    case '/settings/password':
+      return 'Password settings'
+    default:
+      return pathname
+  }
+}
+
 // Whitelisted navigation paths
-const ALLOWED_PATHS = new Set(['/today', '/news', '/tasks', '/settings'])
+const ALLOWED_PATHS = new Set([
+  '/today',
+  '/news',
+  '/tasks',
+  '/settings',
+  // Settings sub-pages
+  '/settings/telegram',
+  '/settings/password',
+])
 
 function getGateway() {
   const url = process.env.CLAWDBOT_URL || 'http://127.0.0.1:18789'
@@ -283,6 +331,38 @@ export async function POST(request: Request) {
 
   const telegramUserId = await getTelegramUserIdForSessionUser(session.userId)
 
+  // Fast-path: deterministic navigation for common "open tab" commands.
+  // This makes navigation reliable even if the model fails to emit <lifeos> blocks.
+  const navTarget = detectNavigationTarget(message)
+  if (navTarget) {
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      start(controller) {
+        const content = `Открыл раздел: ${navLabel(navTarget)}.`
+        const evt = {
+          id: 'lifeos-nav',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { role: 'assistant', content } }],
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: navTarget })}\n\n`)
+        )
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.close()
+      },
+    })
+
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
+    })
+  }
+
   const system = [
     'You are Clawdbot running inside LifeOS WebUI.',
     'Reply like Telegram/TUI: direct, helpful, no boilerplate.',
@@ -296,7 +376,7 @@ export async function POST(request: Request) {
     'Format: <lifeos>{"actions":[...]}</lifeos>',
     '',
     'Available actions:',
-    '1. Navigate: {"k":"navigate","to":"/tasks"}  (allowed: /today, /news, /tasks, /settings)',
+    '1. Navigate: {"k":"navigate","to":"/tasks"}  (allowed: /today, /news, /tasks, /settings, /settings/telegram, /settings/password)',
     '2. Create task: {"k":"task.create","title":"Task title","description":"Optional","priority":2}',
     '3. Complete task: {"k":"task.complete","taskId":"uuid-here"}',
     '4. Reopen task: {"k":"task.reopen","taskId":"uuid-here"}',
@@ -306,6 +386,7 @@ export async function POST(request: Request) {
     '- User: "создай задачу купить молоко" → You: "Created task <lifeos>{\\"actions\\":[{\\"k\\":\\"task.create\\",\\"title\\":\\"Купить молоко\\"},{\\"k\\":\\"navigate\\",\\"to\\":\\"/tasks\\"}]}</lifeos>"',
     '',
     'Important:',
+    '- When you execute any action (navigate / task.*), ALWAYS say what you did in plain text (e.g., "Открыл Tasks" / "Создал задачу ...").',
     '- Put <lifeos> blocks AFTER your human-readable response',
     '- Multiple actions: {"actions":[{...},{...}]}',
     '- Never invent taskIds - if unknown, ask user',
