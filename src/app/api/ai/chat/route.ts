@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
 import { withUser } from '@/lib/db'
+import { resolveSectionPath, sectionLabel } from '@/lib/nav/resolve'
 import {
   createTask as createTaskRepo,
   completeTask as completeTaskRepo,
@@ -13,27 +14,8 @@ export const dynamic = 'force-dynamic'
 const MAX_MESSAGE_LENGTH = 10_000
 
 function detectNavigationTarget(message: string): string | null {
-  const m = message.toLowerCase().trim()
-
-  // Direct path shortcut
-  if (ALLOWED_PATHS.has(m)) return m
-
-  const wantsOpen = /\b(открой|перейди|зайди|open|go to|navigate)\b/.test(m)
-
-  // If the message is short and looks like a section name, treat it as navigation too.
-  const looksLikeSectionOnly = m.length <= 40 && /^(таски|задачи|tasks|news|новости|settings|настройки|today|сегодня|дашборд|dashboard)(\s.*)?$/.test(m)
-
-  if (!wantsOpen && !looksLikeSectionOnly) return null
-
-  if (/(таск|таски|задач|tasks?)\b/.test(m)) return '/tasks'
-  if (/(новост|news)\b/.test(m)) return '/news'
-  if (/(настройк|settings)\b/.test(m)) {
-    if (/(телеграм|telegram)\b/.test(m)) return '/settings/telegram'
-    if (/(парол|password)\b/.test(m)) return '/settings/password'
-    return '/settings'
-  }
-  if (/(сегодня|дашборд|dashboard|today)\b/.test(m)) return '/today'
-
+  const resolved = resolveSectionPath(message)
+  if (resolved && ALLOWED_PATHS.has(resolved)) return resolved
   return null
 }
 
@@ -67,24 +49,7 @@ function extractTaskTitle(message: string): string | null {
   return null
 }
 
-function navLabel(pathname: string): string {
-  switch (pathname) {
-    case '/today':
-      return 'Dashboard'
-    case '/news':
-      return 'News'
-    case '/tasks':
-      return 'Tasks'
-    case '/settings':
-      return 'Settings'
-    case '/settings/telegram':
-      return 'Telegram settings'
-    case '/settings/password':
-      return 'Password settings'
-    default:
-      return pathname
-  }
-}
+// navLabel removed; use sectionLabel() from nav registry
 
 // Whitelisted navigation paths
 const ALLOWED_PATHS = new Set([
@@ -443,7 +408,7 @@ export async function POST(request: Request) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       start(controller) {
-        const content = `Открыл раздел: ${navLabel(navTarget)}.`
+        const content = `Открыл раздел: ${sectionLabel(navTarget)}.`
         const evt = {
           id: 'lifeos-nav',
           object: 'chat.completion.chunk',

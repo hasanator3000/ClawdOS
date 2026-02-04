@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { resolveSectionPath } from '@/lib/nav/resolve'
 
 export interface ChatMessage {
   id: string
@@ -28,21 +29,9 @@ interface UseChatOptions {
 export function useChat(options: UseChatOptions) {
   const router = useRouter()
 
+  // Deterministic resolver shared with the sidebar registry
   const detectClientNav = (input: string): string | null => {
-    const m = input.toLowerCase().trim()
-    const wantsOpen = /\b(открой|перейди|зайди|open|go to|navigate)\b/.test(m)
-    const looksLikeSectionOnly = m.length <= 40 && /^(таски|задачи|tasks|news|новости|settings|настройки|today|сегодня|дашборд|dashboard)(\s.*)?$/.test(m)
-    if (!wantsOpen && !looksLikeSectionOnly) return null
-
-    if (/(таск|таски|задач|tasks?)\b/.test(m)) return '/tasks'
-    if (/(новост|news)\b/.test(m)) return '/news'
-    if (/(настройк|settings)\b/.test(m)) {
-      if (/(телеграм|telegram)\b/.test(m)) return '/settings/telegram'
-      if (/(парол|password)\b/.test(m)) return '/settings/password'
-      return '/settings'
-    }
-    if (/(сегодня|дашборд|dashboard|today)\b/.test(m)) return '/today'
-    return null
+    return resolveSectionPath(input)
   }
 
   const extractClientTaskTitle = (input: string): string | null => {
