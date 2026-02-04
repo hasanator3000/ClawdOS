@@ -1,14 +1,6 @@
 import { cookies } from 'next/headers'
 import { getIronSession, type IronSession } from 'iron-session'
-
-export type SessionData = {
-  userId?: string
-  username?: string
-  pendingUserId?: string
-  pendingUsername?: string
-  pendingChallengeId?: string
-  pendingNewPassword?: string
-}
+import type { SessionData } from '@/types/session'
 
 const sessionOptions = {
   cookieName: 'lifeos.session',

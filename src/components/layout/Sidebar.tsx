@@ -1,6 +1,6 @@
-import SidebarClient from '@/components/SidebarClient'
-import { getSession } from '@/lib/session'
-import { getActiveWorkspaceId, getWorkspacesForUser } from '@/lib/workspaces'
+import SidebarClient from './SidebarClient'
+import { getSession } from '@/lib/auth/session'
+import { getActiveWorkspaceId, getWorkspacesForUser } from '@/lib/workspace'
 
 export default async function Sidebar() {
   const session = await getSession()

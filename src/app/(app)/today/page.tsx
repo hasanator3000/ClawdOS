@@ -24,7 +24,7 @@ export default async function TodayPage() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between pr-12">
         <h1 className="text-xl font-semibold">Today</h1>
         <div className="text-sm text-[var(--muted)]">Workspace: {workspace.name}</div>
       </div>

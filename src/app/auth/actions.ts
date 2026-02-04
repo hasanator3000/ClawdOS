@@ -1,8 +1,8 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
-import { usernameRegex, verifyUser } from '@/lib/auth'
+import { getSession } from '@/lib/auth/session'
+import { usernameRegex, verifyUser, createAuthChallenge, enqueueTelegram } from '@/lib/auth'
 
 export async function signIn(formData: FormData) {
   const username = String(formData.get('username') || '').trim()
@@ -19,11 +19,8 @@ export async function signIn(formData: FormData) {
 
   // If Telegram is linked, require a second factor.
   if (user.telegramUserId) {
-    const challenge = await (await import('@/lib/auth')).createAuthChallenge(user.id, 'login')
-    await (await import('@/lib/auth')).enqueueTelegram(
-      user.telegramUserId,
-      `LifeOS login code: ${challenge.code} (valid 10 min)`
-    )
+    const challenge = await createAuthChallenge(user.id, 'login')
+    await enqueueTelegram(user.telegramUserId, `LifeOS login code: ${challenge.code} (valid 10 min)`)
 
     session.pendingUserId = user.id
     session.pendingUsername = user.username

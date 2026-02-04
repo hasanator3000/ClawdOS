@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
-import { getWorkspacesForUser } from '@/lib/workspaces'
+import { getSession } from '@/lib/auth/session'
+import { getWorkspacesForUser } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
 

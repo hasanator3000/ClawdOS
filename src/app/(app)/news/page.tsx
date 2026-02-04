@@ -25,7 +25,7 @@ export default async function NewsPage() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between pr-12">
         <h1 className="text-xl font-semibold">News</h1>
         <div className="text-sm text-[var(--muted)]">Workspace: {workspace.name}</div>
       </div>
