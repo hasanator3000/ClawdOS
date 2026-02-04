@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { getSession } from '@/lib/session'
 
-export const dynamic = 'force-dynamic'
+// Layout is kept as stable as possible for snappy client-side navigation.
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
