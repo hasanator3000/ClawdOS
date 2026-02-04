@@ -1,0 +1,81 @@
+{
+  "lifeos": {
+    "repo": "/root/clawd/apps/lifeos",
+    "web": {
+      "defaultPort": 3100,
+      "routes": {
+        "app": ["/today", "/news", "/tasks", "/settings"],
+        "api": {
+          "chatProxy": "/api/ai/chat",
+          "assistantProxy": "/api/assistant",
+          "actions": {
+            "task": "/api/actions/task"
+          },
+          "workspaces": "/api/workspaces",
+          "currencies": "/api/currencies"
+        }
+      }
+    },
+    "db": {
+      "type": "postgres",
+      "schemas": ["core", "content", "finance", "ai", "analytics", "biz", "docs"],
+      "rls": {
+        "enabled": true,
+        "sessionVar": "app.user_id",
+        "helper": "core.current_user_id()",
+        "setter": "select set_config('app.user_id', <uuid>, true)"
+      },
+      "keyTables": {
+        "core": [
+          "core.user",
+          "core.workspace",
+          "core.membership",
+          "core.task",
+          "core.telegram_outbox",
+          "core.workspace_setting"
+        ],
+        "content": [
+          "content.digest",
+          "content.news_item"
+        ]
+      }
+    }
+  },
+  "clawdbot": {
+    "gateway": {
+      "url": "http://127.0.0.1:18789",
+      "bind": "loopback",
+      "auth": {
+        "mode": "token",
+        "tokenEnv": "CLAWDBOT_TOKEN"
+      },
+      "http": {
+        "endpoints": {
+          "chatCompletions": {
+            "path": "/v1/chat/completions",
+            "enabledByConfig": true,
+            "notes": "OpenAI-compatible; LifeOS uses this for streaming chat"
+          },
+          "toolsInvoke": {
+            "path": "/tools/invoke",
+            "enabled": true,
+            "notes": "Direct tool invocation (requires gateway auth); useful for diagnostics"
+          }
+        }
+      }
+    },
+    "channels": {
+      "telegram": {
+        "enabled": true,
+        "notes": "Telegram is configured in Clawdbot. Do NOT create Telegram webhooks/bots inside LifeOS."
+      }
+    }
+  },
+  "rules": {
+    "noDirectClaudeApiInLifeOS": true,
+    "noTelegramWebhookInLifeOS": true,
+    "noDomSelectorScreenActions": true,
+    "noGatewayTokenToBrowser": true,
+    "dbWritesMustUseRLS": true
+  }
+}

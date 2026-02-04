@@ -17,6 +17,13 @@ AI-first personal operating system. Self-hosted, multi-tenant, powered by Next.j
 - **Auth**: iron-session, Argon2id password hashing
 - **Deployment**: Self-hosted (VPS + Tailscale recommended)
 
+## For coding agents
+
+If you are using Claude Code/Cursor/etc. for development, read these first:
+- `docs/AGENT_MANIFEST.md` (source of truth: what already exists, what not to invent)
+- `CODING_AGENT_RULES.md` (safe patterns for modules, DB, and Clawdbot integration)
+- `docs/capabilities.json` (machine-readable map of endpoints/schemas)
+
 ## Quick Start
 
 ```bash
