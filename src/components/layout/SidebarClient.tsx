@@ -127,10 +127,13 @@ export default function SidebarClient({
   }, [workspaces, activeId])
 
   async function chooseWorkspace(id: string) {
+    if (id === activeId) return // already active
     setActiveId(id) // optimistic
     startTransition(async () => {
       try {
         await setActiveWorkspace(id)
+        // Force refresh to reload server components with new workspace data
+        router.refresh()
       } catch {
         // revert best-effort
         setActiveId(active?.id ?? null)

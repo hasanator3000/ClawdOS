@@ -32,6 +32,11 @@ export function TaskList({ initialTasks }: TaskListProps) {
   const [filter, setFilter] = useState<FilterStatus>('active')
   const [isPending, startTransition] = useTransition()
 
+  // Sync tasks when initialTasks change (e.g., workspace switch)
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
+
   // Listen for task updates + filter changes from chat AI
   useEffect(() => {
     const handleTaskRefresh = (event: CustomEvent) => {
