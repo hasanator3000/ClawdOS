@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, useTransition, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { setActiveWorkspace } from '@/app/(app)/actions'
 import type { Workspace } from '@/types/workspace'
 import { SIDEBAR_SECTIONS } from '@/lib/nav/sections'
@@ -40,7 +40,7 @@ export default function SidebarClient({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [pending, startTransition] = useTransition()
+  const [switching, setSwitching] = useState(false)
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces)
   const [activeId, setActiveId] = useState<string | null>(initialActiveWorkspaceId ?? null)
@@ -127,18 +127,21 @@ export default function SidebarClient({
   }, [workspaces, activeId])
 
   async function chooseWorkspace(id: string) {
-    if (id === activeId) return // already active
+    if (id === activeId || switching) return // already active or switching
+    const previousId = activeId
     setActiveId(id) // optimistic
-    startTransition(async () => {
-      try {
-        await setActiveWorkspace(id)
-        // Force refresh to reload server components with new workspace data
-        router.refresh()
-      } catch {
-        // revert best-effort
-        setActiveId(active?.id ?? null)
-      }
-    })
+    setSwitching(true)
+    try {
+      await setActiveWorkspace(id)
+      // Call router.refresh() outside startTransition to avoid Next.js bug
+      // where pending state gets stuck (https://github.com/vercel/next.js/issues/86055)
+      router.refresh()
+    } catch {
+      // revert best-effort
+      setActiveId(previousId)
+    } finally {
+      setSwitching(false)
+    }
   }
 
   const handleLogout = async () => {
@@ -210,7 +213,7 @@ export default function SidebarClient({
                   <button
                     type="button"
                     onClick={() => chooseWorkspace(ws.id)}
-                    disabled={pending}
+                    disabled={switching}
                     className={`flex-1 text-left px-3 py-2 text-sm ${isActive ? 'font-medium' : ''}`}
                   >
                     {isPinned && <span className="mr-1">📌</span>}
