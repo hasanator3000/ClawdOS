@@ -2,6 +2,10 @@ import { SECTIONS } from './sections'
 
 const OPEN_VERBS_RE = /^(открой|перейди|зайди|открыть|open|go to|goto|navigate)\s+/i
 
+// Action verbs that indicate a COMMAND, not navigation
+// "создай задачу" = create task, NOT navigate to tasks
+const ACTION_VERBS_RE = /^(создай|добавь|удали|выполни|заверши|create|add|delete|remove|complete|finish)\s+/i
+
 function norm(s: string): string {
   return s
     .toLowerCase()
@@ -9,6 +13,16 @@ function norm(s: string): string {
     .replace(OPEN_VERBS_RE, '')
     .replace(/[\u2014\u2013\-_:;,!.?()\[\]{}]/g, ' ')
     .replace(/\s+/g, ' ')
+}
+
+// Check if alias matches as a whole word (not substring of another word)
+function matchesAsWord(text: string, word: string): boolean {
+  const re = new RegExp(`(^|\\s)${escapeRegex(word)}($|\\s)`, 'i')
+  return re.test(text)
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function levenshtein(a: string, b: string): number {
@@ -38,7 +52,15 @@ function levenshtein(a: string, b: string): number {
  * Designed to be fast and deterministic (no LLM).
  */
 export function resolveSectionPath(input: string): string | null {
-  const m = norm(input)
+  const trimmed = input.trim()
+
+  // IMPORTANT: If input starts with action verb, it's a COMMAND, not navigation
+  // "создай задачу X" should NOT match /tasks
+  if (ACTION_VERBS_RE.test(trimmed)) {
+    return null
+  }
+
+  const m = norm(trimmed)
   if (!m) return null
 
   // Direct path
@@ -47,15 +69,22 @@ export function resolveSectionPath(input: string): string | null {
     return direct?.path ?? null
   }
 
-  // Exact and substring matches
+  // Exact matches first (highest priority)
   for (const s of SECTIONS) {
     if (m === s.title.toLowerCase()) return s.path
     if (m === s.id.toLowerCase()) return s.path
     for (const a of s.aliases) {
       const na = norm(a)
       if (m === na) return s.path
-      // allow short phrases like "настройки телеграм"
-      if (m.includes(na) && na.length >= 4) return s.path
+    }
+  }
+
+  // Word-boundary substring matches (e.g. "открой таски" → /tasks)
+  // Only match if alias appears as a complete word, not as part of another word
+  for (const s of SECTIONS) {
+    for (const a of s.aliases) {
+      const na = norm(a)
+      if (na.length >= 4 && matchesAsWord(m, na)) return s.path
     }
   }
 

@@ -37,8 +37,8 @@ function extractTaskTitle(message: string): string | null {
   const m = message.trim()
 
   // RU patterns: "создай задачу X", "добавь таск X", "создай новую задачу X"
-  // Flexible: allows "новую/новый", optional colon/dash, various word endings
-  const ru = m.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[у|и|а|е]?|таск[а|и|у]?)\s*[:\-—]?\s*(.+)$/i)
+  // Character classes: [уиае] = one of у, и, а, е (NOT с вертикальными чертами!)
+  const ru = m.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[уиае]?|таск[аиу]?)\s*[:\-—]?\s*(.+)$/i)
   if (ru) return ru[4].trim().replace(/^"|"$/g, '')
 
   // EN patterns: "create task X", "add a task X", "create new task X"
