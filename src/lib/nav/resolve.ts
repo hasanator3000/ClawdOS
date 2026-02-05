@@ -17,12 +17,15 @@ function norm(s: string): string {
 
 // Check if alias matches as a whole word (not substring of another word)
 function matchesAsWord(text: string, word: string): boolean {
-  const re = new RegExp(`(^|\\s)${escapeRegex(word)}($|\\s)`, 'i')
-  return re.test(text)
-}
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (!text || !word) return false
+  try {
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`(^|\\s)${escaped}($|\\s)`, 'i')
+    return re.test(text)
+  } catch {
+    // Fallback to simple includes if regex fails
+    return text.includes(word)
+  }
 }
 
 function levenshtein(a: string, b: string): number {
@@ -52,12 +55,19 @@ function levenshtein(a: string, b: string): number {
  * Designed to be fast and deterministic (no LLM).
  */
 export function resolveSectionPath(input: string): string | null {
+  if (!input) return null
+
   const trimmed = input.trim()
+  if (!trimmed) return null
 
   // IMPORTANT: If input starts with action verb, it's a COMMAND, not navigation
   // "создай задачу X" should NOT match /tasks
-  if (ACTION_VERBS_RE.test(trimmed)) {
-    return null
+  try {
+    if (ACTION_VERBS_RE.test(trimmed)) {
+      return null
+    }
+  } catch {
+    // If regex test fails, continue with normal matching
   }
 
   const m = norm(trimmed)

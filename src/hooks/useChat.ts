@@ -38,14 +38,22 @@ export function useChat(options: UseChatOptions) {
   }
 
   const extractClientTaskTitle = (input: string): string | null => {
+    if (!input) return null
     const s = input.trim()
-    // RU patterns: "создай задачу X", "добавь таск X", "создай новую задачу X"
-    // Character classes: [уиае] = one of у, и, а, е (NOT с вертикальными чертами!)
-    const ru = s.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[уиае]?|таск[аиу]?)\s*[:\-—]?\s*(.+)$/i)
-    if (ru) return ru[4].trim().replace(/^"|"$/g, '')
-    // EN patterns: "create task X", "add a task X", "create new task X"
-    const en = s.match(/^(create|add)\s+(a\s+)?(new\s+)?task\s*[:\-—]?\s*(.+)$/i)
-    if (en) return en[4].trim().replace(/^"|"$/g, '')
+    if (!s) return null
+
+    try {
+      // RU patterns: "создай задачу X", "добавь таск X", "создай новую задачу X"
+      const ru = s.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[уиае]?|таск[аиу]?)\s*[:\-—]?\s*(.+)$/i)
+      if (ru && ru[4]) return ru[4].trim().replace(/^"|"$/g, '')
+
+      // EN patterns: "create task X", "add a task X", "create new task X"
+      const en = s.match(/^(create|add)\s+(a\s+)?(new\s+)?task\s*[:\-—]?\s*(.+)$/i)
+      if (en && en[4]) return en[4].trim().replace(/^"|"$/g, '')
+    } catch {
+      // Silently fail if regex matching fails
+    }
+
     return null
   }
   const [messages, setMessages] = useState<ChatMessage[]>([])
