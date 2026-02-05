@@ -56,6 +56,37 @@ export function useChat(options: UseChatOptions) {
 
     return null
   }
+
+  // Detect workspace type switch commands like "открой личные задачи" or "shared tasks"
+  const detectWorkspaceSwitch = (input: string): 'personal' | 'shared' | null => {
+    if (!input) return null
+    const s = input.toLowerCase().trim()
+    if (!s) return null
+
+    try {
+      // Personal patterns: личные, персональные, мои, personal, my
+      if (/\b(личн|персональн|мои|personal|my)\b.*\b(задач|таск|tasks?)\b/i.test(s)) {
+        return 'personal'
+      }
+      // Also match "tasks personal" order
+      if (/\b(задач|таск|tasks?)\b.*\b(личн|персональн|мои|personal|my)\b/i.test(s)) {
+        return 'personal'
+      }
+
+      // Shared patterns: общие, шаред, командные, shared, team
+      if (/\b(общ|шаред|командн|shared|team)\b.*\b(задач|таск|tasks?)\b/i.test(s)) {
+        return 'shared'
+      }
+      // Also match "tasks shared" order
+      if (/\b(задач|таск|tasks?)\b.*\b(общ|шаред|командн|shared|team)\b/i.test(s)) {
+        return 'shared'
+      }
+    } catch {
+      // Silently fail if regex matching fails
+    }
+
+    return null
+  }
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -166,7 +197,57 @@ export function useChat(options: UseChatOptions) {
         return
       }
 
-      // Navigation fast-path (only if not a task creation command)
+      // Workspace switch fast-path: "открой личные/общие задачи"
+      const workspaceType = detectWorkspaceSwitch(content)
+      if (workspaceType) {
+        try {
+          const res = await fetch('/api/workspaces/switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: workspaceType }),
+          })
+
+          if (res.ok) {
+            const data = (await res.json()) as { workspace?: { name?: string } }
+            const label = workspaceType === 'personal' ? 'личные' : 'общие'
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? {
+                      ...msg,
+                      content: `Переключил на ${label} задачи (${data.workspace?.name ?? workspaceType}).`,
+                      isStreaming: false,
+                    }
+                  : msg
+              )
+            )
+            router.push('/tasks')
+            router.refresh()
+          } else {
+            const err = (await res.json().catch(() => ({}))) as { error?: string }
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: err.error ?? 'Не удалось переключить workspace.', isStreaming: false }
+                  : msg
+              )
+            )
+          }
+        } catch {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: 'Ошибка сети при переключении workspace.', isStreaming: false }
+                : msg
+            )
+          )
+        } finally {
+          setIsLoading(false)
+        }
+        return
+      }
+
+      // Navigation fast-path (only if not a task creation or workspace switch command)
       const navTarget = detectClientNav(content)
       if (navTarget) {
         setMessages((prev) =>
