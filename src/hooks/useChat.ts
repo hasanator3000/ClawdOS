@@ -4,6 +4,9 @@ import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { resolveSectionPath } from '@/lib/nav/resolve'
 
+// Prevent unbounded memory growth - keep only recent messages
+const MAX_MESSAGES = 100
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
@@ -47,6 +50,7 @@ export function useChat(options: UseChatOptions) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
   const requestSeqRef = useRef(0)
 
   const sendMessage = useCallback(
@@ -79,7 +83,11 @@ export function useChat(options: UseChatOptions) {
         isStreaming: true,
       }
 
-      setMessages((prev) => [...prev, userMessage, assistantMessage])
+      setMessages((prev) => {
+        const updated = [...prev, userMessage, assistantMessage]
+        // Keep only recent messages to prevent memory bloat
+        return updated.length > MAX_MESSAGES ? updated.slice(-MAX_MESSAGES) : updated
+      })
       setIsLoading(true)
 
       // Client fast-path: do obvious UI actions immediately (no LLM round-trip).
@@ -95,10 +103,7 @@ export function useChat(options: UseChatOptions) {
               : msg
           )
         )
-        // Push is usually enough; refresh forces extra network work and can feel slow.
         router.push(navTarget)
-        // Best-effort refresh after navigation settles (for server widgets/badges).
-        setTimeout(() => router.refresh(), 150)
         setIsLoading(false)
         return
       }
@@ -138,9 +143,7 @@ export function useChat(options: UseChatOptions) {
                   : msg
               )
             )
-            // Do not force navigation to /tasks on create unless user asked.
-            // Just refresh widgets; if user is already on /tasks, it will update via the event.
-            setTimeout(() => router.refresh(), 150)
+            // Client-side update via CustomEvent; no need for full router.refresh()
           } else {
             setMessages((prev) =>
               prev.map((msg) =>
@@ -198,6 +201,7 @@ export function useChat(options: UseChatOptions) {
         if (!reader) {
           throw new Error('No response stream')
         }
+        readerRef.current = reader
 
         const decoder = new TextDecoder()
         let buffer = ''
@@ -410,6 +414,10 @@ export function useChat(options: UseChatOptions) {
           scheduleRefresh()
         }
       } catch (err) {
+        // Always cleanup stream reader to prevent connection leaks
+        readerRef.current?.cancel().catch(() => {})
+        readerRef.current = null
+
         if (err instanceof Error && err.name === 'AbortError') {
           // Request was cancelled
           return
@@ -423,6 +431,10 @@ export function useChat(options: UseChatOptions) {
           prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg))
         )
       } finally {
+        // Ensure reader is always cleaned up
+        readerRef.current?.cancel().catch(() => {})
+        readerRef.current = null
+
         if (requestSeq === requestSeqRef.current) {
           setIsLoading(false)
           abortControllerRef.current = null

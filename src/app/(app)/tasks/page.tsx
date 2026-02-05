@@ -19,7 +19,9 @@ export default async function TasksPage() {
   }
 
   const tasks = await withUser(session.userId, async (client) => {
-    return getTasksByWorkspace(client, workspace.id, { includeCompleted: true, limit: 200 })
+    // Default to active tasks only; completed shown on demand via filter
+    // Reduced limit to improve initial load performance
+    return getTasksByWorkspace(client, workspace.id, { includeCompleted: false, limit: 50 })
   })
 
   return (

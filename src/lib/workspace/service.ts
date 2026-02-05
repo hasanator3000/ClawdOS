@@ -18,9 +18,9 @@ export async function getActiveWorkspaceId(): Promise<string | null> {
 }
 
 export async function getActiveWorkspace(): Promise<Workspace | null> {
-  const workspaces = await getWorkspacesForUser()
-  if (workspaces.length === 0) return null
+  // Parallelize independent fetches to reduce latency
+  const [workspaces, activeId] = await Promise.all([getWorkspacesForUser(), getActiveWorkspaceId()])
 
-  const activeId = await getActiveWorkspaceId()
+  if (workspaces.length === 0) return null
   return workspaces.find((w) => w.id === activeId) ?? workspaces[0]
 }

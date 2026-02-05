@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback, useEffect, useState, FormEvent } from 'react'
+import { useRef, useCallback, useEffect, useState, FormEvent, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useChat, type ChatMessage } from '@/hooks/useChat'
 
@@ -232,7 +232,8 @@ export function AIPanel({
   )
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+// Memoized to prevent O(n) re-renders when messages array updates
+const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
 
   return (
@@ -259,9 +260,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       </div>
     </div>
   )
-}
+})
 
-function ToolCallDisplay({ tool }: { tool: NonNullable<ChatMessage['toolCalls']>[number] }) {
+// Memoized to prevent unnecessary re-renders in nested loop
+const ToolCallDisplay = memo(function ToolCallDisplay({
+  tool,
+}: {
+  tool: NonNullable<ChatMessage['toolCalls']>[number]
+}) {
   return (
     <div className="text-xs p-2 rounded bg-black/10 dark:bg-white/10">
       <div className="flex items-center gap-2">
@@ -286,7 +292,7 @@ function ToolCallDisplay({ tool }: { tool: NonNullable<ChatMessage['toolCalls']>
       {tool.error && <div className="mt-1 text-red-500">{tool.error}</div>}
     </div>
   )
-}
+})
 
 function getPageName(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean)

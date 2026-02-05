@@ -481,6 +481,8 @@ export async function POST(request: Request) {
         { role: 'user', content: message },
       ],
     }),
+    // Prevent hanging requests if Clawdbot is unresponsive (60 second timeout)
+    signal: AbortSignal.timeout(60_000),
   })
 
   if (!upstream.ok) {

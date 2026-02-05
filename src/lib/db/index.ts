@@ -6,7 +6,17 @@ export function getPool() {
   if (_pool) return _pool
   const databaseUrl = process.env.DATABASE_URL
   if (!databaseUrl) throw new Error('DATABASE_URL is not set')
-  _pool = new Pool({ connectionString: databaseUrl })
+
+  _pool = new Pool({
+    connectionString: databaseUrl,
+    // Prevent connection exhaustion under load
+    max: 20,
+    // Release idle connections after 30s
+    idleTimeoutMillis: 30_000,
+    // Fail fast if can't connect within 5s
+    connectionTimeoutMillis: 5_000,
+  })
+
   return _pool
 }
 

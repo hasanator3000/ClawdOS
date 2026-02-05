@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 function isTypingTarget(el: EventTarget | null) {
   const node = el as HTMLElement | null
@@ -75,7 +75,19 @@ export function useAIPanel() {
     setState((s) => ({ ...s, isOpen: !s.isOpen }))
   }, [])
 
-  // Keyboard shortcuts
+  // Refs to avoid re-attaching listener on every state change
+  const stateRef = useRef(state)
+  const toggleRef = useRef(toggle)
+  const closeRef = useRef(close)
+
+  // Keep refs in sync
+  useEffect(() => {
+    stateRef.current = state
+    toggleRef.current = toggle
+    closeRef.current = close
+  })
+
+  // Keyboard shortcuts - single listener registered on mount
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       // ⌘J (Mac) or Ctrl+J (Windows/Linux) to toggle AI panel
@@ -84,19 +96,19 @@ export function useAIPanel() {
         // Allow in inputs only if Shift is held (so we don't break common text editing)
         if (isTypingTarget(e.target) && !e.shiftKey) return
         e.preventDefault()
-        toggle()
+        toggleRef.current()
       }
 
       // ESC closes panel when open
-      if (e.key === 'Escape' && state.isOpen) {
+      if (e.key === 'Escape' && stateRef.current.isOpen) {
         e.preventDefault()
-        close()
+        closeRef.current()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [state.isOpen, toggle, close])
+  }, []) // Empty deps - listener added once
 
   const setWidth = useCallback((width: number) => {
     const clampedWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width))
