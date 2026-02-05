@@ -58,31 +58,24 @@ export function useChat(options: UseChatOptions) {
   }
 
   // Detect workspace type switch commands like "открой личные задачи" or "shared tasks"
+  // Note: \b doesn't work with Cyrillic, so we use simple includes() checks
   const detectWorkspaceSwitch = (input: string): 'personal' | 'shared' | null => {
     if (!input) return null
     const s = input.toLowerCase().trim()
     if (!s) return null
 
-    try {
-      // Personal patterns: личные, персональные, мои, personal, my
-      if (/\b(личн|персональн|мои|personal|my)\b.*\b(задач|таск|tasks?)\b/i.test(s)) {
-        return 'personal'
-      }
-      // Also match "tasks personal" order
-      if (/\b(задач|таск|tasks?)\b.*\b(личн|персональн|мои|personal|my)\b/i.test(s)) {
-        return 'personal'
-      }
+    // Must contain a task-related word
+    const hasTaskWord = /задач|таск|tasks?/i.test(s)
+    if (!hasTaskWord) return null
 
-      // Shared patterns: общие, шаред, командные, shared, team
-      if (/\b(общ|шаред|командн|shared|team)\b.*\b(задач|таск|tasks?)\b/i.test(s)) {
-        return 'shared'
-      }
-      // Also match "tasks shared" order
-      if (/\b(задач|таск|tasks?)\b.*\b(общ|шаред|командн|shared|team)\b/i.test(s)) {
-        return 'shared'
-      }
-    } catch {
-      // Silently fail if regex matching fails
+    // Check for personal indicators
+    if (/личн|персональн|мои\s|my\s|personal/i.test(s)) {
+      return 'personal'
+    }
+
+    // Check for shared indicators
+    if (/общ|шаред|командн|shared|team/i.test(s)) {
+      return 'shared'
     }
 
     return null
