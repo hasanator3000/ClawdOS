@@ -164,6 +164,9 @@ async function executeActions(
 }
 
 // Process stream: filter <lifeos> blocks, execute actions, stream clean text
+// Max buffer size to prevent memory exhaustion on large responses
+const MAX_ASSISTANT_TEXT_BUFFER = 50_000 // 50KB should be enough for <lifeos> blocks
+
 async function processStreamWithActions(
   upstreamResponse: Response,
   userId: string,
@@ -175,7 +178,7 @@ async function processStreamWithActions(
   const decoder = new TextDecoder()
   const encoder = new TextEncoder()
 
-  let fullAssistantText = '' // Accumulate full text for action parsing
+  let fullAssistantText = '' // Accumulate text for action parsing (bounded)
   let buffer = ''
 
   return new ReadableStream({
@@ -265,8 +268,14 @@ async function processStreamWithActions(
               const delta = choice?.delta
 
               if (typeof delta?.content === 'string') {
-                // Accumulate full text
-                fullAssistantText += delta.content
+                // Accumulate text for action parsing (with size limit to prevent memory bloat)
+                if (fullAssistantText.length < MAX_ASSISTANT_TEXT_BUFFER) {
+                  fullAssistantText += delta.content
+                  // Truncate if we exceed limit
+                  if (fullAssistantText.length > MAX_ASSISTANT_TEXT_BUFFER) {
+                    fullAssistantText = fullAssistantText.slice(-MAX_ASSISTANT_TEXT_BUFFER)
+                  }
+                }
 
                 // Filter out <lifeos> blocks from displayed content
                 const filtered = filterLifeosBlocks(delta.content)
@@ -293,6 +302,16 @@ async function processStreamWithActions(
         }
       } catch (err) {
         console.error('Stream processing error:', err)
+        // Notify client about the error before closing
+        try {
+          const errorEvent = {
+            type: 'error',
+            message: err instanceof Error ? err.message : 'Stream processing failed',
+          }
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`))
+        } catch {
+          // Ignore if we can't send error event
+        }
       } finally {
         controller.close()
       }
