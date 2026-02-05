@@ -36,15 +36,14 @@ function detectTasksFilterTarget(message: string): TasksFilter | null {
 function extractTaskTitle(message: string): string | null {
   const m = message.trim()
 
-  // Common RU patterns:
-  // "создай задачу купить молоко"
-  // "добавь таск: купить молоко"
-  const ru = m.match(/^(создай|добавь)\s+(задач[ауи]?|таск)\s*[:\-—]?\s*(.+)$/i)
-  if (ru) return ru[3].trim().replace(/^"|"$/g, '')
+  // RU patterns: "создай задачу X", "добавь таск X", "создай новую задачу X"
+  // Flexible: allows "новую/новый", optional colon/dash, various word endings
+  const ru = m.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[у|и|а|е]?|таск[а|и|у]?)\s*[:\-—]?\s*(.+)$/i)
+  if (ru) return ru[4].trim().replace(/^"|"$/g, '')
 
-  // EN patterns:
-  const en = m.match(/^(create|add)\s+(a\s+)?task\s*[:\-—]?\s*(.+)$/i)
-  if (en) return en[3].trim().replace(/^"|"$/g, '')
+  // EN patterns: "create task X", "add a task X", "create new task X"
+  const en = m.match(/^(create|add)\s+(a\s+)?(new\s+)?task\s*[:\-—]?\s*(.+)$/i)
+  if (en) return en[4].trim().replace(/^"|"$/g, '')
 
   return null
 }

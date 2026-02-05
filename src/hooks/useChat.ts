@@ -39,10 +39,13 @@ export function useChat(options: UseChatOptions) {
 
   const extractClientTaskTitle = (input: string): string | null => {
     const s = input.trim()
-    const ru = s.match(/^(создай|добавь)\s+(задач[ауи]?|таск)\s*[:\-—]?\s*(.+)$/i)
-    if (ru) return ru[3].trim().replace(/^"|"$/g, '')
-    const en = s.match(/^(create|add)\s+(a\s+)?task\s*[:\-—]?\s*(.+)$/i)
-    if (en) return en[3].trim().replace(/^"|"$/g, '')
+    // RU patterns: "создай задачу X", "добавь таск X", "создай новую задачу X"
+    // Flexible: allows "новую/новый", optional colon/dash, various word endings
+    const ru = s.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[у|и|а|е]?|таск[а|и|у]?)\s*[:\-—]?\s*(.+)$/i)
+    if (ru) return ru[4].trim().replace(/^"|"$/g, '')
+    // EN patterns: "create task X", "add a task X", "create new task X"
+    const en = s.match(/^(create|add)\s+(a\s+)?(new\s+)?task\s*[:\-—]?\s*(.+)$/i)
+    if (en) return en[4].trim().replace(/^"|"$/g, '')
     return null
   }
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -92,21 +95,9 @@ export function useChat(options: UseChatOptions) {
 
       // Client fast-path: do obvious UI actions immediately (no LLM round-trip).
       // This makes "open tab" and "create task" feel instant.
-      const navTarget = detectClientNav(content)
+      // IMPORTANT: Check task creation FIRST - it's more specific than navigation.
+      // "создай задачу X" should create a task, not navigate to /tasks.
       const quickTitle = extractClientTaskTitle(content)
-
-      if (navTarget) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: `Открыл раздел.`, isStreaming: false }
-              : msg
-          )
-        )
-        router.push(navTarget)
-        setIsLoading(false)
-        return
-      }
 
       if (quickTitle) {
         if (!options.workspaceId) {
@@ -164,6 +155,21 @@ export function useChat(options: UseChatOptions) {
         } finally {
           setIsLoading(false)
         }
+        return
+      }
+
+      // Navigation fast-path (only if not a task creation command)
+      const navTarget = detectClientNav(content)
+      if (navTarget) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: `Открыл раздел.`, isStreaming: false }
+              : msg
+          )
+        )
+        router.push(navTarget)
+        setIsLoading(false)
         return
       }
 
