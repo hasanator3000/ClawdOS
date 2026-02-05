@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
-import { getTasksByWorkspace, type Task } from '@/lib/db/repositories/task.repository'
+import { getTasksByWorkspace } from '@/lib/db/repositories/task.repository'
 import { TaskList } from './TaskList'
 
 export default async function TasksPage() {
