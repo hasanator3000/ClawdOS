@@ -27,6 +27,8 @@ export async function sendTelegramMessage(
   telegramUserId: string | number,
   message: string
 ): Promise<boolean> {
+  console.log('[Telegram] sendTelegramMessage called', { telegramUserId, messageLength: message.length })
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN
 
   if (!botToken) {
@@ -34,6 +36,7 @@ export async function sendTelegramMessage(
     return false
   }
 
+  console.log('[Telegram] Bot token found, preparing request')
   const url = `${TELEGRAM_API_BASE}/bot${botToken}/sendMessage`
 
   const params: SendMessageParams = {
