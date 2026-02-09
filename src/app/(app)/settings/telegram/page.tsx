@@ -9,21 +9,34 @@ async function startLink(formData: FormData) {
   'use server'
 
   const telegramUserId = String(formData.get('telegram_user_id') || '').trim()
+  console.log('[TelegramLink] startLink called', { telegramUserId })
 
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
   if (!/^[0-9]{5,20}$/.test(telegramUserId)) {
+    console.error('[TelegramLink] Invalid telegram_user_id format:', telegramUserId)
     redirect('/settings/telegram?error=Invalid%20telegram%20user%20id')
   }
 
+  console.log('[TelegramLink] Creating auth challenge')
   const ch = await createAuthChallenge(session.userId, 'link')
-  await enqueueTelegram(telegramUserId, `LifeOS link code: ${ch.code} (valid 10 min)`)
+  console.log('[TelegramLink] Challenge created', { challengeId: ch.id, code: ch.code })
+
+  console.log('[TelegramLink] Enqueueing Telegram message')
+  try {
+    await enqueueTelegram(telegramUserId, `LifeOS link code: ${ch.code} (valid 10 min)`)
+    console.log('[TelegramLink] Message enqueued successfully')
+  } catch (error) {
+    console.error('[TelegramLink] Failed to enqueue message:', error)
+    throw error
+  }
 
   session.pendingChallengeId = ch.id
   ;(session as any).pendingTelegramUserId = telegramUserId
   await session.save()
 
+  console.log('[TelegramLink] Redirecting to verify page')
   redirect('/settings/telegram/verify')
 }
 
