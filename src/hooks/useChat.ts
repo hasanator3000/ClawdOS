@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { resolveSectionPath } from '@/lib/nav/resolve'
 
 // Prevent unbounded memory growth - keep only recent messages
 const MAX_MESSAGES = 100
@@ -32,54 +31,6 @@ interface UseChatOptions {
 export function useChat(options: UseChatOptions) {
   const router = useRouter()
 
-  // Deterministic resolver shared with the sidebar registry
-  const detectClientNav = (input: string): string | null => {
-    return resolveSectionPath(input)
-  }
-
-  const extractClientTaskTitle = (input: string): string | null => {
-    if (!input) return null
-    const s = input.trim()
-    if (!s) return null
-
-    try {
-      // RU patterns: "создай задачу X", "добавь таск X", "создай новую задачу X"
-      const ru = s.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[уиае]?|таск[аиу]?)\s*[:\-—]?\s*(.+)$/i)
-      if (ru && ru[4]) return ru[4].trim().replace(/^"|"$/g, '')
-
-      // EN patterns: "create task X", "add a task X", "create new task X"
-      const en = s.match(/^(create|add)\s+(a\s+)?(new\s+)?task\s*[:\-—]?\s*(.+)$/i)
-      if (en && en[4]) return en[4].trim().replace(/^"|"$/g, '')
-    } catch {
-      // Silently fail if regex matching fails
-    }
-
-    return null
-  }
-
-  // Detect workspace type switch commands like "открой личные задачи" or "shared tasks"
-  // Note: \b doesn't work with Cyrillic, so we use simple includes() checks
-  const detectWorkspaceSwitch = (input: string): 'personal' | 'shared' | null => {
-    if (!input) return null
-    const s = input.toLowerCase().trim()
-    if (!s) return null
-
-    // Must contain a task-related word
-    const hasTaskWord = /задач|таск|tasks?/i.test(s)
-    if (!hasTaskWord) return null
-
-    // Check for personal indicators
-    if (/личн|персональн|мои\s|my\s|personal/i.test(s)) {
-      return 'personal'
-    }
-
-    // Check for shared indicators
-    if (/общ|шаред|командн|shared|team/i.test(s)) {
-      return 'shared'
-    }
-
-    return null
-  }
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -125,137 +76,7 @@ export function useChat(options: UseChatOptions) {
       })
       setIsLoading(true)
 
-      // Client fast-path: do obvious UI actions immediately (no LLM round-trip).
-      // This makes "open tab" and "create task" feel instant.
-      // IMPORTANT: Check task creation FIRST - it's more specific than navigation.
-      // "создай задачу X" should create a task, not navigate to /tasks.
-      const quickTitle = extractClientTaskTitle(content)
-
-      if (quickTitle) {
-        if (!options.workspaceId) {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId
-                ? { ...msg, content: 'Не выбран workspace — сначала выбери workspace слева.', isStreaming: false }
-                : msg
-            )
-          )
-          setIsLoading(false)
-          return
-        }
-
-        try {
-          const res = await fetch('/api/actions/task', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: quickTitle }),
-          })
-
-          if (res.ok) {
-            const data = (await res.json()) as any
-            const task = data?.task
-            window.dispatchEvent(
-              new CustomEvent('lifeos:task-refresh', {
-                detail: { actions: [{ action: 'task.create', taskId: task?.id, task }] },
-              })
-            )
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: `Создал задачу: ${quickTitle}.`, isStreaming: false }
-                  : msg
-              )
-            )
-            // Client-side update via CustomEvent; no need for full router.refresh()
-          } else {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: 'Не смог создать задачу (ошибка API).', isStreaming: false }
-                  : msg
-              )
-            )
-          }
-        } catch {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId
-                ? { ...msg, content: 'Не смог создать задачу (network error).', isStreaming: false }
-                : msg
-            )
-          )
-        } finally {
-          setIsLoading(false)
-        }
-        return
-      }
-
-      // Workspace switch fast-path: "открой личные/общие задачи"
-      const workspaceType = detectWorkspaceSwitch(content)
-      if (workspaceType) {
-        try {
-          const res = await fetch('/api/workspaces/switch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: workspaceType }),
-          })
-
-          if (res.ok) {
-            const data = (await res.json()) as { workspace?: { name?: string } }
-            const label = workspaceType === 'personal' ? 'личные' : 'общие'
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? {
-                      ...msg,
-                      content: `Переключил на ${label} задачи (${data.workspace?.name ?? workspaceType}).`,
-                      isStreaming: false,
-                    }
-                  : msg
-              )
-            )
-            router.push('/tasks')
-            router.refresh()
-          } else {
-            const err = (await res.json().catch(() => ({}))) as { error?: string }
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: err.error ?? 'Не удалось переключить workspace.', isStreaming: false }
-                  : msg
-              )
-            )
-          }
-        } catch {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId
-                ? { ...msg, content: 'Ошибка сети при переключении workspace.', isStreaming: false }
-                : msg
-            )
-          )
-        } finally {
-          setIsLoading(false)
-        }
-        return
-      }
-
-      // Navigation fast-path (only if not a task creation or workspace switch command)
-      const navTarget = detectClientNav(content)
-      if (navTarget) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: `Открыл раздел.`, isStreaming: false }
-              : msg
-          )
-        )
-        router.push(navTarget)
-        setIsLoading(false)
-        return
-      }
-
-      // Create abort controller for this request
+      // All messages go to the server — command registry handles fast-paths there.
       abortControllerRef.current = new AbortController()
 
       try {
@@ -447,7 +268,6 @@ export function useChat(options: UseChatOptions) {
               // Handle navigation events from server
               if (evt?.type === 'navigation' && evt?.target) {
                 const target = String(evt.target)
-                console.log('Server navigation (deferred):', target)
                 pendingNavigation = target
                 continue
               }
@@ -465,8 +285,6 @@ export function useChat(options: UseChatOptions) {
 
               // Handle task refresh events
               if (evt?.type === 'task.refresh') {
-                console.log('Task refresh event:', evt.actions)
-
                 // Dispatch custom event for client lists (TaskList) to patch state instantly
                 window.dispatchEvent(
                   new CustomEvent('lifeos:task-refresh', {
@@ -476,6 +294,17 @@ export function useChat(options: UseChatOptions) {
 
                 // Also refresh server components (sidebar badges, today widgets, etc.)
                 // Debounced to avoid over-refreshing while streaming.
+                scheduleRefresh()
+                continue
+              }
+
+              // Handle workspace switch events
+              if (evt?.type === 'workspace.switch' && evt?.workspaceId) {
+                window.dispatchEvent(
+                  new CustomEvent('lifeos:workspace-switch', {
+                    detail: { workspaceId: String(evt.workspaceId) },
+                  })
+                )
                 scheduleRefresh()
                 continue
               }

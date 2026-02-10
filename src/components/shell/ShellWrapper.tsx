@@ -1,19 +1,13 @@
 import { Shell } from './Shell'
-import { getActiveWorkspace } from '@/lib/workspace'
 
 interface ShellWrapperProps {
   children: React.ReactNode
 }
 
 /**
- * Server component that fetches workspace data and passes to Shell.
+ * Server component wrapper for Shell.
+ * Workspace data is now provided by WorkspaceProvider in layout.tsx.
  */
 export async function ShellWrapper({ children }: ShellWrapperProps) {
-  const workspace = await getActiveWorkspace()
-
-  return (
-    <Shell workspaceName={workspace?.name} workspaceId={workspace?.id}>
-      {children}
-    </Shell>
-  )
+  return <Shell>{children}</Shell>
 }

@@ -11,15 +11,13 @@ import { SECTIONS } from '@/lib/nav/sections'
 
 interface ShellProps {
   children: React.ReactNode
-  workspaceName?: string
-  workspaceId?: string
 }
 
 /**
  * Shell component wraps the app with command palette and AI panel.
- * This is a client component that manages shell state.
+ * Workspace data is read from WorkspaceContext (no props drilling).
  */
-export function Shell({ children, workspaceName, workspaceId }: ShellProps) {
+export function Shell({ children }: ShellProps) {
   const commandPalette = useCommandPalette()
   const aiPanel = useAIPanel()
   const router = useRouter()
@@ -65,8 +63,6 @@ export function Shell({ children, workspaceName, workspaceId }: ShellProps) {
             width={aiPanel.width}
             onClose={aiPanel.close}
             onWidthChange={aiPanel.setWidth}
-            workspaceName={workspaceName}
-            workspaceId={workspaceId}
           />
         </div>
       )}

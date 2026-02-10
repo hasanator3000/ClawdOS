@@ -3,24 +3,19 @@
 import { useRef, useCallback, useEffect, useState, FormEvent, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useChat, type ChatMessage } from '@/hooks/useChat'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 
 interface AIPanelProps {
   isOpen: boolean
   width: number
   onClose: () => void
   onWidthChange: (width: number) => void
-  workspaceName?: string
-  workspaceId?: string
 }
 
-export function AIPanel({
-  isOpen,
-  width,
-  onClose,
-  onWidthChange,
-  workspaceName,
-  workspaceId,
-}: AIPanelProps) {
+export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps) {
+  const { workspace } = useWorkspace()
+  const workspaceName = workspace?.name
+  const workspaceId = workspace?.id
   const panelRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)

@@ -1,12 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { setActiveWorkspace } from '@/app/(app)/actions'
-import type { Workspace } from '@/types/workspace'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { SIDEBAR_SECTIONS } from '@/lib/nav/sections'
-// (logo) GlitchText removed; using static mark
 
 const PINS_STORAGE_KEY = 'lifeos.pinned-workspaces'
 
@@ -29,21 +27,10 @@ function setPinnedIds(ids: string[]): void {
   }
 }
 
-export default function SidebarClient({
-  username,
-  initialWorkspaces,
-  initialActiveWorkspaceId,
-}: {
-  username?: string
-  initialWorkspaces: Workspace[]
-  initialActiveWorkspaceId?: string | null
-}) {
+export default function SidebarClient({ username }: { username?: string }) {
   const pathname = usePathname()
-  const router = useRouter()
-  const [switching, setSwitching] = useState(false)
+  const { workspace: active, workspaces, switchWorkspace, isSwitching } = useWorkspace()
 
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces)
-  const [activeId, setActiveId] = useState<string | null>(initialActiveWorkspaceId ?? null)
   const [searchQuery, setSearchQuery] = useState('')
   const [pinnedIds, setPinnedIdsState] = useState<string[]>([])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -68,29 +55,6 @@ export default function SidebarClient({
     }
   }, [userMenuOpen])
 
-  // Poll workspaces in background (keeps UI fresh without server re-rendering layout).
-  useEffect(() => {
-    let alive = true
-    const tick = async () => {
-      try {
-        const res = await fetch('/api/workspaces', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = (await res.json()) as { workspaces: Workspace[] }
-        if (!alive) return
-        setWorkspaces(data.workspaces)
-      } catch {
-        // ignore
-      }
-    }
-
-    tick()
-    const id = window.setInterval(tick, 30_000)
-    return () => {
-      alive = false
-      window.clearInterval(id)
-    }
-  }, [])
-
   // Toggle pin for a workspace
   const togglePin = useCallback((workspaceId: string) => {
     setPinnedIdsState((prev) => {
@@ -106,13 +70,11 @@ export default function SidebarClient({
   const filteredWorkspaces = useMemo(() => {
     let filtered = workspaces
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter((ws) => ws.name.toLowerCase().includes(query))
     }
 
-    // Sort: pinned first, then alphabetically
     return [...filtered].sort((a, b) => {
       const aPinned = pinnedIds.includes(a.id)
       const bPinned = pinnedIds.includes(b.id)
@@ -122,42 +84,18 @@ export default function SidebarClient({
     })
   }, [workspaces, searchQuery, pinnedIds])
 
-  const active = useMemo(() => {
-    return workspaces.find((w) => w.id === activeId) ?? workspaces[0]
-  }, [workspaces, activeId])
-
-  async function chooseWorkspace(id: string) {
-    if (id === activeId || switching) return // already active or switching
-    const previousId = activeId
-    setActiveId(id) // optimistic
-    setSwitching(true)
-    try {
-      await setActiveWorkspace(id)
-      // Call router.refresh() outside startTransition to avoid Next.js bug
-      // where pending state gets stuck (https://github.com/vercel/next.js/issues/86055)
-      router.refresh()
-    } catch {
-      // revert best-effort
-      setActiveId(previousId)
-    } finally {
-      setSwitching(false)
-    }
-  }
-
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
-      router.push('/login')
+      window.location.href = '/login'
     } catch {
-      // Force redirect anyway
-      router.push('/login')
+      window.location.href = '/login'
     }
   }
 
   const linkClass = (href: string) =>
     `block rounded-md px-3 py-2 hover:bg-[var(--hover)] ${pathname === href ? 'bg-[var(--hover)] font-medium' : ''}`
 
-  // Get user initials for avatar
   const initials = username
     ? username
         .split(' ')
@@ -190,7 +128,6 @@ export default function SidebarClient({
         <div className="space-y-2">
           <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Workspace</div>
 
-          {/* Search input */}
           <input
             type="text"
             value={searchQuery}
@@ -212,8 +149,8 @@ export default function SidebarClient({
                 >
                   <button
                     type="button"
-                    onClick={() => chooseWorkspace(ws.id)}
-                    disabled={switching}
+                    onClick={() => switchWorkspace(ws.id)}
+                    disabled={isSwitching}
                     className={`flex-1 text-left px-3 py-2 text-sm ${isActive ? 'font-medium' : ''}`}
                   >
                     {isPinned && <span className="mr-1">📌</span>}
@@ -246,49 +183,19 @@ export default function SidebarClient({
             <Link key={s.id} className={linkClass(s.path)} href={s.path} prefetch>
               <span className="flex items-center gap-2">
                 {s.id === 'today' ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                     <polyline points="9 22 9 12 15 12 15 22" />
                   </svg>
                 ) : s.id === 'news' ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
                     <path d="M18 14h-8" />
                     <path d="M15 18h-5" />
                     <path d="M10 6h8v4h-8V6Z" />
                   </svg>
                 ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 11l3 3L22 4" />
                     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                   </svg>
@@ -307,103 +214,39 @@ export default function SidebarClient({
           onClick={() => setUserMenuOpen(!userMenuOpen)}
           className="w-full p-3 flex items-center gap-3 hover:bg-[var(--hover)] transition-colors"
         >
-          {/* Avatar */}
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
             {initials}
           </div>
-
-          {/* User info */}
           <div className="flex-1 text-left">
             <div className="text-sm font-medium truncate">{username || 'User'}</div>
             <div className="text-xs text-[var(--muted)]">Free plan</div>
           </div>
-
-          {/* Chevron */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`text-[var(--muted)] transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-[var(--muted)] transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}>
             <polyline points="18 15 12 9 6 15" />
           </svg>
         </button>
 
-        {/* Dropdown menu */}
         {userMenuOpen && (
           <div className="absolute bottom-full left-0 right-0 mb-1 mx-2 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden">
-            {/* Close button */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
               <span className="text-xs text-[var(--muted)] uppercase tracking-wide">Menu</span>
-              <button
-                type="button"
-                onClick={() => setUserMenuOpen(false)}
-                className="p-1 hover:bg-[var(--hover)] rounded transition-colors text-[var(--muted)] hover:text-[var(--fg)]"
-                aria-label="Close menu"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+              <button type="button" onClick={() => setUserMenuOpen(false)} className="p-1 hover:bg-[var(--hover)] rounded transition-colors text-[var(--muted)] hover:text-[var(--fg)]" aria-label="Close menu">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
-
-            <Link
-              href="/settings"
-              onClick={() => setUserMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--hover)] transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+            <Link href="/settings" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--hover)] transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
               Settings
             </Link>
-
             <div className="border-t border-[var(--border)]" />
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-[var(--hover)] transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+            <button type="button" onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-[var(--hover)] transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
