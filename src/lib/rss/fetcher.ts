@@ -92,8 +92,21 @@ export async function refreshStaleSources(
 
   const results: FetchResult[] = []
   for (const source of sources) {
-    const result = await fetchSource(client, source, workspaceId)
-    results.push(result)
+    // Savepoint so one failing source doesn't abort the entire transaction
+    await client.query('SAVEPOINT fetch_source')
+    try {
+      const result = await fetchSource(client, source, workspaceId)
+      await client.query('RELEASE SAVEPOINT fetch_source')
+      results.push(result)
+    } catch (err) {
+      await client.query('ROLLBACK TO SAVEPOINT fetch_source')
+      results.push({
+        sourceId: source.id,
+        sourceTitle: source.title,
+        newItems: 0,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
 
   return results
