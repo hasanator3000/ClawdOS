@@ -211,6 +211,11 @@ const handlers: CommandHandler[] = [
 export function resolveCommand(input: string, ctx: CommandContext): CommandResult | null {
   if (!input?.trim()) return null
 
+  // Long messages are conversational — skip fast-path, let LLM handle them.
+  // Short commands like "новости", "мои источники" still fast-path.
+  const wordCount = input.trim().split(/\s+/).length
+  if (wordCount > 6) return null
+
   let best: Match | null = null
 
   for (const handler of handlers) {
