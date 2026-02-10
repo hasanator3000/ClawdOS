@@ -7,7 +7,7 @@ import { NewsFeed } from './NewsFeed'
 import { NewsSourcesPanel } from './NewsSourcesPanel'
 import { NewsSearch } from './NewsSearch'
 import { NewsOnboarding } from './NewsOnboarding'
-import { refreshNews, loadMoreNews } from './actions'
+import { refreshNews, loadMoreNews, getSources, getTabs } from './actions'
 
 interface Props {
   initialNews: NewsItem[]
@@ -58,6 +58,11 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   useEffect(() => {
     const handleRefresh = () => {
       startTransition(async () => {
+        // Re-fetch sources/tabs (may have been added via chat)
+        const [srcResult, tabResult] = await Promise.all([getSources(), getTabs()])
+        if (srcResult.sources) setSources(srcResult.sources)
+        if (tabResult.tabs) setTabs(tabResult.tabs)
+
         await refreshNews()
         const result = await loadMoreNews('', '', activeTabId ?? undefined, search || undefined)
         if (result.items) {

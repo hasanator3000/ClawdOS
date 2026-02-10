@@ -19,8 +19,6 @@ import {
 import {
   createNewsTab,
 } from '@/lib/db/repositories/news-tab.repository'
-import { validateFeedUrl } from '@/lib/rss/validator'
-import { fetchSource } from '@/lib/rss/fetcher'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,32 +131,36 @@ async function executeActions(
       }
     }
 
-    // News actions
+    // News actions — create source record fast (no inline validation/fetch)
+    // The refresh cycle will validate and fetch items asynchronously.
     if (k === 'news.source.add') {
       const url = String(action?.url || '').trim()
       if (!url || !workspaceId) continue
 
+      // Quick URL format check only (no network)
       try {
-        const validation = await validateFeedUrl(url)
-        if (!validation.valid) {
-          results.push({ action: 'news.source.add', error: validation.error || 'Invalid feed' })
+        const parsed = new URL(url)
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          results.push({ action: 'news.source.add', error: 'URL must use http or https' })
           continue
         }
+      } catch {
+        results.push({ action: 'news.source.add', error: 'Invalid URL format' })
+        continue
+      }
 
-        const source = await withUser(userId, async (client) => {
-          const src = await createNewsSource(client, {
-            workspaceId,
-            url,
-            title: validation.feedTitle || undefined,
-            feedType: validation.feedType || undefined,
-          })
-          await fetchSource(client, src, workspaceId)
-          return src
-        })
-
+      try {
+        const source = await withUser(userId, async (client) =>
+          createNewsSource(client, { workspaceId, url, title: action?.title as string | undefined })
+        )
         results.push({ action: 'news.source.add', source })
       } catch (err) {
-        results.push({ action: 'news.source.add', error: String(err) })
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('news_source_ws_url_uniq')) {
+          results.push({ action: 'news.source.add', error: 'Source already added' })
+        } else {
+          results.push({ action: 'news.source.add', error: msg })
+        }
       }
     }
 
