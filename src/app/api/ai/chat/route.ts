@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
 import { withUser } from '@/lib/db'
-import { resolveSectionPath, sectionLabel } from '@/lib/nav/resolve'
+import { resolveCommand, type CommandResult } from '@/lib/commands/chat-handlers'
+import { getWorkspacesForUser } from '@/lib/workspace'
+import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/constants'
 import {
   createTask as createTaskRepo,
   completeTask as completeTaskRepo,
@@ -13,50 +16,12 @@ export const dynamic = 'force-dynamic'
 
 const MAX_MESSAGE_LENGTH = 10_000
 
-function detectNavigationTarget(message: string): string | null {
-  const resolved = resolveSectionPath(message)
-  if (resolved && ALLOWED_PATHS.has(resolved)) return resolved
-  return null
-}
-
-type TasksFilter = 'active' | 'completed' | 'all'
-
-function detectTasksFilterTarget(message: string): TasksFilter | null {
-  const m = message.toLowerCase().trim()
-
-  // ru
-  if (/(выполнен|сделан|completed)/.test(m)) return 'completed'
-  if (/(активн|текущ|active)/.test(m)) return 'active'
-  if (/(все|all)/.test(m) && /(таск|задач|tasks?)/.test(m)) return 'all'
-
-  // if message is just "all" we ignore (too ambiguous)
-  return null
-}
-
-function extractTaskTitle(message: string): string | null {
-  const m = message.trim()
-
-  // RU patterns: "создай задачу X", "добавь таск X", "создай новую задачу X"
-  // Character classes: [уиае] = one of у, и, а, е (NOT с вертикальными чертами!)
-  const ru = m.match(/^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[уиае]?|таск[аиу]?)\s*[:\-—]?\s*(.+)$/i)
-  if (ru) return ru[4].trim().replace(/^"|"$/g, '')
-
-  // EN patterns: "create task X", "add a task X", "create new task X"
-  const en = m.match(/^(create|add)\s+(a\s+)?(new\s+)?task\s*[:\-—]?\s*(.+)$/i)
-  if (en) return en[4].trim().replace(/^"|"$/g, '')
-
-  return null
-}
-
-// navLabel removed; use sectionLabel() from nav registry
-
-// Whitelisted navigation paths
+// Whitelisted navigation paths (kept here for executeActions validation)
 const ALLOWED_PATHS = new Set([
   '/today',
   '/news',
   '/tasks',
   '/settings',
-  // Settings sub-pages
   '/settings/telegram',
   '/settings/password',
 ])
@@ -324,13 +289,216 @@ function filterLifeosBlocks(text: string): string {
   return text.replace(/<lifeos>[\s\S]*?<\/lifeos>/g, '')
 }
 
+// ---------------------------------------------------------------------------
+// Build fast-path SSE response from a CommandResult
+// ---------------------------------------------------------------------------
+
+function buildFastPathResponse(
+  result: CommandResult,
+  encoder: TextEncoder,
+  userId: string,
+  workspaceId: string | null
+): Response | Promise<Response> {
+  switch (result.type) {
+    case 'task.create':
+      return buildTaskCreateResponse(result.title, encoder, userId, workspaceId)
+
+    case 'navigation':
+      return buildNavigationResponse(result.target, result.label, encoder)
+
+    case 'tasks.filter':
+      return buildTasksFilterResponse(result.filter, encoder)
+
+    case 'workspace.switch':
+      return buildWorkspaceSwitchResponse(result.targetType, encoder)
+  }
+}
+
+function sseResponse(body: ReadableStream): Response {
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    },
+  })
+}
+
+async function buildTaskCreateResponse(
+  title: string,
+  encoder: TextEncoder,
+  userId: string,
+  workspaceId: string | null
+): Promise<Response> {
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'No workspace selected' }, { status: 400 })
+  }
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const task = await withUser(userId, async (client) => {
+          return createTaskRepo(client, { title, workspaceId })
+        })
+
+        const content = `Создал задачу: ${task.title}.`
+        const evt = {
+          id: 'lifeos-task-create',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { role: 'assistant', content } }],
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: 'task.refresh', actions: [{ action: 'task.create', taskId: task.id, task }] })}\n\n`
+          )
+        )
+
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.close()
+      } catch {
+        const evt = {
+          id: 'lifeos-task-create-error',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { role: 'assistant', content: 'Не смог создать задачу.' } }],
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.close()
+      }
+    },
+  })
+
+  return sseResponse(stream)
+}
+
+function buildNavigationResponse(
+  target: string,
+  label: string,
+  encoder: TextEncoder
+): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      const content = `Открыл раздел: ${label}.`
+      const evt = {
+        id: 'lifeos-nav',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content } }],
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target })}\n\n`)
+      )
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+
+  return sseResponse(stream)
+}
+
+function buildTasksFilterResponse(
+  filter: string,
+  encoder: TextEncoder
+): Response {
+  const filterLabels: Record<string, string> = {
+    active: 'активные',
+    completed: 'выполненные',
+    all: 'все',
+  }
+
+  const stream = new ReadableStream({
+    start(controller) {
+      const content = `Показываю ${filterLabels[filter] ?? filter} задачи.`
+      const evt = {
+        id: 'lifeos-filter',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content } }],
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'tasks.filter', value: filter })}\n\n`)
+      )
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+
+  return sseResponse(stream)
+}
+
+async function buildWorkspaceSwitchResponse(
+  targetType: 'personal' | 'shared',
+  encoder: TextEncoder
+): Promise<Response> {
+  const workspaces = await getWorkspacesForUser()
+  const target = workspaces.find((w) => w.type === targetType)
+
+  if (!target) {
+    const stream = new ReadableStream({
+      start(controller) {
+        const label = targetType === 'personal' ? 'личный' : 'общий'
+        const content = `Не нашёл ${label} workspace.`
+        const evt = {
+          id: 'lifeos-ws-switch-error',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { role: 'assistant', content } }],
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.close()
+      },
+    })
+    return sseResponse(stream)
+  }
+
+  // Set workspace cookie
+  const cookieStore = await cookies()
+  cookieStore.set(ACTIVE_WORKSPACE_COOKIE, target.id, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+
+  const label = targetType === 'personal' ? 'личные' : 'общие'
+
+  const stream = new ReadableStream({
+    start(controller) {
+      const content = `Переключил на ${label} задачи (${target.name}).`
+      const evt = {
+        id: 'lifeos-ws-switch',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content } }],
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+
+      // Notify client about workspace switch
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ type: 'workspace.switch', workspaceId: target.id })}\n\n`
+        )
+      )
+
+      // Navigate to /tasks
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/tasks' })}\n\n`)
+      )
+
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+
+  return sseResponse(stream)
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/ai/chat
-// Safe server-side proxy to Clawdbot Gateway OpenAI-compatible endpoint.
-// Security properties:
-// - never exposes gateway token to the browser
-// - requires LifeOS session
-// - streams SSE back to the client
-// - passes a *whitelisted* Telegram target (if linked) so the agent can message TG without asking for ids
+// ---------------------------------------------------------------------------
+
 export async function POST(request: Request) {
   const session = await getSession()
   if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -359,96 +527,18 @@ export async function POST(request: Request) {
   const currentPage = body?.context?.currentPage ? String(body.context.currentPage) : '/'
   const stream = body?.stream !== false
 
+  const encoder = new TextEncoder()
+
+  // --- Command Registry: single source of truth for fast-path resolution ---
+  const cmd = resolveCommand(message, { workspaceId, workspaceName, currentPage })
+
+  if (cmd) {
+    return buildFastPathResponse(cmd, encoder, session.userId, workspaceId)
+  }
+
+  // --- No fast-path match: forward to Clawdbot LLM ---
+
   const telegramUserId = await getTelegramUserIdForSessionUser(session.userId)
-
-  // Fast-path: deterministic navigation for common "open tab" commands.
-  // This makes navigation reliable even if the model fails to emit <lifeos> blocks.
-  const navTarget = detectNavigationTarget(message)
-
-  // Fast-path: quick task creation (deterministic) for "create/add task ..." commands.
-  const quickTitle = extractTaskTitle(message)
-
-  if (quickTitle) {
-    if (!workspaceId) return NextResponse.json({ error: 'No workspace selected' }, { status: 400 })
-
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          const task = await withUser(session.userId!, async (client) => {
-            return createTaskRepo(client, { title: quickTitle, workspaceId })
-          })
-
-          const content = `Создал задачу: ${task.title}.`
-          const evt = {
-            id: 'lifeos-task-create',
-            object: 'chat.completion.chunk',
-            choices: [{ index: 0, delta: { role: 'assistant', content } }],
-          }
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
-
-          // Update task lists immediately
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ type: 'task.refresh', actions: [{ action: 'task.create', taskId: task.id, task }] })}\n\n`
-            )
-          )
-
-          // Do not force navigation to /tasks on create. The UI can decide where to show it.
-
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          controller.close()
-        } catch (err) {
-          const evt = {
-            id: 'lifeos-task-create-error',
-            object: 'chat.completion.chunk',
-            choices: [{ index: 0, delta: { role: 'assistant', content: 'Не смог создать задачу.' } }],
-          }
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          controller.close()
-        }
-      },
-    })
-
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-      },
-    })
-  }
-
-  if (navTarget) {
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      start(controller) {
-        const content = `Открыл раздел: ${sectionLabel(navTarget)}.`
-        const evt = {
-          id: 'lifeos-nav',
-          object: 'chat.completion.chunk',
-          choices: [{ index: 0, delta: { role: 'assistant', content } }],
-        }
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: navTarget })}\n\n`)
-        )
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-        controller.close()
-      },
-    })
-
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-      },
-    })
-  }
 
   const system = [
     'You are Clawdbot running inside LifeOS WebUI.',

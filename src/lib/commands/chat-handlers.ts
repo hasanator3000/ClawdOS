@@ -125,8 +125,11 @@ const taskFilterHandler: CommandHandler = {
     const filter = detectTasksFilter(input)
     if (!filter) return null
 
-    // Use intent scorer: if message is a complex query, let LLM handle it
+    // Intent scorer: if action intent dominates, this is a task mutation, not a filter
+    // e.g. "пометь задачу тест как выполненную" → action, not "show completed"
     const intent = scoreIntent(input)
+    if (intent.action > 40) return null
+
     const confidence = intent.query > 60 ? 60 : 80
 
     return { result: { type: 'tasks.filter', filter }, confidence }
