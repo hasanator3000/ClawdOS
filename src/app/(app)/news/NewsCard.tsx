@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import type { NewsItem } from '@/types/news'
 
 function formatRelativeTime(dateStr: string): string {
@@ -21,7 +21,7 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-export function NewsCard({ item }: { item: NewsItem }) {
+export const NewsCard = memo(function NewsCard({ item }: { item: NewsItem }) {
   const [imgError, setImgError] = useState(false)
   const showImage = item.imageUrl && !imgError
 
@@ -63,4 +63,4 @@ export function NewsCard({ item }: { item: NewsItem }) {
   }
 
   return content
-}
+})

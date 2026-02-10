@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useCallback } from 'react'
+import { useState, useEffect, useTransition, useCallback, useRef } from 'react'
 import type { NewsItem, NewsSource, NewsTab } from '@/types/news'
 import { NewsTabs } from './NewsTabs'
 import { NewsFeed } from './NewsFeed'
@@ -25,6 +25,8 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   const [sourceTabMap, setSourceTabMap] = useState(initialSourceTabMap)
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const [showSources, setShowSources] = useState(false)
   const [hasMore, setHasMore] = useState(initialNews.length >= PAGE_SIZE)
   const [isPending, startTransition] = useTransition()
@@ -35,24 +37,23 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   useEffect(() => { setTabs(initialTabs) }, [initialTabs])
   useEffect(() => { setSourceTabMap(initialSourceTabMap) }, [initialSourceTabMap])
 
-  // Background refresh on mount (stale-while-revalidate)
+  // Debounce search input (300ms)
   useEffect(() => {
-    if (sources.length === 0) return
-    startTransition(async () => {
-      await refreshNews()
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
+  }, [search])
 
-  // Re-fetch when tab or search changes
+  // Re-fetch when tab or debounced search changes
   useEffect(() => {
     startTransition(async () => {
-      const result = await loadMoreNews('', '', activeTabId ?? undefined, search || undefined)
+      const result = await loadMoreNews('', '', activeTabId ?? undefined, debouncedSearch || undefined)
       if (result.items) {
         setNews(result.items)
         setHasMore(result.items.length >= PAGE_SIZE)
       }
     })
-  }, [activeTabId, search])
+  }, [activeTabId, debouncedSearch])
 
   // Listen for chat SSE events
   useEffect(() => {
@@ -74,11 +75,12 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
 
     const handleTabSwitch = (e: Event) => {
       const detail = (e as CustomEvent).detail
-      if (detail?.tabName) {
+      if (detail?.tabId !== undefined) {
+        // Prefer resolved tabId (server already matched the name)
+        setActiveTabId(detail.tabId)
+      } else if (detail?.tabName) {
         const tab = tabs.find((t) => t.name.toLowerCase() === detail.tabName.toLowerCase())
         setActiveTabId(tab?.id ?? null)
-      } else if (detail?.tabId !== undefined) {
-        setActiveTabId(detail.tabId)
       }
     }
 
@@ -129,9 +131,9 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100dvh-3rem)]">
+      {/* Header — pinned */}
+      <div className="flex items-center justify-between mb-4 shrink-0">
         <h1 className="text-2xl font-bold">News</h1>
         <div className="flex items-center gap-3">
           <NewsSearch value={search} onChange={setSearch} />
@@ -145,18 +147,22 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — pinned */}
       {tabs.length > 0 && (
-        <NewsTabs tabs={tabs} activeTabId={activeTabId} onTabChange={setActiveTabId} />
+        <div className="mb-4 shrink-0">
+          <NewsTabs tabs={tabs} activeTabId={activeTabId} onTabChange={setActiveTabId} />
+        </div>
       )}
 
-      {/* Feed */}
-      <NewsFeed
-        items={news}
-        onLoadMore={handleLoadMore}
-        hasMore={hasMore}
-        isLoading={isPending}
-      />
+      {/* Feed — scrolls independently */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <NewsFeed
+          items={news}
+          onLoadMore={handleLoadMore}
+          hasMore={hasMore}
+          isLoading={isPending}
+        />
+      </div>
 
       {/* Sources panel */}
       {showSources && (

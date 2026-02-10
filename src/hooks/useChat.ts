@@ -319,10 +319,13 @@ export function useChat(options: UseChatOptions) {
               }
 
               // Handle news tab switch events
-              if (evt?.type === 'news.tab.switch' && evt?.tabName) {
+              if (evt?.type === 'news.tab.switch') {
                 window.dispatchEvent(
                   new CustomEvent('lifeos:news-tab-switch', {
-                    detail: { tabName: String(evt.tabName) },
+                    detail: {
+                      tabId: evt.tabId ?? undefined,
+                      tabName: evt.tabName ? String(evt.tabName) : undefined,
+                    },
                   })
                 )
                 continue
