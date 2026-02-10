@@ -113,7 +113,7 @@ export async function upsertNewsItem(
        published_at as "publishedAt",
        source_id as "sourceId",
        guid`,
-    [workspaceId, sourceId, title, url || null, summary || null, publishedAt || null, guid, topic || 'other']
+    [workspaceId, sourceId, title || 'Untitled', url || '', summary || '', publishedAt || null, guid, topic || 'other']
   )
 
   return (result.rows[0] as NewsItem) || null
