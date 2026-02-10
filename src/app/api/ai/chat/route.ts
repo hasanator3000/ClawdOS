@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
 import { withUser } from '@/lib/db'
-import { resolveCommand, type CommandResult } from '@/lib/commands/chat-handlers'
+import type { CommandResult } from '@/lib/commands/chat-handlers'
+import { routeCommand } from '@/lib/intents/router'
 import { getWorkspacesForUser } from '@/lib/workspace'
 import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/constants'
 import {
@@ -529,14 +530,17 @@ export async function POST(request: Request) {
 
   const encoder = new TextEncoder()
 
-  // --- Command Registry: single source of truth for fast-path resolution ---
-  const cmd = resolveCommand(message, { workspaceId, workspaceName, currentPage })
+  // --- 3-Layer Intent Router ---
+  // Layer 0: regex fast-path (<1ms)
+  // Layer 1: embedding semantic match (~6ms)
+  // Layer 2: LLM fallback (below)
+  const routed = await routeCommand(message, { workspaceId, workspaceName, currentPage })
 
-  if (cmd) {
-    return buildFastPathResponse(cmd, encoder, session.userId, workspaceId)
+  if (routed) {
+    return buildFastPathResponse(routed.result, encoder, session.userId, workspaceId)
   }
 
-  // --- No fast-path match: forward to Clawdbot LLM ---
+  // --- Layer 2: No fast-path match → forward to Clawdbot LLM ---
 
   const telegramUserId = await getTelegramUserIdForSessionUser(session.userId)
 
