@@ -36,6 +36,13 @@ export function Shell({ children }: ShellProps) {
     }
   }, [router, pathname])
 
+  // Open AI panel when any component dispatches lifeos:ai-prefill
+  useEffect(() => {
+    const handlePrefill = () => aiPanel.open()
+    window.addEventListener('lifeos:ai-prefill', handlePrefill)
+    return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
+  }, [aiPanel.open])
+
   return (
     <>
       {/* Main content area */}

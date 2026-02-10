@@ -1,5 +1,5 @@
 registry_version: 1
-last_updated: 2026-02-03
+last_updated: 2026-02-10
 schemas:
   core:
     version: 1
@@ -9,11 +9,10 @@ schemas:
     functions: [app_current_user_id]
     triggers: []
   content:
-    version: 1
+    version: 2
     status: stable
     depends_on: [core]
-    # NOTE: currently implemented as public.* tables, scheduled to migrate to content.*
-    tables: [digest, news_item]
+    tables: [digest, news_item, news_source, news_tab, news_source_tab]
   finance:
     version: 1
     status: development

@@ -45,6 +45,19 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
     }
   }, [isOpen])
 
+  // Listen for prefill events from other components (e.g. NewsOnboarding)
+  useEffect(() => {
+    const handlePrefill = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (typeof detail?.message === 'string') {
+        setInput(detail.message)
+        setTimeout(() => inputRef.current?.focus(), 50)
+      }
+    }
+    window.addEventListener('lifeos:ai-prefill', handlePrefill)
+    return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
+  }, [])
+
   // Handle resize
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()

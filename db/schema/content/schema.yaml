@@ -1,7 +1,7 @@
 schema: content
-description: "Контент — дайджесты и новости"
-version: 1
-last_updated: 2026-02-03
+description: "Контент — дайджесты, новости, RSS-источники"
+version: 2
+last_updated: 2026-02-10
 
 # NOTE: Пока таблицы в public.* (локальный этап). Позже переедем в content.*.
 
@@ -28,14 +28,14 @@ tables:
         - { name: digest_rw, for: ALL, using: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())", with_check: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())" }
 
   news_item:
-    schema: public
+    schema: content
     description: "Новости (лента)"
     columns:
       id: { type: uuid, primary_key: true, default: gen_random_uuid() }
       workspace_id:
         type: uuid
         nullable: false
-        references: public.workspace(id)
+        references: core.workspace(id)
         on_delete: CASCADE
       topic:
         type: text
@@ -45,10 +45,88 @@ tables:
       url: { type: text, nullable: false }
       summary: { type: text, nullable: false }
       published_at: { type: timestamptz, nullable: true }
+      source_id: { type: uuid, nullable: true, references: "content.news_source(id)", on_delete: SET NULL }
+      guid: { type: text, nullable: true }
       created_at: { type: timestamptz, nullable: false, default: now() }
     indexes:
       - { name: news_item_ws_topic_created_idx, columns: [workspace_id, topic, created_at], unique: false }
+      - { name: news_item_source_idx, columns: [source_id], unique: false }
+      - { name: news_item_source_guid_uniq, columns: [source_id, guid], unique: true, where: "guid is not null" }
     rls:
       enabled: true
       policies:
-        - { name: news_item_rw, for: ALL, using: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())", with_check: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())" }
+        - { name: news_item_select, for: SELECT, using: "core.is_workspace_member(workspace_id)" }
+        - { name: news_item_insert, for: INSERT, with_check: "core.is_workspace_member(workspace_id)" }
+        - { name: news_item_update, for: UPDATE, using: "core.is_workspace_member(workspace_id)" }
+        - { name: news_item_delete, for: DELETE, using: "core.is_workspace_member(workspace_id)" }
+
+  news_source:
+    schema: content
+    description: "RSS/Atom/JSON Feed источники"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      workspace_id:
+        type: uuid
+        nullable: false
+        references: core.workspace(id)
+        on_delete: CASCADE
+      url: { type: text, nullable: false }
+      title: { type: text, nullable: true }
+      feed_type: { type: text, nullable: false, default: "'rss'" }
+      status: { type: text, nullable: false, default: "'active'" }
+      error_message: { type: text, nullable: true }
+      error_count: { type: integer, nullable: false, default: 0 }
+      last_fetched_at: { type: timestamptz, nullable: true }
+      created_at: { type: timestamptz, nullable: false, default: now() }
+      created_by: { type: uuid, nullable: true, references: "core.user(id)", on_delete: SET NULL }
+    constraints:
+      - { name: news_source_ws_url_uniq, type: unique, columns: [workspace_id, url] }
+    indexes:
+      - { name: news_source_ws_idx, columns: [workspace_id], unique: false }
+      - { name: news_source_ws_status_idx, columns: [workspace_id, status], unique: false }
+    rls:
+      enabled: true
+      policies:
+        - { name: news_source_select, for: SELECT, using: "core.is_workspace_member(workspace_id)" }
+        - { name: news_source_insert, for: INSERT, with_check: "core.is_workspace_member(workspace_id)" }
+        - { name: news_source_update, for: UPDATE, using: "core.is_workspace_member(workspace_id)" }
+        - { name: news_source_delete, for: DELETE, using: "core.is_workspace_member(workspace_id)" }
+
+  news_tab:
+    schema: content
+    description: "Тематические вкладки для группировки источников"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      workspace_id:
+        type: uuid
+        nullable: false
+        references: core.workspace(id)
+        on_delete: CASCADE
+      name: { type: text, nullable: false }
+      sort_order: { type: integer, nullable: false, default: 0 }
+      created_at: { type: timestamptz, nullable: false, default: now() }
+      created_by: { type: uuid, nullable: true, references: "core.user(id)", on_delete: SET NULL }
+    indexes:
+      - { name: news_tab_ws_idx, columns: [workspace_id], unique: false }
+    rls:
+      enabled: true
+      policies:
+        - { name: news_tab_select, for: SELECT, using: "core.is_workspace_member(workspace_id)" }
+        - { name: news_tab_insert, for: INSERT, with_check: "core.is_workspace_member(workspace_id)" }
+        - { name: news_tab_update, for: UPDATE, using: "core.is_workspace_member(workspace_id)" }
+        - { name: news_tab_delete, for: DELETE, using: "core.is_workspace_member(workspace_id)" }
+
+  news_source_tab:
+    schema: content
+    description: "M:M связь источников и вкладок"
+    columns:
+      source_id: { type: uuid, nullable: false, references: "content.news_source(id)", on_delete: CASCADE }
+      tab_id: { type: uuid, nullable: false, references: "content.news_tab(id)", on_delete: CASCADE }
+    constraints:
+      - { type: primary_key, columns: [source_id, tab_id] }
+    rls:
+      enabled: true
+      policies:
+        - { name: news_source_tab_select, for: SELECT, using: "EXISTS (SELECT 1 FROM content.news_source s WHERE s.id = source_id AND core.is_workspace_member(s.workspace_id))" }
+        - { name: news_source_tab_insert, for: INSERT, with_check: "EXISTS (SELECT 1 FROM content.news_source s WHERE s.id = source_id AND core.is_workspace_member(s.workspace_id))" }
+        - { name: news_source_tab_delete, for: DELETE, using: "EXISTS (SELECT 1 FROM content.news_source s WHERE s.id = source_id AND core.is_workspace_member(s.workspace_id))" }
