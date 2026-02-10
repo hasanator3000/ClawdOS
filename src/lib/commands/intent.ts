@@ -32,6 +32,8 @@ const ACTION_VERBS = [
   'mark',
   'close',
   'reopen',
+  'подпишись',
+  'subscribe',
 ]
 const QUERY_WORDS = [
   'покажи',

@@ -1,61 +1,60 @@
-import Link from 'next/link'
-import { withUser } from '@/lib/db'
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
+import { withUser } from '@/lib/db'
 import { findNewsByWorkspace } from '@/lib/db/repositories/news.repository'
+import { findSourcesByWorkspace } from '@/lib/db/repositories/news-source.repository'
+import { findTabsByWorkspace } from '@/lib/db/repositories/news-tab.repository'
+import { NewsShell } from './NewsShell'
+import type { PoolClient } from 'pg'
+
+async function getSourceTabMap(
+  client: PoolClient,
+  workspaceId: string
+): Promise<Record<string, string[]>> {
+  const result = await client.query(
+    `select st.source_id as "sourceId", st.tab_id as "tabId"
+     from content.news_source_tab st
+     join content.news_source s on s.id = st.source_id
+     where s.workspace_id = $1`,
+    [workspaceId]
+  )
+  const map: Record<string, string[]> = {}
+  for (const row of result.rows) {
+    if (!map[row.sourceId]) map[row.sourceId] = []
+    map[row.sourceId].push(row.tabId)
+  }
+  return map
+}
 
 export default async function NewsPage() {
   const session = await getSession()
+  if (!session.userId) redirect('/login')
+
   const workspace = await getActiveWorkspace()
-
-  if (!session.userId) return null
-
   if (!workspace) {
     return (
-      <div>
-        <h1 className="text-xl font-semibold">News</h1>
-        <p className="text-sm text-[var(--muted)] mt-2">No workspaces found for this user.</p>
+      <div className="p-6">
+        <div className="text-center text-[var(--muted)]">Select a workspace to view news</div>
       </div>
     )
   }
 
-  const news = await withUser(session.userId, (client) =>
-    findNewsByWorkspace(client, workspace.id)
-  )
+  const [news, sources, tabs, sourceTabMap] = await withUser(session.userId, async (client) => {
+    return Promise.all([
+      findNewsByWorkspace(client, workspace.id, { limit: 30 }),
+      findSourcesByWorkspace(client, workspace.id),
+      findTabsByWorkspace(client, workspace.id),
+      getSourceTabMap(client, workspace.id),
+    ])
+  })
 
   return (
-    <div>
-      <div className="flex items-baseline justify-between pr-12">
-        <h1 className="text-xl font-semibold">News</h1>
-        <div className="text-sm text-[var(--muted)]">Workspace: {workspace.name}</div>
-      </div>
-
-      <ul className="mt-6 space-y-3">
-        {news.map((n) => (
-          <li key={n.id} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-            <div className="flex items-baseline justify-between gap-4">
-              <div className="font-medium">
-                {n.url ? (
-                  <Link className="underline" href={n.url} target="_blank">
-                    {n.title}
-                  </Link>
-                ) : (
-                  n.title
-                )}
-              </div>
-              <div className="text-xs text-[var(--muted)]">
-                {n.publishedAt ? new Date(n.publishedAt).toLocaleString() : ''}
-              </div>
-            </div>
-            <div className="mt-1 text-xs text-[var(--muted)]">
-              {n.topic}
-              {n.summary ? <span className="ml-2 text-[var(--muted-2)]">— {n.summary}</span> : null}
-            </div>
-          </li>
-        ))}
-
-        {news.length === 0 ? <li className="text-sm text-[var(--muted)]">No news items yet.</li> : null}
-      </ul>
-    </div>
+    <NewsShell
+      initialNews={news}
+      initialSources={sources}
+      initialTabs={tabs}
+      initialSourceTabMap={sourceTabMap}
+    />
   )
 }

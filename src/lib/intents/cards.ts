@@ -181,4 +181,43 @@ export const INTENT_CARDS: IntentCard[] = [
     ],
     resolve: () => ({ type: 'navigation', target: '/today', label: 'Dashboard' }),
   },
+
+  // --- News: Source management ---
+  {
+    id: 'news.sources',
+    examples: [
+      'добавь источник новостей', 'добавить rss', 'добавь ленту',
+      'настрой источники', 'управление источниками', 'мои подписки',
+      'add news source', 'add rss feed', 'manage sources', 'my feeds',
+      'настройки новостей', 'news settings', 'подписаться на',
+      'subscribe to', 'add feed', 'мои источники', 'list sources',
+      'покажи источники', 'список фидов', 'открой источники',
+    ],
+    resolve: () => ({ type: 'news.sources.open' as const }),
+  },
+
+  // --- News: Search ---
+  {
+    id: 'news.search',
+    examples: [
+      'найди в новостях', 'поиск по новостям', 'найди новость про',
+      'search news', 'find news about', 'search in news',
+      'есть новости про', 'any news about', 'новости про React',
+      'что нового в AI', 'найди про стартапы', 'news about crypto',
+    ],
+    resolve: () => null, // Needs LLM for query extraction
+  },
+
+  // --- News: Tab switch ---
+  {
+    id: 'news.tab.switch',
+    examples: [
+      'покажи новости про AI', 'переключи на вкладку технологии',
+      'show AI news', 'switch to tech tab', 'новости по теме финансы',
+      'вкладка наука', 'tab science', 'покажи все новости',
+      'show all news', 'домашняя вкладка новостей', 'home news tab',
+      'открой вкладку крипто', 'open crypto tab',
+    ],
+    resolve: () => null, // Needs LLM to resolve tab name -> tab ID
+  },
 ]

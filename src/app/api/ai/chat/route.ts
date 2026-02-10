@@ -12,6 +12,15 @@ import {
   reopenTask as reopenTaskRepo,
   deleteTask as deleteTaskRepo,
 } from '@/lib/db/repositories/task.repository'
+import {
+  createNewsSource,
+  deleteNewsSource,
+} from '@/lib/db/repositories/news-source.repository'
+import {
+  createNewsTab,
+} from '@/lib/db/repositories/news-tab.repository'
+import { validateFeedUrl } from '@/lib/rss/validator'
+import { fetchSource } from '@/lib/rss/fetcher'
 
 export const dynamic = 'force-dynamic'
 
@@ -123,6 +132,61 @@ async function executeActions(
         results.push({ action: 'task.delete', error: String(err) })
       }
     }
+
+    // News actions
+    if (k === 'news.source.add') {
+      const url = String(action?.url || '').trim()
+      if (!url || !workspaceId) continue
+
+      try {
+        const validation = await validateFeedUrl(url)
+        if (!validation.valid) {
+          results.push({ action: 'news.source.add', error: validation.error || 'Invalid feed' })
+          continue
+        }
+
+        const source = await withUser(userId, async (client) => {
+          const src = await createNewsSource(client, {
+            workspaceId,
+            url,
+            title: validation.feedTitle || undefined,
+            feedType: validation.feedType || undefined,
+          })
+          await fetchSource(client, src, workspaceId)
+          return src
+        })
+
+        results.push({ action: 'news.source.add', source })
+      } catch (err) {
+        results.push({ action: 'news.source.add', error: String(err) })
+      }
+    }
+
+    if (k === 'news.source.remove') {
+      const sourceId = String(action?.sourceId || '')
+      if (!sourceId) continue
+
+      try {
+        const ok = await withUser(userId, async (client) => deleteNewsSource(client, sourceId))
+        results.push({ action: 'news.source.remove', sourceId, success: Boolean(ok) })
+      } catch (err) {
+        results.push({ action: 'news.source.remove', error: String(err) })
+      }
+    }
+
+    if (k === 'news.tab.create') {
+      const name = String(action?.name || '').trim()
+      if (!name || !workspaceId) continue
+
+      try {
+        const tab = await withUser(userId, async (client) =>
+          createNewsTab(client, { workspaceId, name })
+        )
+        results.push({ action: 'news.tab.create', tab })
+      } catch (err) {
+        results.push({ action: 'news.tab.create', error: String(err) })
+      }
+    }
   }
 
   return { navigation: navigationTarget, results }
@@ -213,6 +277,16 @@ async function processStreamWithActions(
                           actions: taskActions,
                         }
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(refreshEvent)}\n\n`))
+                      }
+
+                      // Notify client about news mutations for UI refresh
+                      const newsActions = result.results.filter((r) =>
+                        r.action?.startsWith('news.')
+                      )
+                      if (newsActions.length > 0) {
+                        controller.enqueue(
+                          encoder.encode(`data: ${JSON.stringify({ type: 'news.refresh', actions: newsActions })}\n\n`)
+                        )
                       }
                     }
                   }
@@ -312,6 +386,12 @@ function buildFastPathResponse(
 
     case 'workspace.switch':
       return buildWorkspaceSwitchResponse(result.targetType, encoder)
+
+    case 'news.sources.open':
+      return buildNewsSourcesOpenResponse(encoder)
+
+    case 'news.search':
+      return buildNewsSearchResponse(result.query, encoder)
   }
 }
 
@@ -496,6 +576,49 @@ async function buildWorkspaceSwitchResponse(
   return sseResponse(stream)
 }
 
+function buildNewsSourcesOpenResponse(encoder: TextEncoder): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      const content = 'Открываю панель источников новостей.'
+      const evt = {
+        id: 'lifeos-news-sources',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content } }],
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'news.sources.open' })}\n\n`)
+      )
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/news' })}\n\n`)
+      )
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+  return sseResponse(stream)
+}
+
+function buildNewsSearchResponse(query: string, encoder: TextEncoder): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      const content = `Ищу новости: "${query}".`
+      const evt = {
+        id: 'lifeos-news-search',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content } }],
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/news' })}\n\n`)
+      )
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+  return sseResponse(stream)
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/ai/chat
 // ---------------------------------------------------------------------------
@@ -562,6 +685,9 @@ export async function POST(request: Request) {
     '3. Complete task: {"k":"task.complete","taskId":"uuid-here"}',
     '4. Reopen task: {"k":"task.reopen","taskId":"uuid-here"}',
     '5. Delete task: {"k":"task.delete","taskId":"uuid-here"}',
+    '6. Add news source: {"k":"news.source.add","url":"https://example.com/feed.xml"}',
+    '7. Remove news source: {"k":"news.source.remove","sourceId":"uuid-here"}',
+    '8. Create news tab: {"k":"news.tab.create","name":"Technology"}',
     '',
     'Examples:',
     '- User: "открой таски" → You: "Opening tasks page <lifeos>{\\"actions\\":[{\\"k\\":\\"navigate\\",\\"to\\":\\"/tasks\\"}]}</lifeos>"',

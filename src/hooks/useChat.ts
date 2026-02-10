@@ -298,6 +298,26 @@ export function useChat(options: UseChatOptions) {
                 continue
               }
 
+              // Handle news refresh events
+              if (evt?.type === 'news.refresh') {
+                window.dispatchEvent(
+                  new CustomEvent('lifeos:news-refresh', {
+                    detail: { actions: evt.actions },
+                  })
+                )
+                scheduleRefresh()
+                continue
+              }
+
+              // Handle news sources panel open
+              if (evt?.type === 'news.sources.open') {
+                window.dispatchEvent(new CustomEvent('lifeos:news-sources-open'))
+                if (options.currentPage !== '/news') {
+                  pendingNavigation = '/news'
+                }
+                continue
+              }
+
               // Handle workspace switch events
               if (evt?.type === 'workspace.switch' && evt?.workspaceId) {
                 window.dispatchEvent(

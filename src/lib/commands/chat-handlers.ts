@@ -23,6 +23,8 @@ export type CommandResult =
   | { type: 'task.create'; title: string }
   | { type: 'workspace.switch'; targetType: 'personal' | 'shared' }
   | { type: 'tasks.filter'; filter: TasksFilter }
+  | { type: 'news.sources.open' }
+  | { type: 'news.search'; query: string }
 
 export interface CommandContext {
   workspaceId: string | null
@@ -143,6 +145,26 @@ const taskFilterHandler: CommandHandler = {
   },
 }
 
+// --- News sources panel ---
+
+const newsSourcesHandler: CommandHandler = {
+  name: 'news.sources.open',
+  match(input) {
+    const m = input.toLowerCase().trim()
+    if (
+      /(источник|source|rss|фид|feeds?|подписк)/.test(m) &&
+      /(открой|покажи|настро|manage|open|show|мои|my|list|список)/.test(m)
+    ) {
+      return { result: { type: 'news.sources.open' }, confidence: 85 }
+    }
+    // Direct: "настройки новостей", "news settings"
+    if (/настройк\S*\s+новост|news\s+settings/i.test(m)) {
+      return { result: { type: 'news.sources.open' }, confidence: 85 }
+    }
+    return null
+  },
+}
+
 // --- Navigation ---
 
 const navigationHandler: CommandHandler = {
@@ -177,6 +199,7 @@ const CONFIDENCE_THRESHOLD = 70
 const handlers: CommandHandler[] = [
   taskCreateHandler, // "создай задачу X" → 95
   workspaceSwitchHandler, // "открой личные задачи" → 90
+  newsSourcesHandler, // "мои источники" → 85
   taskFilterHandler, // "покажи выполненные" → 80
   navigationHandler, // "задачи" → 85
 ]
