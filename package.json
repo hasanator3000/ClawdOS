@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.72.1",
     "@xenova/transformers": "^2.17.2",
     "argon2": "^0.44.0",
+    "fast-xml-parser": "^5.3.5",
     "iron-session": "^8.0.4",
     "next": "16.1.6",
     "pg": "^8.18.0",
