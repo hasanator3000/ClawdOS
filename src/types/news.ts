@@ -4,6 +4,7 @@ export type NewsItem = {
   url: string | null
   topic: string | null
   summary: string | null
+  imageUrl: string | null
   publishedAt: string | null
   sourceId: string | null
   guid: string | null

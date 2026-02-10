@@ -58,6 +58,7 @@ export async function fetchSource(
         title: item.title,
         url: item.url,
         summary: item.summary,
+        imageUrl: item.imageUrl,
         publishedAt: item.publishedAt?.toISOString() ?? null,
         guid: item.guid,
       })

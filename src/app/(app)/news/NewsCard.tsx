@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { NewsItem } from '@/types/news'
 
 function formatRelativeTime(dateStr: string): string {
@@ -21,33 +22,45 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export function NewsCard({ item }: { item: NewsItem }) {
-  return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:bg-[var(--hover)]">
-      <div className="flex items-baseline justify-between gap-4">
-        <div className="font-medium min-w-0">
-          {item.url ? (
-            <a
-              className="hover:underline"
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {item.title}
-            </a>
-          ) : (
-            item.title
-          )}
+  const [imgError, setImgError] = useState(false)
+  const showImage = item.imageUrl && !imgError
+
+  const content = (
+    <div className="flex flex-col h-full rounded-lg border border-[var(--border)] bg-[var(--card)] overflow-hidden transition-colors hover:bg-[var(--hover)]">
+      {showImage && (
+        <div className="aspect-video overflow-hidden bg-[var(--hover)]">
+          <img
+            src={item.imageUrl!}
+            alt=""
+            loading="lazy"
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover"
+          />
         </div>
-        <div className="text-xs text-[var(--muted)] whitespace-nowrap shrink-0">
-          {item.publishedAt ? formatRelativeTime(item.publishedAt) : ''}
+      )}
+      <div className="flex flex-col flex-1 p-3">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
+          {item.sourceName && <span>{item.sourceName}</span>}
+          {item.sourceName && item.publishedAt && <span>·</span>}
+          {item.publishedAt && <span>{formatRelativeTime(item.publishedAt)}</span>}
         </div>
+        <h3 className="mt-1 font-medium text-sm leading-snug line-clamp-2">
+          {item.title}
+        </h3>
+        {item.summary && (
+          <p className="mt-1 text-xs text-[var(--muted-2)] line-clamp-2 flex-1">{item.summary}</p>
+        )}
       </div>
-      {item.sourceName && (
-        <div className="mt-1 text-xs text-[var(--muted)]">{item.sourceName}</div>
-      )}
-      {item.summary && (
-        <p className="mt-1.5 text-sm text-[var(--muted-2)] line-clamp-3">{item.summary}</p>
-      )}
     </div>
   )
+
+  if (item.url) {
+    return (
+      <a href={item.url} target="_blank" rel="noopener noreferrer" className="block h-full">
+        {content}
+      </a>
+    )
+  }
+
+  return content
 }

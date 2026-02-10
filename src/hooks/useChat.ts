@@ -318,6 +318,16 @@ export function useChat(options: UseChatOptions) {
                 continue
               }
 
+              // Handle news tab switch events
+              if (evt?.type === 'news.tab.switch' && evt?.tabName) {
+                window.dispatchEvent(
+                  new CustomEvent('lifeos:news-tab-switch', {
+                    detail: { tabName: String(evt.tabName) },
+                  })
+                )
+                continue
+              }
+
               // Handle workspace switch events
               if (evt?.type === 'workspace.switch' && evt?.workspaceId) {
                 window.dispatchEvent(

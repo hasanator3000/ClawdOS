@@ -25,6 +25,7 @@ export type CommandResult =
   | { type: 'tasks.filter'; filter: TasksFilter }
   | { type: 'news.sources.open' }
   | { type: 'news.search'; query: string }
+  | { type: 'news.tab.switch'; tabName: string }
 
 export interface CommandContext {
   workspaceId: string | null
@@ -145,6 +146,41 @@ const taskFilterHandler: CommandHandler = {
   },
 }
 
+// --- News tab switch ---
+
+function extractNewsTabName(input: string): string | null {
+  const m = input.trim()
+
+  // RU: "новости AI", "новости экономики", "новости про крипту"
+  const ru = m.match(/^(?:открой\s+|покажи\s+)?новост\S*\s+(?:про\s+|по\s+|о\s+)?(.+)$/i)
+  if (ru?.[1]) return ru[1].trim()
+
+  // RU: "вкладка AI", "вкладка экономика"
+  const ruTab = m.match(/^(?:открой\s+|покажи\s+)?вкладк\S*\s+(.+)$/i)
+  if (ruTab?.[1]) return ruTab[1].trim()
+
+  // EN: "news AI", "news economics", "show crypto news"
+  const en = m.match(/^(?:open\s+|show\s+)?news\s+(.+)$/i)
+  if (en?.[1]) return en[1].trim()
+
+  // EN: reversed "AI news", "crypto news"
+  const enRev = m.match(/^(?:open\s+|show\s+)?(.+?)\s+news$/i)
+  if (enRev?.[1]) return enRev[1].trim()
+
+  return null
+}
+
+const newsTabSwitchHandler: CommandHandler = {
+  name: 'news.tab.switch',
+  match(input) {
+    const tabName = extractNewsTabName(input)
+    if (!tabName) return null
+    // Avoid matching things like "news settings", "news sources"
+    if (/^(settings?|sources?|источник|настройк)/i.test(tabName)) return null
+    return { result: { type: 'news.tab.switch', tabName }, confidence: 90 }
+  },
+}
+
 // --- News sources panel ---
 
 const newsSourcesHandler: CommandHandler = {
@@ -199,6 +235,7 @@ const CONFIDENCE_THRESHOLD = 70
 const handlers: CommandHandler[] = [
   taskCreateHandler, // "создай задачу X" → 95
   workspaceSwitchHandler, // "открой личные задачи" → 90
+  newsTabSwitchHandler, // "новости AI" → 90
   newsSourcesHandler, // "мои источники" → 85
   taskFilterHandler, // "покажи выполненные" → 80
   navigationHandler, // "задачи" → 85

@@ -73,6 +73,7 @@ export async function findNewsByWorkspace(
        ni.url,
        ni.topic,
        ni.summary,
+       ni.image_url as "imageUrl",
        ni.published_at as "publishedAt",
        ni.source_id as "sourceId",
        ni.guid,
@@ -96,24 +97,26 @@ export async function upsertNewsItem(
     title: string
     url?: string | null
     summary?: string | null
+    imageUrl?: string | null
     publishedAt?: string | null
     guid: string
     topic?: string | null
   }
 ): Promise<NewsItem | null> {
-  const { workspaceId, sourceId, title, url, summary, publishedAt, guid, topic } = params
+  const { workspaceId, sourceId, title, url, summary, imageUrl, publishedAt, guid, topic } = params
 
   const result = await client.query(
     `insert into content.news_item
-       (workspace_id, source_id, title, url, summary, published_at, guid, topic, created_by)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, core.current_user_id())
+       (workspace_id, source_id, title, url, summary, image_url, published_at, guid, topic, created_by)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, core.current_user_id())
      on conflict (source_id, guid) where guid is not null do nothing
      returning
        id, title, url, topic, summary,
+       image_url as "imageUrl",
        published_at as "publishedAt",
        source_id as "sourceId",
        guid`,
-    [workspaceId, sourceId, title || 'Untitled', url || '', summary || '', publishedAt || null, guid, topic || 'other']
+    [workspaceId, sourceId, title || 'Untitled', url || '', summary || '', imageUrl || null, publishedAt || null, guid, topic || 'other']
   )
 
   return (result.rows[0] as NewsItem) || null

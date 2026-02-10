@@ -4,6 +4,7 @@ export interface FeedItem {
   title: string
   url: string | null
   summary: string | null
+  imageUrl: string | null
   publishedAt: Date | null
   guid: string
 }
@@ -91,6 +92,7 @@ function rssItemToFeedItem(item: any, feedUrl: string): FeedItem {
     title,
     url: link,
     summary: truncate(description, 500),
+    imageUrl: extractImage(item),
     publishedAt: pubDate,
     guid,
   }
@@ -141,6 +143,7 @@ function atomEntryToFeedItem(entry: any, feedUrl: string): FeedItem {
     title,
     url: link,
     summary: truncate(summary, 500),
+    imageUrl: extractImage(entry),
     publishedAt: published,
     guid,
   }
@@ -164,10 +167,20 @@ function parseJsonFeed(raw: string, feedUrl: string): ParsedFeed {
       const published = parseDate(item.date_published || item.date_modified)
       const guid = item.id || url || hashGuid(title, feedUrl)
 
+      // JSON Feed image: item.image, item.banner_image, or first image attachment
+      let imageUrl: string | null = item.image || item.banner_image || null
+      if (!imageUrl && Array.isArray(item.attachments)) {
+        const imgAttach = item.attachments.find(
+          (a: any) => typeof a.mime_type === 'string' && a.mime_type.startsWith('image/')
+        )
+        if (imgAttach?.url) imageUrl = imgAttach.url
+      }
+
       return {
         title,
         url,
         summary: truncate(summary, 500),
+        imageUrl,
         publishedAt: published,
         guid,
       }
@@ -178,6 +191,64 @@ function parseJsonFeed(raw: string, feedUrl: string): ParsedFeed {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Extract the best image URL from an RSS/Atom item.
+ * Checks media:content, media:thumbnail, enclosure, and common patterns.
+ */
+function extractImage(item: any): string | null {
+  if (!item || typeof item !== 'object') return null
+
+  // media:content (can be object or array)
+  const mediaContent = item['media:content'] || item['media:group']?.['media:content']
+  if (mediaContent) {
+    const entries = ensureArray(mediaContent)
+    for (const mc of entries) {
+      const url = mc?.['@_url']
+      const medium = mc?.['@_medium']
+      const type = mc?.['@_type'] || ''
+      if (url && (medium === 'image' || type.startsWith('image/') || /\.(jpe?g|png|webp|gif)/i.test(url))) {
+        return url
+      }
+    }
+    // If only one media:content with a URL, assume it's the image
+    if (entries.length === 1 && entries[0]?.['@_url']) {
+      return entries[0]['@_url']
+    }
+  }
+
+  // media:thumbnail
+  const mediaThumbnail = item['media:thumbnail']
+  if (mediaThumbnail) {
+    const entries = ensureArray(mediaThumbnail)
+    if (entries[0]?.['@_url']) return entries[0]['@_url']
+  }
+
+  // enclosure (RSS)
+  const enclosure = item.enclosure
+  if (enclosure) {
+    const entries = ensureArray(enclosure)
+    for (const enc of entries) {
+      const type = enc?.['@_type'] || ''
+      if (type.startsWith('image/') && enc?.['@_url']) {
+        return enc['@_url']
+      }
+    }
+  }
+
+  // Atom: link[rel=enclosure] with image type
+  const links = ensureArray(item.link || [])
+  for (const l of links) {
+    if (typeof l === 'object' && l?.['@_rel'] === 'enclosure') {
+      const type = l?.['@_type'] || ''
+      if (type.startsWith('image/') && l?.['@_href']) {
+        return l['@_href']
+      }
+    }
+  }
+
+  return null
+}
 
 function str(val: unknown): string | null {
   if (val == null) return null

@@ -394,6 +394,9 @@ function buildFastPathResponse(
 
     case 'news.search':
       return buildNewsSearchResponse(result.query, encoder)
+
+    case 'news.tab.switch':
+      return buildNewsTabSwitchResponse(result.tabName, encoder)
   }
 }
 
@@ -613,6 +616,29 @@ function buildNewsSearchResponse(query: string, encoder: TextEncoder): Response 
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/news' })}\n\n`)
+      )
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+  return sseResponse(stream)
+}
+
+function buildNewsTabSwitchResponse(tabName: string, encoder: TextEncoder): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      const content = `Переключаю на вкладку: ${tabName}.`
+      const evt = {
+        id: 'lifeos-news-tab-switch',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content } }],
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/news' })}\n\n`)
+      )
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'news.tab.switch', tabName })}\n\n`)
       )
       controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       controller.close()

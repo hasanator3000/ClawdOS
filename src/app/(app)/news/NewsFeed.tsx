@@ -45,10 +45,12 @@ export function NewsFeed({ items, onLoadMore, hasMore, isLoading }: Props) {
   }
 
   return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <NewsCard key={item.id} item={item} />
-      ))}
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map((item) => (
+          <NewsCard key={item.id} item={item} />
+        ))}
+      </div>
       {hasMore && <div ref={sentinelRef} className="h-4" />}
       {isLoading && (
         <div className="text-center py-4 text-[var(--muted)] text-sm">Loading...</div>
