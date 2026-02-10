@@ -62,15 +62,17 @@ const ALLOWED_PATHS = new Set([
 function extractTaskTitle(message: string): string | null {
   const m = message.trim()
 
-  // RU: "создай задачу X", "добавь таск X", "создай новую задачу X"
+  // RU: "создай задачу X", "добавь таск X", "создай новую задачу X", "добавь общий таск X"
+  // Allow qualifiers (new/personal/shared) in any order, multiple times
   const ru = m.match(
-    /^(создай|добавь)\s+(нов[уюый][юе]?\s+)?(задач[уиае]?|таск[аиу]?)\s*[:\-—]?\s*(.+)$/i
+    /^(создай|добавь)\s+(?:нов[уюый][юе]?\s+|личн\S*\s+|общ\S*\s+)*(задач[уиае]?|таск[аиу]?)\s*[:\-—]?\s*(.+)$/i
   )
-  if (ru?.[4]) return ru[4].trim().replace(/^"|"$/g, '')
+  if (ru?.[3]) return ru[3].trim().replace(/^"|"$/g, '')
 
-  // EN: "create task X", "add a task X", "create new task X"
-  const en = m.match(/^(create|add)\s+(a\s+)?(new\s+)?task\s*[:\-—]?\s*(.+)$/i)
-  if (en?.[4]) return en[4].trim().replace(/^"|"$/g, '')
+  // EN: "create task X", "add a task X", "create new task X", "add shared task X"
+  // Allow qualifiers (new/a/shared/personal/my) in any order, multiple times
+  const en = m.match(/^(create|add)\s+(?:a\s+|new\s+|shared\s+|personal\s+|my\s+)*task\s*[:\-—]?\s*(.+)$/i)
+  if (en?.[2]) return en[2].trim().replace(/^"|"$/g, '')
 
   return null
 }
@@ -101,6 +103,11 @@ function detectWorkspaceType(input: string): 'personal' | 'shared' | null {
 const workspaceSwitchHandler: CommandHandler = {
   name: 'workspace.switch',
   match(input) {
+    // If this is clearly an action (создай, добавь, etc.), skip workspace switch
+    // e.g. "добавь общий таск 123" should be task.create, not workspace.switch
+    const intent = scoreIntent(input)
+    if (intent.action > 50) return null
+
     const targetType = detectWorkspaceType(input)
     if (!targetType) return null
     return { result: { type: 'workspace.switch', targetType }, confidence: 90 }
