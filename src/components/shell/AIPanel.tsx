@@ -99,7 +99,16 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
   if (!isOpen) return null
 
   return (
-    <>
+    <div
+      ref={panelRef}
+      className="flex h-full overflow-hidden"
+      style={{
+        background: 'rgba(6,6,10,0.5)',
+        backdropFilter: 'blur(30px)',
+        WebkitBackdropFilter: 'blur(30px)',
+        borderLeft: '1px solid var(--border)',
+      }}
+    >
       {/* Resize handle — gradient glow on hover/drag */}
       <div
         className="w-1.5 cursor-col-resize group relative flex-shrink-0"
@@ -125,18 +134,8 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
         />
       </div>
 
-      {/* Panel */}
-      <div
-        ref={panelRef}
-        className="flex flex-col overflow-hidden"
-        style={{
-          width,
-          background: 'rgba(6,6,10,0.5)',
-          backdropFilter: 'blur(30px)',
-          WebkitBackdropFilter: 'blur(30px)',
-          borderLeft: '1px solid var(--border)',
-        }}
-      >
+      {/* Panel content */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header — bot orb + context */}
         <div
           className="flex items-center gap-3 px-4 py-3"
@@ -338,7 +337,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
           </div>
         </form>
       </div>
-    </>
+    </div>
   )
 }
 

@@ -150,7 +150,7 @@ export default function SidebarClient({ username }: { username?: string }) {
 
   return (
     <nav
-      className="flex flex-col items-center gap-1 border-r border-[var(--border)] overflow-hidden h-screen"
+      className="flex flex-col gap-1 border-r border-[var(--border)] overflow-hidden h-screen"
       style={{
         background: 'rgba(6,6,10,0.7)',
         backdropFilter: 'blur(20px)',
@@ -158,48 +158,51 @@ export default function SidebarClient({ username }: { username?: string }) {
       }}
     >
       {/* Brand + toggle */}
-      <div className="flex items-center gap-2.5 w-full px-3 mb-7 min-h-8">
-        <span
-          className="text-lg font-bold shrink-0"
-          style={{
-            fontFamily: 'var(--font-space-mono, monospace)',
-            color: 'var(--neon)',
-            letterSpacing: '-1px',
-            textShadow: '0 0 20px var(--neon-glow)',
-          }}
-        >
-          c
-        </span>
-        <span
-          className={`font-bold whitespace-nowrap overflow-hidden transition-all duration-300 ${
-            exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
-          }`}
-          style={{
-            fontFamily: 'var(--font-space-mono, monospace)',
-            fontSize: '15px',
-            letterSpacing: '2px',
-            marginLeft: exp ? '-4px' : 0,
-          }}
-        >
-          lawd
-        </span>
+      <div className={`flex items-center w-full mb-7 min-h-8 ${exp ? 'px-3 gap-2' : 'justify-center'}`}>
         <button
           type="button"
           onClick={toggleRail}
-          className="w-7 h-7 border border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[rgba(255,255,255,0.06)] transition-all ml-auto shrink-0"
-          style={{ background: 'var(--card)' }}
-          title="Toggle sidebar"
+          className="shrink-0 flex items-center bg-transparent border-none p-0 cursor-pointer"
+          title={exp ? 'Collapse sidebar' : 'Expand sidebar'}
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className={`w-3.5 h-3.5 transition-transform duration-300 ${exp ? 'rotate-180' : ''}`}
+          <span
+            className="text-lg font-bold"
+            style={{
+              fontFamily: 'var(--font-space-mono, monospace)',
+              color: 'var(--neon)',
+              letterSpacing: '-1px',
+              textShadow: '0 0 20px var(--neon-glow)',
+            }}
           >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+            c
+          </span>
+          <span
+            className={`font-bold whitespace-nowrap overflow-hidden transition-all duration-300 ${
+              exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
+            }`}
+            style={{
+              fontFamily: 'var(--font-space-mono, monospace)',
+              fontSize: '15px',
+              letterSpacing: '2px',
+              marginLeft: exp ? '-4px' : 0,
+            }}
+          >
+            lawd
+          </span>
         </button>
+        {exp && (
+          <button
+            type="button"
+            onClick={toggleRail}
+            className="w-6 h-6 border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[rgba(255,255,255,0.06)] transition-all ml-auto shrink-0"
+            style={{ background: 'var(--card)' }}
+            title="Collapse sidebar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 rotate-180">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Section label */}
@@ -325,7 +328,7 @@ export default function SidebarClient({ username }: { username?: string }) {
 
       {/* User footer */}
       <div ref={userMenuRef} className="relative w-full border-t border-[var(--border)] pt-3 mt-2">
-        <div className="flex items-center w-full px-3.5">
+        <div className={`flex items-center w-full ${exp ? 'px-3.5' : 'justify-center'}`}>
           {/* Avatar with spinning ring */}
           <button
             type="button"

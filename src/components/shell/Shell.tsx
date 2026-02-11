@@ -2,6 +2,7 @@
 
 import { CommandPalette } from './CommandPalette'
 import { AIPanel } from './AIPanel'
+import { AIPanelToggle } from './AIPanelToggle'
 import { useCommandPalette } from '@/hooks/useCommandPalette'
 import { useAIPanel } from '@/hooks/useAIPanel'
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -28,9 +29,19 @@ export function Shell({ children }: ShellProps) {
   const [railExpanded, setRailExpanded] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setRailExpanded(localStorage.getItem(RAIL_STORAGE_KEY) === 'true')
+    if (typeof window === 'undefined') return
+
+    // Hydrate initial value
+    setRailExpanded(localStorage.getItem(RAIL_STORAGE_KEY) === 'true')
+
+    // Listen for changes from SidebarClient (which dispatches StorageEvent)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === RAIL_STORAGE_KEY) {
+        setRailExpanded(e.newValue === 'true')
+      }
     }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   const toggleRail = useCallback(() => {
@@ -92,6 +103,19 @@ export function Shell({ children }: ShellProps) {
           />
         )}
       </div>
+
+      {/* Chat toggle button — fixed top-right */}
+      {aiPanel.isHydrated && (
+        <div
+          className="fixed top-4 z-40"
+          style={{
+            right: aiPanel.isOpen ? `${aiPanel.width + 12}px` : '16px',
+            transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <AIPanelToggle isOpen={aiPanel.isOpen} onToggle={aiPanel.toggle} />
+        </div>
+      )}
 
       {/* Command Palette (modal) */}
       <CommandPalette isOpen={commandPalette.isOpen} onClose={commandPalette.close} />
