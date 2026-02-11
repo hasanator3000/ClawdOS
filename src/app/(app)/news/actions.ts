@@ -267,99 +267,130 @@ export async function getTabs() {
 }
 
 // ---------------------------------------------------------------------------
-// Quick setup — deterministic topic-based feed configuration
+// Quick setup — LLM-powered topic-based feed configuration
 // ---------------------------------------------------------------------------
 
-const TOPIC_CATALOG: Record<string, { label: string; sources: Array<{ url: string; title: string }> }> = {
-  ai: {
-    label: 'AI',
-    sources: [
-      { url: 'https://openai.com/blog/rss.xml', title: 'OpenAI Blog' },
-      { url: 'https://www.technologyreview.com/topic/artificial-intelligence/feed', title: 'MIT Tech Review AI' },
-      { url: 'https://www.deeplearning.ai/the-batch/feed/', title: 'The Batch' },
-      { url: 'https://huggingface.co/blog/feed.xml', title: 'Hugging Face Blog' },
-      { url: 'https://magazine.sebastianraschka.com/feed', title: 'Sebastian Raschka' },
-    ],
-  },
-  crypto: {
-    label: 'Crypto',
-    sources: [
-      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', title: 'CoinDesk' },
-      { url: 'https://cointelegraph.com/rss', title: 'Cointelegraph' },
-      { url: 'https://www.theblock.co/rss.xml', title: 'The Block' },
-      { url: 'https://decrypt.co/feed', title: 'Decrypt' },
-      { url: 'https://bitcoinmagazine.com/feed', title: 'Bitcoin Magazine' },
-    ],
-  },
-  tech: {
-    label: 'Tech',
-    sources: [
-      { url: 'https://news.ycombinator.com/rss', title: 'Hacker News' },
-      { url: 'https://techcrunch.com/feed/', title: 'TechCrunch' },
-      { url: 'https://www.theverge.com/rss/index.xml', title: 'The Verge' },
-      { url: 'https://feeds.arstechnica.com/arstechnica/index', title: 'Ars Technica' },
-      { url: 'https://www.wired.com/feed/rss', title: 'Wired' },
-    ],
-  },
-  russian: {
-    label: 'Russian',
-    sources: [
-      { url: 'https://www.kommersant.ru/RSS/news.xml', title: 'Коммерсантъ' },
-      { url: 'https://rssexport.rbc.ru/rbcnews/news/30/full.rss', title: 'РБК' },
-      { url: 'https://www.vedomosti.ru/rss/news', title: 'Ведомости' },
-      { url: 'https://meduza.io/rss/all', title: 'Медуза' },
-      { url: 'https://tass.ru/rss/v2.xml', title: 'ТАСС' },
-      { url: 'https://lenta.ru/rss', title: 'Лента.ру' },
-    ],
-  },
-  economy: {
-    label: 'Economy',
-    sources: [
-      { url: 'https://feeds.bloomberg.com/markets/news.rss', title: 'Bloomberg' },
-      { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml', title: 'WSJ Markets' },
-      { url: 'https://www.investopedia.com/feedbuilder/feed/getfeed?feedName=rss_headline', title: 'Investopedia' },
-    ],
-  },
+const SETUP_SYSTEM_PROMPT = `You are an RSS feed configuration assistant.
+Given user's topic preferences, return a JSON object with tabs and RSS sources.
+
+CRITICAL: Return ONLY valid JSON. No markdown, no explanation, no code fences, no text before or after.
+
+Format:
+{"tabs":[{"name":"Short Tab Name","sources":[{"url":"https://full-rss-url/feed","title":"Source Name"}]}]}
+
+Rules:
+- Create 1 tab per distinct topic the user mentioned
+- Add 3-6 real, working RSS/Atom/JSON feed URLs per tab
+- Tab names: short, 1-2 words, English
+- Only use URLs you are confident are real RSS feeds (ending in /rss, /feed, .xml, etc.)
+- Never invent fake URLs
+
+Known working RSS feeds (prefer these when relevant):
+AI/ML: https://openai.com/blog/rss.xml, https://www.technologyreview.com/topic/artificial-intelligence/feed, https://www.deeplearning.ai/the-batch/feed/, https://huggingface.co/blog/feed.xml, https://magazine.sebastianraschka.com/feed
+Tech: https://news.ycombinator.com/rss, https://techcrunch.com/feed/, https://www.theverge.com/rss/index.xml, https://feeds.arstechnica.com/arstechnica/index, https://www.wired.com/feed/rss
+Crypto: https://www.coindesk.com/arc/outboundfeeds/rss/, https://cointelegraph.com/rss, https://www.theblock.co/rss.xml, https://decrypt.co/feed, https://bitcoinmagazine.com/feed
+Russian: https://www.kommersant.ru/RSS/news.xml, https://rssexport.rbc.ru/rbcnews/news/30/full.rss, https://www.vedomosti.ru/rss/news, https://meduza.io/rss/all, https://tass.ru/rss/v2.xml, https://lenta.ru/rss
+Economy: https://feeds.bloomberg.com/markets/news.rss, https://feeds.a.dj.com/rss/RSSMarketsMain.xml, https://www.investopedia.com/feedbuilder/feed/getfeed?feedName=rss_headline
+Science: https://rss.sciencedaily.com/all.xml, https://www.nature.com/nature.rss, https://www.newscientist.com/feed/home
+Health: https://rss.medicalnewstoday.com/newsfeeds.xml, https://tools.cdc.gov/api/v2/resources/media/132608.rss
+Environment: https://grist.org/feed/, https://e360.yale.edu/feed.xml
+Gaming: https://kotaku.com/rss, https://www.ign.com/articles.rss, https://www.gamespot.com/feeds/mashup/
+Space: https://www.nasa.gov/rss/dyn/breaking_news.rss, https://spacenews.com/feed/, https://www.space.com/feeds/all
+Design: https://feeds.feedburner.com/SmashingMagazine, https://alistapart.com/main/feed/
+Startups: https://feeds.feedburner.com/venturebeat/SZYF, https://www.producthunt.com/feed
+
+You can also suggest feeds beyond this catalog based on your knowledge.`
+
+interface SetupConfig {
+  tabs: Array<{
+    name: string
+    sources: Array<{ url: string; title: string }>
+  }>
 }
 
-export function getTopicCatalog() {
-  return Object.entries(TOPIC_CATALOG).map(([key, val]) => ({
-    key,
-    label: val.label,
-    sourceCount: val.sources.length,
-  }))
-}
-
-export async function setupNewsTopics(topicKeys: string[]) {
+export async function setupNewsTopics(userTopics: string) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
 
   const workspace = await getActiveWorkspace()
   if (!workspace) return { error: 'No workspace selected' }
 
-  const topics = topicKeys
-    .map((k) => ({ key: k, ...TOPIC_CATALOG[k] }))
-    .filter((t) => t.sources)
+  const input = userTopics.trim()
+  if (!input) return { error: 'Please describe what topics you want' }
 
-  if (topics.length === 0) return { error: 'No valid topics selected' }
+  // 1. Ask Clawdbot for RSS config
+  const gatewayUrl = process.env.CLAWDBOT_URL || 'http://127.0.0.1:18789'
+  const gatewayToken = process.env.CLAWDBOT_TOKEN
+  if (!gatewayToken) return { error: 'AI service not configured' }
 
+  let config: SetupConfig
+  try {
+    const upstream = await fetch(`${gatewayUrl.replace(/\/$/, '')}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${gatewayToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'clawdbot',
+        stream: false,
+        messages: [
+          { role: 'system', content: SETUP_SYSTEM_PROMPT },
+          { role: 'user', content: input },
+        ],
+      }),
+      signal: AbortSignal.timeout(30_000),
+    })
+
+    if (!upstream.ok) {
+      return { error: 'AI service unavailable' }
+    }
+
+    const json = await upstream.json()
+    const raw = json.choices?.[0]?.message?.content?.trim() || ''
+
+    // Strip markdown code fences if present
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    config = JSON.parse(cleaned) as SetupConfig
+  } catch (err) {
+    console.error('[setupNewsTopics] LLM error:', err)
+    return { error: 'Failed to generate feed configuration' }
+  }
+
+  // 2. Validate structure
+  if (!Array.isArray(config?.tabs) || config.tabs.length === 0) {
+    return { error: 'AI returned invalid configuration' }
+  }
+
+  // 3. Create tabs + sources in DB
   try {
     await withUser(session.userId, async (client) => {
-      for (const topic of topics) {
-        // Create tab
-        const tab = await createNewsTab(client, { workspaceId: workspace.id, name: topic.label })
+      for (const tab of config.tabs) {
+        const tabName = String(tab.name || '').trim()
+        if (!tabName) continue
 
-        // Create sources and assign to tab
-        for (const feed of topic.sources) {
+        const createdTab = await createNewsTab(client, { workspaceId: workspace.id, name: tabName })
+
+        const sources = Array.isArray(tab.sources) ? tab.sources : []
+        for (const feed of sources) {
+          const url = String(feed.url || '').trim()
+          if (!url) continue
+
+          // Quick URL validation
+          try {
+            const parsed = new URL(url)
+            if (!['http:', 'https:'].includes(parsed.protocol)) continue
+          } catch { continue }
+
           try {
             const source = await createNewsSource(client, {
               workspaceId: workspace.id,
-              url: feed.url,
-              title: feed.title,
+              url,
+              title: feed.title || undefined,
             })
-            await assignRepo(client, source.id, tab.id)
+            await assignRepo(client, source.id, createdTab.id)
           } catch (err) {
-            // Skip duplicates silently
+            // Skip duplicates
             const msg = err instanceof Error ? err.message : ''
             if (!msg.includes('news_source_ws_url_uniq')) throw err
           }
@@ -367,13 +398,13 @@ export async function setupNewsTopics(topicKeys: string[]) {
       }
     })
 
-    // Fetch feeds (outside the main transaction — network I/O)
+    // 4. Fetch feeds immediately
     await withUser(session.userId, (client) =>
       refreshStaleSources(client, workspace.id, 0)
     )
 
     revalidatePath('/news')
-    return { success: true, topicCount: topics.length }
+    return { success: true, topicCount: config.tabs.length }
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Setup failed'
     return { error: msg }
