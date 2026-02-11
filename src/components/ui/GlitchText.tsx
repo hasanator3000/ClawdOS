@@ -15,17 +15,18 @@ export default function GlitchText({ text, className = '' }: GlitchTextProps) {
   const maskId = useId()
 
   useEffect(() => {
+    const len = GLITCH_CHARS.length
+    const buf = new Array<string>(200)
     const animate = () => {
-      // Генерируем строку из случайных символов
-      let randomChars = ''
       for (let i = 0; i < 200; i++) {
-        randomChars += GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)]
+        buf[i] = GLITCH_CHARS[Math.floor(Math.random() * len)]
       }
-      setChars(randomChars)
+      setChars(buf.join(''))
     }
 
     animate()
-    intervalRef.current = setInterval(animate, 100)
+    // 250ms is still visually glitchy but halves the CPU cost vs 100ms
+    intervalRef.current = setInterval(animate, 250)
 
     return () => {
       if (intervalRef.current) {

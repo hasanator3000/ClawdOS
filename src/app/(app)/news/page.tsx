@@ -8,6 +8,8 @@ import { findTabsByWorkspace } from '@/lib/db/repositories/news-tab.repository'
 import { NewsShell } from './NewsShell'
 import type { PoolClient } from 'pg'
 
+export const dynamic = 'force-dynamic'
+
 async function getSourceTabMap(
   client: PoolClient,
   workspaceId: string

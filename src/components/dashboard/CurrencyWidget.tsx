@@ -3,15 +3,20 @@
 import { useEffect, useState } from 'react'
 import type { CurrencyRate } from '@/app/api/currencies/route'
 
+const cryptoFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
+const cryptoFmtSmall = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+
 export function CurrencyWidget() {
   const [rates, setRates] = useState<CurrencyRate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+
     async function fetchRates() {
       try {
-        const response = await fetch('/api/currencies')
+        const response = await fetch('/api/currencies', { signal: controller.signal })
         const data = await response.json()
 
         if (data.error) {
@@ -19,7 +24,8 @@ export function CurrencyWidget() {
         } else {
           setRates(data.rates)
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return
         setError('Failed to load rates')
       } finally {
         setLoading(false)
@@ -30,7 +36,10 @@ export function CurrencyWidget() {
 
     // Refresh every 5 minutes
     const interval = setInterval(fetchRates, 5 * 60 * 1000)
-    return () => clearInterval(interval)
+    return () => {
+      controller.abort()
+      clearInterval(interval)
+    }
   }, [])
 
   if (loading) {
@@ -80,7 +89,7 @@ export function CurrencyWidget() {
             <div className="text-lg font-semibold tabular-nums">
               {rate.type === 'crypto' ? (
                 <>
-                  ${rate.rate.toLocaleString('en-US', { maximumFractionDigits: rate.rate < 10 ? 2 : 0 })}
+                  ${rate.rate < 10 ? cryptoFmtSmall.format(rate.rate) : cryptoFmt.format(rate.rate)}
                 </>
               ) : (
                 <>

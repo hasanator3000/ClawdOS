@@ -18,7 +18,7 @@ async function fetchFiatRates(): Promise<CurrencyRate[]> {
   try {
     const response = await fetch(
       'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/rub.json',
-      { cache: 'no-store' }
+      { cache: 'no-store', signal: AbortSignal.timeout(5_000) }
     )
 
     if (!response.ok) {
@@ -57,9 +57,8 @@ async function fetchCryptoRates(): Promise<CurrencyRate[]> {
     const response = await fetch(
       'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,solana&vs_currencies=usd&include_24hr_change=true',
       {
-        headers: {
-          Accept: 'application/json',
-        },
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(5_000),
       }
     )
 

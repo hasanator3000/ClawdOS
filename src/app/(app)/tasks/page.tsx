@@ -5,6 +5,8 @@ import { withUser } from '@/lib/db'
 import { getTasksByWorkspace } from '@/lib/db/repositories/task.repository'
 import { TaskList } from './TaskList'
 
+export const dynamic = 'force-dynamic'
+
 export default async function TasksPage() {
   const session = await getSession()
   if (!session.userId) redirect('/login')

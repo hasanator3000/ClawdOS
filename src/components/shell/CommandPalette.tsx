@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { commandRegistry, registerNavigationCommands, type Command } from '@/lib/commands/registry'
 
@@ -26,8 +26,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     return commandRegistry.subscribe(setCommands)
   }, [])
 
-  // Filter commands based on query
-  const filteredCommands = query ? commandRegistry.search(query) : commands
+  // Filter commands based on query (memoized to avoid new array every render)
+  const filteredCommands = useMemo(
+    () => (query ? commandRegistry.search(query) : commands),
+    [query, commands]
+  )
 
   // Reset selection when query changes
   useEffect(() => {
@@ -40,32 +43,36 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       setQuery('')
       setSelectedIndex(0)
       // Small delay to ensure modal is rendered
-      setTimeout(() => inputRef.current?.focus(), 50)
+      const timerId = setTimeout(() => inputRef.current?.focus(), 50)
+      return () => clearTimeout(timerId)
     }
   }, [isOpen])
 
-  // Handle keyboard navigation
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setSelectedIndex((i) => Math.min(i + 1, filteredCommands.length - 1))
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          setSelectedIndex((i) => Math.max(i - 1, 0))
-          break
-        case 'Enter':
-          e.preventDefault()
-          if (filteredCommands[selectedIndex]) {
-            executeCommand(filteredCommands[selectedIndex])
-          }
-          break
-      }
-    },
-    [filteredCommands, selectedIndex]
-  )
+  // Refs for stable keyboard handler
+  const filteredRef = useRef(filteredCommands)
+  filteredRef.current = filteredCommands
+  const selectedRef = useRef(selectedIndex)
+  selectedRef.current = selectedIndex
+
+  // Handle keyboard navigation (stable callback — no deps churn)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setSelectedIndex((i) => Math.min(i + 1, filteredRef.current.length - 1))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setSelectedIndex((i) => Math.max(i - 1, 0))
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (filteredRef.current[selectedRef.current]) {
+          executeCommand(filteredRef.current[selectedRef.current])
+        }
+        break
+    }
+  }, [])
 
   const executeCommand = async (command: Command) => {
     onClose()
