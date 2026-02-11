@@ -103,9 +103,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
       ref={panelRef}
       className="flex h-full overflow-hidden"
       style={{
-        background: 'rgba(6,6,10,0.5)',
-        backdropFilter: 'blur(30px)',
-        WebkitBackdropFilter: 'blur(30px)',
+        background: 'rgba(6,6,10,0.95)',
         borderLeft: '1px solid var(--border)',
       }}
     >

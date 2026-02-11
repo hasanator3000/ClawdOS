@@ -17,8 +17,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <WorkspaceProvider initialWorkspace={workspace} initialWorkspaces={workspaces}>
       <ShellWrapper>
         <Sidebar />
-        <main className="overflow-y-auto min-w-0 flex flex-col">
-          <div className="p-6 pb-0">
+        <main className="min-w-0 flex flex-col overflow-hidden">
+          <div className="shrink-0 px-6 pt-6">
             <ContentTopBar />
           </div>
           <div className="flex-1 px-6 pb-6 overflow-y-auto">{children}</div>

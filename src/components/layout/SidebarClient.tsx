@@ -155,8 +155,7 @@ export default function SidebarClient({ username }: { username?: string }) {
     <nav
       className="flex flex-col gap-1 border-r border-[var(--border)] overflow-hidden h-screen"
       style={{
-        background: 'rgba(6,6,10,0.7)',
-        backdropFilter: 'blur(20px)',
+        background: 'rgba(6,6,10,0.92)',
         padding: '20px 0',
       }}
     >
@@ -276,7 +275,7 @@ export default function SidebarClient({ username }: { username?: string }) {
         {wsDropdownOpen && (
           <div
             className="absolute bottom-full left-3 right-3 mb-1 border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50 max-h-60 overflow-y-auto"
-            style={{ background: 'rgba(6,6,10,0.95)', backdropFilter: 'blur(20px)' }}
+            style={{ background: 'rgba(6,6,10,0.97)' }}
           >
             <div className="px-3 py-2 text-[9px] font-semibold uppercase tracking-[1.5px] text-[var(--muted-2)] border-b border-[var(--border)]">
               Workspaces
@@ -366,7 +365,7 @@ export default function SidebarClient({ username }: { username?: string }) {
         {userMenuOpen && (
           <div
             className="absolute bottom-full left-2 right-2 mb-1 border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50"
-            style={{ background: 'rgba(6,6,10,0.95)', backdropFilter: 'blur(20px)' }}
+            style={{ background: 'rgba(6,6,10,0.97)' }}
           >
             <Link
               href="/settings"

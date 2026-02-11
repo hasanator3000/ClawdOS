@@ -71,7 +71,6 @@ export function ContentTopBar() {
             background: 'var(--card)',
             border: '1px solid var(--border)',
             color: 'var(--fg)',
-            backdropFilter: 'blur(12px)',
           }}
           onFocusCapture={(e) => {
             e.currentTarget.style.borderColor = 'var(--neon)'
@@ -95,10 +94,8 @@ export function ContentTopBar() {
           <div
             className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden z-50"
             style={{
-              background: 'rgba(6,6,10,0.85)',
+              background: 'rgba(6,6,10,0.97)',
               border: '1px solid var(--border)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
             }}
           >
@@ -142,7 +139,6 @@ export function ContentTopBar() {
             border: `1px solid ${aiPanel.isOpen ? 'var(--neon)' : 'var(--border)'}`,
             color: aiPanel.isOpen ? 'var(--neon)' : 'var(--muted)',
             boxShadow: aiPanel.isOpen ? '0 0 12px var(--neon-dim)' : 'none',
-            backdropFilter: 'blur(12px)',
           }}
           aria-label={aiPanel.isOpen ? 'Close AI panel' : 'Open AI panel'}
           title="Toggle Clawdbot (Ctrl+J)"
