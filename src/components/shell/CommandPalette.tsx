@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { commandRegistry, registerNavigationCommands, type Command } from '@/lib/commands/registry'
 
+const CATEGORY_LABELS: Record<string, string> = {
+  navigation: 'Pages',
+  workspace: 'Workspaces',
+  action: 'Actions',
+}
+
 interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
@@ -106,33 +112,43 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           {filteredCommands.length === 0 ? (
             <div className="p-4 text-center text-[var(--muted)]">No commands found</div>
           ) : (
-            <ul className="py-2">
-              {filteredCommands.map((cmd, index) => (
-                <li key={cmd.id}>
-                  <button
-                    type="button"
-                    className={`w-full px-4 py-2 text-left flex items-center gap-3 transition-colors ${
-                      index === selectedIndex
-                        ? 'bg-[var(--hover)] text-[var(--fg)]'
-                        : 'text-[var(--fg)] hover:bg-[var(--hover)]'
-                    }`}
-                    onClick={() => executeCommand(cmd)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                  >
-                    <span className="flex-1">
-                      <span className="font-medium">{cmd.name}</span>
-                      {cmd.description && (
-                        <span className="ml-2 text-sm text-[var(--muted)]">{cmd.description}</span>
-                      )}
-                    </span>
-                    {cmd.shortcut && (
-                      <kbd className="px-2 py-0.5 text-xs bg-[var(--bg)] border border-[var(--border)] rounded">
-                        {cmd.shortcut}
-                      </kbd>
+            <ul className="py-1">
+              {filteredCommands.map((cmd, index) => {
+                const prevCategory = index > 0 ? filteredCommands[index - 1].category : null
+                const showHeader = cmd.category !== prevCategory
+
+                return (
+                  <li key={cmd.id}>
+                    {showHeader && (
+                      <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                        {CATEGORY_LABELS[cmd.category] || cmd.category}
+                      </div>
                     )}
-                  </button>
-                </li>
-              ))}
+                    <button
+                      type="button"
+                      className={`w-full px-4 py-2 text-left flex items-center gap-3 transition-colors ${
+                        index === selectedIndex
+                          ? 'bg-[var(--hover)] text-[var(--fg)]'
+                          : 'text-[var(--fg)] hover:bg-[var(--hover)]'
+                      }`}
+                      onClick={() => executeCommand(cmd)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                    >
+                      <span className="flex-1">
+                        <span className="font-medium">{cmd.name}</span>
+                        {cmd.description && (
+                          <span className="ml-2 text-sm text-[var(--muted)]">{cmd.description}</span>
+                        )}
+                      </span>
+                      {cmd.shortcut && (
+                        <kbd className="px-2 py-0.5 text-xs bg-[var(--bg)] border border-[var(--border)] rounded">
+                          {cmd.shortcut}
+                        </kbd>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>

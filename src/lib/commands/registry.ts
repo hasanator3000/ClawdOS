@@ -4,6 +4,8 @@
  * Commands are actions that can be executed from the command palette (⌘K).
  */
 
+import { SECTIONS } from '@/lib/nav/sections'
+
 export interface Command {
   id: string
   name: string
@@ -100,32 +102,19 @@ class CommandRegistry {
 export const commandRegistry = new CommandRegistry()
 
 /**
- * Default navigation commands
+ * Register navigation commands from SECTIONS (single source of truth).
  */
 export function registerNavigationCommands(router: { push: (path: string) => void }): void {
-  commandRegistry.registerMany([
-    {
-      id: 'nav-today',
-      name: 'Go to Today',
-      description: 'View today\'s digest',
-      category: 'navigation',
-      action: () => router.push('/today'),
-    },
-    {
-      id: 'nav-news',
-      name: 'Go to News',
-      description: 'View news feed',
-      category: 'navigation',
-      action: () => router.push('/news'),
-    },
-    {
-      id: 'nav-settings',
-      name: 'Go to Settings',
-      description: 'Open settings',
-      category: 'navigation',
-      action: () => router.push('/settings'),
-    },
-  ])
+  commandRegistry.registerMany(
+    SECTIONS.map((s) => ({
+      id: `nav-${s.id}`,
+      name: `Go to ${s.title}`,
+      description: s.path,
+      keywords: s.aliases,
+      category: 'navigation' as const,
+      action: () => router.push(s.path),
+    }))
+  )
 }
 
 /**
