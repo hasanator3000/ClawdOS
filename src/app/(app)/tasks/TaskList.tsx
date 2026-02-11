@@ -29,7 +29,7 @@ const PRIORITY_COLORS: Record<number, string> = {
 export function TaskList({ initialTasks }: TaskListProps) {
   const [tasks, setTasks] = useState(initialTasks)
   const [newTaskTitle, setNewTaskTitle] = useState('')
-  const [filter, setFilter] = useState<FilterStatus>('active')
+  const [filter, setFilter] = useState<FilterStatus>('all')
   const [isPending, startTransition] = useTransition()
 
   // Sync tasks when initialTasks change (e.g., workspace switch)
