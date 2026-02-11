@@ -66,9 +66,17 @@ This repo: `/root/clawd/apps/lifeos`
 
 ## Environment
 Create `.env.local`:
-- `DATABASE_URL=postgres://lifeos:lifeos@localhost:5432/lifeos`
-- `SESSION_PASSWORD=<openssl rand -base64 48>`
-- (optional) `ACCESS_TOKEN=<openssl rand -base64 32>`
+```bash
+# Required
+DATABASE_URL=postgres://lifeos:lifeos@localhost:5432/lifeos
+SESSION_PASSWORD=$(openssl rand -base64 48)
+CLAWDBOT_URL=http://127.0.0.1:18789
+CLAWDBOT_TOKEN=$(openssl rand -hex 24)
+
+# Optional
+LIFEOS_CONSULT_TOKEN=$(openssl rand -hex 24)
+# ACCESS_TOKEN=$(openssl rand -base64 32)
+```
 
 ## Postgres (Docker)
 

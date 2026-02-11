@@ -86,11 +86,15 @@ Recommended access patterns:
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `SESSION_PASSWORD` | Cookie encryption key (generate with `openssl rand -base64 48`) |
-| `ACCESS_TOKEN` | Optional gate token for additional access control |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SESSION_PASSWORD` | Yes | Cookie encryption key (generate: `openssl rand -base64 48`) |
+| `CLAWDBOT_URL` | Yes | Clawdbot gateway URL (default: `http://127.0.0.1:18789`) |
+| `CLAWDBOT_TOKEN` | Yes | Bearer token for Clawdbot gateway (generate: `openssl rand -hex 24`) |
+| `LIFEOS_CONSULT_TOKEN` | No | Token for `/api/consult` and `/api/news/refresh` endpoints |
+| `ACCESS_TOKEN` | No | Gate token when exposing by IP (stored in cookie after first entry) |
+| `SESSION_COOKIE_SECURE` | No | Set to `true` if behind HTTPS (default: `false`) |
 
 ## License
 
