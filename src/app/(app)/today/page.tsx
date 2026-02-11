@@ -7,7 +7,6 @@ import {
   CurrencyWidget,
   QuickLinksWidget,
   RecentTasksWidget,
-  SearchWidget,
 } from '@/components/dashboard'
 
 export const dynamic = 'force-dynamic'
@@ -34,9 +33,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Search bar */}
-      <SearchWidget />
-
       {/* Top row: Greeting + Currency */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <GreetingWidget username={session.username} />

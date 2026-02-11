@@ -2,12 +2,12 @@
 
 import { CommandPalette } from './CommandPalette'
 import { AIPanel } from './AIPanel'
-import { AIPanelToggle } from './AIPanelToggle'
 import { useCommandPalette } from '@/hooks/useCommandPalette'
 import { useAIPanel } from '@/hooks/useAIPanel'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { SECTIONS } from '@/lib/nav/sections'
+import { AIPanelProvider } from '@/contexts/AIPanelContext'
 
 const RAIL_STORAGE_KEY = 'clawd-rail-open'
 
@@ -79,8 +79,13 @@ export function Shell({ children }: ShellProps) {
   const railWidth = railExpanded ? 'var(--rail-w-open)' : 'var(--rail-w)'
   const chatWidth = aiPanel.isOpen && aiPanel.isHydrated ? `${aiPanel.width}px` : '0px'
 
+  const aiPanelCtx = useMemo(
+    () => ({ isOpen: aiPanel.isOpen, toggle: aiPanel.toggle, isHydrated: aiPanel.isHydrated }),
+    [aiPanel.isOpen, aiPanel.toggle, aiPanel.isHydrated]
+  )
+
   return (
-    <>
+    <AIPanelProvider value={aiPanelCtx}>
       {/* 3-column CSS Grid: rail | content | chat */}
       <div
         className="h-screen relative z-[1]"
@@ -104,22 +109,9 @@ export function Shell({ children }: ShellProps) {
         )}
       </div>
 
-      {/* Chat toggle button — fixed top-right */}
-      {aiPanel.isHydrated && (
-        <div
-          className="fixed top-4 z-40"
-          style={{
-            right: aiPanel.isOpen ? `${aiPanel.width + 12}px` : '16px',
-            transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        >
-          <AIPanelToggle isOpen={aiPanel.isOpen} onToggle={aiPanel.toggle} />
-        </div>
-      )}
-
       {/* Command Palette (modal) */}
       <CommandPalette isOpen={commandPalette.isOpen} onClose={commandPalette.close} />
-    </>
+    </AIPanelProvider>
   )
 }
 

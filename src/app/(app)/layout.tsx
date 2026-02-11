@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout'
-import { ShellWrapper } from '@/components/shell'
+import { ShellWrapper, ContentTopBar } from '@/components/shell'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace, getWorkspacesForUser } from '@/lib/workspace'
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext'
@@ -17,7 +17,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <WorkspaceProvider initialWorkspace={workspace} initialWorkspaces={workspaces}>
       <ShellWrapper>
         <Sidebar />
-        <main className="overflow-y-auto p-6 min-w-0">{children}</main>
+        <main className="overflow-y-auto min-w-0 flex flex-col">
+          <div className="p-6 pb-0">
+            <ContentTopBar />
+          </div>
+          <div className="flex-1 px-6 pb-6 overflow-y-auto">{children}</div>
+        </main>
       </ShellWrapper>
     </WorkspaceProvider>
   )
