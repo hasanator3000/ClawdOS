@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <WorkspaceProvider initialWorkspace={workspace} initialWorkspaces={workspaces}>
       <ShellWrapper>
         <Sidebar />
-        <main className="flex-1 p-6 bg-[var(--bg)] text-[var(--fg)]">{children}</main>
+        <main className="overflow-y-auto p-6">{children}</main>
       </ShellWrapper>
     </WorkspaceProvider>
   )

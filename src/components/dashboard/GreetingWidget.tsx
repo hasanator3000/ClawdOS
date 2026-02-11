@@ -33,7 +33,6 @@ let intervalId: ReturnType<typeof setInterval> | null = null
 function subscribeToTime(callback: () => void) {
   listeners.add(callback)
   if (listeners.size === 1 && typeof window !== 'undefined') {
-    // Update every 60 seconds - we only show hours:minutes
     intervalId = setInterval(() => {
       listeners.forEach((l) => l())
     }, 60_000)
@@ -52,28 +51,59 @@ function getTimeSnapshot() {
 }
 
 function getServerSnapshot() {
-  return '--:--' // Placeholder for SSR
+  return '--:--'
 }
 
 export function GreetingWidget({ username }: GreetingWidgetProps) {
-  // useSyncExternalStore handles hydration correctly without cascading renders
   const time = useSyncExternalStore(subscribeToTime, getTimeSnapshot, getServerSnapshot)
   const [date, setDate] = useState(formatDate)
   const [greeting, setGreeting] = useState(getGreeting)
 
-  // Update date and greeting when time changes (once per minute is enough)
   useEffect(() => {
     setDate(formatDate())
     setGreeting(getGreeting())
   }, [time])
 
   return (
-    <div className="p-6 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-[var(--border)]">
-      <div className="text-4xl font-bold tabular-nums">{time}</div>
-      <div className="mt-1 text-lg text-[var(--muted)]">{date}</div>
-      <div className="mt-4 text-xl">
+    <div
+      className="p-6 rounded-2xl"
+      style={{
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+      }}
+    >
+      <div
+        className="font-mono tabular-nums font-bold"
+        style={{
+          fontSize: '3.25rem',
+          lineHeight: 1.1,
+          background: 'linear-gradient(180deg, var(--fg), var(--muted))',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}
+      >
+        {time}
+      </div>
+      <div
+        className="mt-1.5 text-sm font-light"
+        style={{ color: 'var(--muted)' }}
+      >
+        {date}
+      </div>
+      <div className="mt-4 text-lg font-light" style={{ color: 'var(--fg)' }}>
         {greeting}
-        {username && <span className="font-medium">, {username}</span>}
+        {username && (
+          <span
+            className="font-medium"
+            style={{
+              color: 'var(--neon)',
+              textShadow: '0 0 20px var(--neon-glow)',
+            }}
+          >
+            , {username}
+          </span>
+        )}
       </div>
     </div>
   )

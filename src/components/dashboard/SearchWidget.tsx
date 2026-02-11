@@ -40,16 +40,16 @@ export function SearchWidget() {
     <div className="relative">
       <div className="relative">
         <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+          className="absolute left-3.5 top-1/2 -translate-y-1/2"
+          style={{ color: 'var(--muted)', opacity: 0.5 }}
         >
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -63,33 +63,69 @@ export function SearchWidget() {
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Search pages..."
-          className="w-full pl-10 pr-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-sm placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          className="w-full pl-10 pr-16 py-3 rounded-xl text-sm outline-none transition-all"
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            color: 'var(--fg)',
+          }}
+          onFocusCapture={(e) => {
+            e.currentTarget.style.borderColor = 'var(--neon)'
+            e.currentTarget.style.boxShadow = '0 0 0 1px var(--neon-dim), 0 0 12px var(--neon-dim)'
+          }}
+          onBlurCapture={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.boxShadow = 'none'
+            // Delay closing so clicks on results work
+            setTimeout(() => setIsOpen(false), 200)
+          }}
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)] bg-[var(--card)] px-1.5 py-0.5 rounded border border-[var(--border)]">
+        <div
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded"
+          style={{
+            color: 'var(--muted)',
+            border: '1px solid var(--border)',
+          }}
+        >
           ⌘K
         </div>
       </div>
 
       {isOpen && filteredPages.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg overflow-hidden z-50">
+        <div
+          className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden z-50"
+          style={{
+            background: 'rgba(6,6,10,0.85)',
+            border: '1px solid var(--border)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          }}
+        >
           {filteredPages.map((page) => (
             <button
               key={page.path}
               type="button"
               onClick={() => handleSelect(page.path)}
-              className="w-full text-left px-4 py-3 hover:bg-[var(--hover)] transition-colors flex items-center gap-3"
+              className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors"
+              style={{ color: 'var(--fg)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
             >
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-[var(--muted)]"
+                style={{ color: 'var(--muted)' }}
               >
                 <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
                 <polyline points="13 2 13 9 20 9" />

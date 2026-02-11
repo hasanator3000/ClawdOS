@@ -7,6 +7,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { SIDEBAR_SECTIONS } from '@/lib/nav/sections'
 
 const PINS_STORAGE_KEY = 'lifeos.pinned-workspaces'
+const RAIL_STORAGE_KEY = 'clawd-rail-open'
 
 function getPinnedIds(): string[] {
   if (typeof window === 'undefined') return []
@@ -27,35 +28,86 @@ function setPinnedIds(ids: string[]): void {
   }
 }
 
+// SVG icons for nav items
+const NAV_ICONS: Record<string, React.ReactNode> = {
+  today: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-5 h-5">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  ),
+  news: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-5 h-5">
+      <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
+      <path d="M18 14h-8M15 18h-5" />
+      <path d="M10 6h8v4h-8V6Z" />
+    </svg>
+  ),
+  tasks: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-5 h-5">
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+  settings: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-5 h-5">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3.09 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  ),
+}
+
 export default function SidebarClient({ username }: { username?: string }) {
   const pathname = usePathname()
   const { workspace: active, workspaces, switchWorkspace, isSwitching } = useWorkspace()
 
-  const [searchQuery, setSearchQuery] = useState('')
   const [pinnedIds, setPinnedIdsState] = useState<string[]>([])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [wsDropdownOpen, setWsDropdownOpen] = useState(false)
+  const [railExpanded, setRailExpanded] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const wsDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Hydrate pinned IDs from localStorage
+  // Hydrate state from localStorage
   useEffect(() => {
     setPinnedIdsState(getPinnedIds())
+    setRailExpanded(localStorage.getItem(RAIL_STORAGE_KEY) === 'true')
+
+    // Listen for storage changes from Shell component
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === RAIL_STORAGE_KEY) {
+        setRailExpanded(e.newValue === 'true')
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
-  // Close user menu on outside click
+  const toggleRail = useCallback(() => {
+    setRailExpanded((prev) => {
+      const next = !prev
+      localStorage.setItem(RAIL_STORAGE_KEY, String(next))
+      window.dispatchEvent(new StorageEvent('storage', { key: RAIL_STORAGE_KEY, newValue: String(next) }))
+      return next
+    })
+  }, [])
+
+  // Close dropdowns on outside click
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false)
       }
+      if (wsDropdownRef.current && !wsDropdownRef.current.contains(e.target as Node)) {
+        setWsDropdownOpen(false)
+      }
     }
-
-    if (userMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+    if (userMenuOpen || wsDropdownOpen) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
     }
-  }, [userMenuOpen])
+  }, [userMenuOpen, wsDropdownOpen])
 
-  // Toggle pin for a workspace
   const togglePin = useCallback((workspaceId: string) => {
     setPinnedIdsState((prev) => {
       const newPins = prev.includes(workspaceId)
@@ -66,23 +118,15 @@ export default function SidebarClient({ username }: { username?: string }) {
     })
   }, [])
 
-  // Filter and sort workspaces
   const filteredWorkspaces = useMemo(() => {
-    let filtered = workspaces
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter((ws) => ws.name.toLowerCase().includes(query))
-    }
-
-    return [...filtered].sort((a, b) => {
+    return [...workspaces].sort((a, b) => {
       const aPinned = pinnedIds.includes(a.id)
       const bPinned = pinnedIds.includes(b.id)
       if (aPinned && !bPinned) return -1
       if (!aPinned && bPinned) return 1
       return a.name.localeCompare(b.name)
     })
-  }, [workspaces, searchQuery, pinnedIds])
+  }, [workspaces, pinnedIds])
 
   const handleLogout = async () => {
     try {
@@ -93,9 +137,6 @@ export default function SidebarClient({ username }: { username?: string }) {
     }
   }
 
-  const linkClass = (href: string) =>
-    `block rounded-md px-3 py-2 hover:bg-[var(--hover)] ${pathname === href ? 'bg-[var(--hover)] font-medium' : ''}`
-
   const initials = username
     ? username
         .split(' ')
@@ -105,62 +146,169 @@ export default function SidebarClient({ username }: { username?: string }) {
         .slice(0, 2)
     : '?'
 
+  const exp = railExpanded
+
   return (
-    <aside className="w-72 border-r border-[var(--border)] bg-[var(--card)] text-[var(--card-fg)] flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-[var(--border)]">
-        <Link
-          href="/today"
-          className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity"
-          aria-label="LifeOS Dashboard"
+    <nav
+      className="flex flex-col items-center gap-1 border-r border-[var(--border)] overflow-hidden h-screen"
+      style={{
+        background: 'rgba(6,6,10,0.7)',
+        backdropFilter: 'blur(20px)',
+        padding: '20px 0',
+      }}
+    >
+      {/* Brand + toggle */}
+      <div className="flex items-center gap-2.5 w-full px-3 mb-7 min-h-8">
+        <span
+          className="text-lg font-bold shrink-0"
+          style={{
+            fontFamily: 'var(--font-space-mono, monospace)',
+            color: 'var(--neon)',
+            letterSpacing: '-1px',
+            textShadow: '0 0 20px var(--neon-glow)',
+          }}
         >
-          <span
-            className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 shadow-sm"
-            aria-hidden
-          />
-          <span className="font-semibold text-lg tracking-tight">LifeOS</span>
-        </Link>
+          c
+        </span>
+        <span
+          className={`font-bold whitespace-nowrap overflow-hidden transition-all duration-300 ${
+            exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
+          }`}
+          style={{
+            fontFamily: 'var(--font-space-mono, monospace)',
+            fontSize: '15px',
+            letterSpacing: '2px',
+            marginLeft: exp ? '-4px' : 0,
+          }}
+        >
+          lawd
+        </span>
+        <button
+          type="button"
+          onClick={toggleRail}
+          className="w-7 h-7 border border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[rgba(255,255,255,0.06)] transition-all ml-auto shrink-0"
+          style={{ background: 'var(--card)' }}
+          title="Toggle sidebar"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className={`w-3.5 h-3.5 transition-transform duration-300 ${exp ? 'rotate-180' : ''}`}
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Workspaces */}
-        <div className="space-y-2">
-          <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Workspace</div>
+      {/* Section label */}
+      <div className="w-full px-3 mb-1 flex items-center min-h-5">
+        <span
+          className={`text-[9px] font-semibold uppercase tracking-[1.5px] text-[var(--muted-2)] whitespace-nowrap overflow-hidden transition-all duration-300 ${
+            exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
+          }`}
+        >
+          Pages
+        </span>
+      </div>
 
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search workspaces..."
-            className="w-full px-3 py-1.5 text-sm bg-[var(--bg)] border border-[var(--border)] rounded-md placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--fg)]"
-          />
+      {/* Navigation */}
+      {SIDEBAR_SECTIONS.map((s) => {
+        const isActive = pathname === s.path
+        return (
+          <Link
+            key={s.id}
+            href={s.path}
+            prefetch
+            className={`w-full h-10 flex items-center gap-3 rounded-xl transition-all relative whitespace-nowrap ${
+              exp ? 'justify-start px-3' : 'justify-center px-0'
+            } ${
+              isActive
+                ? 'text-[var(--neon)]'
+                : 'text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card)]'
+            }`}
+          >
+            {/* Active indicator bar */}
+            {isActive && (
+              <span
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r"
+                style={{
+                  background: 'var(--neon)',
+                  boxShadow: '0 0 8px var(--neon-glow)',
+                }}
+              />
+            )}
+            <span className="shrink-0">{NAV_ICONS[s.id] || NAV_ICONS.settings}</span>
+            <span
+              className={`text-[13px] font-normal overflow-hidden transition-all duration-300 ${
+                exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
+              }`}
+            >
+              {s.title}
+            </span>
+          </Link>
+        )
+      })}
 
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] max-h-48 overflow-y-auto">
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Workspace selector */}
+      <div ref={wsDropdownRef} className="relative w-full px-3 mb-2">
+        <button
+          type="button"
+          onClick={() => setWsDropdownOpen(!wsDropdownOpen)}
+          className={`flex items-center gap-2 rounded-lg transition-all text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card)] ${
+            exp ? 'w-full px-3 py-2' : 'w-full justify-center py-2'
+          }`}
+          title={active?.name || 'Select workspace'}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-5 h-5 shrink-0">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+          <span
+            className={`text-[13px] truncate overflow-hidden transition-all duration-300 ${
+              exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
+            }`}
+          >
+            {active?.name || 'Workspace'}
+          </span>
+        </button>
+
+        {wsDropdownOpen && (
+          <div
+            className="absolute bottom-full left-3 right-3 mb-1 border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50 max-h-60 overflow-y-auto"
+            style={{ background: 'rgba(6,6,10,0.95)', backdropFilter: 'blur(20px)' }}
+          >
+            <div className="px-3 py-2 text-[9px] font-semibold uppercase tracking-[1.5px] text-[var(--muted-2)] border-b border-[var(--border)]">
+              Workspaces
+            </div>
             {filteredWorkspaces.map((ws) => {
-              const isActive = ws.id === active?.id
+              const isCurrent = ws.id === active?.id
               const isPinned = pinnedIds.includes(ws.id)
               return (
                 <div
                   key={ws.id}
-                  className={`flex items-center hover:bg-[var(--hover)] ${
-                    isActive ? 'bg-[var(--hover)]' : ''
-                  }`}
+                  className={`flex items-center hover:bg-[var(--hover)] ${isCurrent ? 'bg-[var(--hover)]' : ''}`}
                 >
                   <button
                     type="button"
-                    onClick={() => switchWorkspace(ws.id)}
+                    onClick={() => {
+                      switchWorkspace(ws.id)
+                      setWsDropdownOpen(false)
+                    }}
                     disabled={isSwitching}
-                    className={`flex-1 text-left px-3 py-2 text-sm ${isActive ? 'font-medium' : ''}`}
+                    className={`flex-1 text-left px-3 py-2 text-sm ${isCurrent ? 'font-medium text-[var(--neon)]' : 'text-[var(--fg)]'}`}
                   >
-                    {isPinned && <span className="mr-1">📌</span>}
+                    {isPinned && <span className="mr-1 text-xs">📌</span>}
                     {ws.name}
-                    <span className="ml-2 text-xs text-[var(--muted)]">({ws.type})</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => togglePin(ws.id)}
-                    className="px-2 py-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                    className="px-2 py-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors text-sm"
                     title={isPinned ? 'Unpin' : 'Pin'}
                   >
                     {isPinned ? '★' : '☆'}
@@ -168,85 +316,82 @@ export default function SidebarClient({ username }: { username?: string }) {
                 </div>
               )
             })}
-            {filteredWorkspaces.length === 0 && searchQuery ? (
-              <div className="px-3 py-2 text-sm text-[var(--muted)]">No workspaces found</div>
-            ) : null}
-            {workspaces.length === 0 ? (
+            {workspaces.length === 0 && (
               <div className="px-3 py-2 text-sm text-[var(--muted)]">No workspaces</div>
-            ) : null}
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* User footer */}
+      <div ref={userMenuRef} className="relative w-full border-t border-[var(--border)] pt-3 mt-2">
+        <div className="flex items-center w-full px-3.5">
+          {/* Avatar with spinning ring */}
+          <button
+            type="button"
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="relative w-9 h-9 shrink-0 cursor-pointer"
+            title={username || 'User'}
+          >
+            <span
+              className="absolute rounded-full"
+              style={{
+                inset: '-3px',
+                border: '1.5px solid transparent',
+                borderTopColor: 'var(--neon)',
+                borderRightColor: 'var(--pink)',
+                animation: 'spin 4s linear infinite',
+              }}
+            />
+            <span
+              className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+              style={{ fontFamily: 'var(--font-space-mono, monospace)' }}
+            >
+              {initials}
+            </span>
+            <span
+              className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full"
+              style={{
+                background: 'var(--green)',
+                border: '2px solid var(--bg)',
+                boxShadow: '0 0 6px rgba(110,231,183,0.5)',
+              }}
+            />
+          </button>
+
+          <div
+            className={`flex flex-col ml-2.5 whitespace-nowrap overflow-hidden transition-all duration-300 ${
+              exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
+            }`}
+          >
+            <span className="text-xs font-medium">{username || 'User'}</span>
+            <span className="text-[10px] text-[var(--muted-2)]">Free</span>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="space-y-1">
-          {SIDEBAR_SECTIONS.map((s) => (
-            <Link key={s.id} className={linkClass(s.path)} href={s.path} prefetch>
-              <span className="flex items-center gap-2">
-                {s.id === 'today' ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                    <polyline points="9 22 9 12 15 12 15 22" />
-                  </svg>
-                ) : s.id === 'news' ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
-                    <path d="M18 14h-8" />
-                    <path d="M15 18h-5" />
-                    <path d="M10 6h8v4h-8V6Z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 11l3 3L22 4" />
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                  </svg>
-                )}
-                {s.title}
-              </span>
-            </Link>
-          ))}
-        </nav>
-      </div>
-
-      {/* User section at bottom */}
-      <div ref={userMenuRef} className="relative border-t border-[var(--border)]">
-        <button
-          type="button"
-          onClick={() => setUserMenuOpen(!userMenuOpen)}
-          className="w-full p-3 flex items-center gap-3 hover:bg-[var(--hover)] transition-colors"
-        >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-            {initials}
-          </div>
-          <div className="flex-1 text-left">
-            <div className="text-sm font-medium truncate">{username || 'User'}</div>
-            <div className="text-xs text-[var(--muted)]">Free plan</div>
-          </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-[var(--muted)] transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}>
-            <polyline points="18 15 12 9 6 15" />
-          </svg>
-        </button>
-
         {userMenuOpen && (
-          <div className="absolute bottom-full left-0 right-0 mb-1 mx-2 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
-              <span className="text-xs text-[var(--muted)] uppercase tracking-wide">Menu</span>
-              <button type="button" onClick={() => setUserMenuOpen(false)} className="p-1 hover:bg-[var(--hover)] rounded transition-colors text-[var(--muted)] hover:text-[var(--fg)]" aria-label="Close menu">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <Link href="/settings" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--hover)] transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div
+            className="absolute bottom-full left-2 right-2 mb-1 border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50"
+            style={{ background: 'rgba(6,6,10,0.95)', backdropFilter: 'blur(20px)' }}
+          >
+            <Link
+              href="/settings"
+              onClick={() => setUserMenuOpen(false)}
+              className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--hover)] transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4">
                 <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3.09 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
               Settings
             </Link>
             <div className="border-t border-[var(--border)]" />
-            <button type="button" onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-[var(--hover)] transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-[var(--red)] hover:bg-[var(--hover)] transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
@@ -256,6 +401,6 @@ export default function SidebarClient({ username }: { username?: string }) {
           </div>
         )}
       </div>
-    </aside>
+    </nav>
   )
 }

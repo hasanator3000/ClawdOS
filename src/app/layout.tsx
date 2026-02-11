@@ -3,7 +3,7 @@ import { Outfit, Space_Mono } from 'next/font/google'
 import './globals.css'
 
 const outfit = Outfit({
-  subsets: ['latin', 'cyrillic'],
+  subsets: ['latin'],
   variable: '--font-outfit',
   display: 'swap',
 })

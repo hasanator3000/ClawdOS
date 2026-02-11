@@ -3,31 +3,40 @@
 interface AIPanelToggleProps {
   isOpen: boolean
   onToggle: () => void
-  panelWidth?: number
 }
 
-export function AIPanelToggle({ isOpen, onToggle, panelWidth = 400 }: AIPanelToggleProps) {
-  // When panel is open, position toggle inside the panel header area
-  // When closed, position in top-right corner
-  const rightOffset = isOpen ? panelWidth + 8 : 16
-
+export function AIPanelToggle({ isOpen, onToggle }: AIPanelToggleProps) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      style={{ right: rightOffset }}
-      className={`fixed top-4 z-40 p-2 rounded-lg border transition-all ${
-        isOpen
-          ? 'bg-[var(--hover)] border-[var(--border)]'
-          : 'bg-[var(--card)] border-[var(--border)] hover:bg-[var(--hover)]'
-      }`}
+      className="p-2 rounded-xl transition-all"
+      style={{
+        background: isOpen ? 'var(--neon-dim)' : 'var(--card)',
+        border: `1px solid ${isOpen ? 'var(--neon)' : 'var(--border)'}`,
+        color: isOpen ? 'var(--neon)' : 'var(--muted)',
+        boxShadow: isOpen ? '0 0 12px var(--neon-dim)' : 'none',
+      }}
+      onMouseEnter={(e) => {
+        if (!isOpen) {
+          e.currentTarget.style.borderColor = 'var(--neon)'
+          e.currentTarget.style.color = 'var(--neon)'
+          e.currentTarget.style.background = 'var(--neon-dim)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isOpen) {
+          e.currentTarget.style.borderColor = 'var(--border)'
+          e.currentTarget.style.color = 'var(--muted)'
+          e.currentTarget.style.background = 'var(--card)'
+        }
+      }}
       aria-label={isOpen ? 'Close AI panel' : 'Open AI panel'}
-      title="Toggle AI Panel (Clawdbot)"
+      title="Toggle Clawdbot (Ctrl+J)"
     >
       <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
+        width="18"
+        height="18"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -35,12 +44,8 @@ export function AIPanelToggle({ isOpen, onToggle, panelWidth = 400 }: AIPanelTog
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* Bot icon */}
-        <rect x="3" y="11" width="18" height="10" rx="2" />
-        <circle cx="12" cy="5" r="2" />
-        <path d="M12 7v4" />
-        <line x1="8" y1="16" x2="8" y2="16" />
-        <line x1="16" y1="16" x2="16" y2="16" />
+        {/* Message bubble icon */}
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     </button>
   )

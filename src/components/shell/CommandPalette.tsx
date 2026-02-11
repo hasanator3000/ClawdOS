@@ -32,7 +32,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     return commandRegistry.subscribe(setCommands)
   }, [])
 
-  // Filter commands based on query (memoized to avoid new array every render)
+  // Filter commands based on query
   const filteredCommands = useMemo(
     () => (query ? commandRegistry.search(query) : commands),
     [query, commands]
@@ -48,7 +48,6 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     if (isOpen) {
       setQuery('')
       setSelectedIndex(0)
-      // Small delay to ensure modal is rendered
       const timerId = setTimeout(() => inputRef.current?.focus(), 50)
       return () => clearTimeout(timerId)
     }
@@ -60,7 +59,6 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const selectedRef = useRef(selectedIndex)
   selectedRef.current = selectedIndex
 
-  // Handle keyboard navigation (stable callback — no deps churn)
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
       case 'ArrowDown':
@@ -93,9 +91,18 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-2xl overflow-hidden">
+      <div
+        className="relative w-full max-w-lg rounded-2xl overflow-hidden"
+        style={{
+          background: 'rgba(6,6,10,0.85)',
+          border: '1px solid var(--border)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          boxShadow: '0 16px 64px rgba(0,0,0,0.6), 0 0 0 1px var(--border)',
+        }}
+      >
         {/* Search input */}
-        <div className="p-3 border-b border-[var(--border)]">
+        <div className="p-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <input
             ref={inputRef}
             type="text"
@@ -103,14 +110,20 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a command or search..."
-            className="w-full bg-transparent outline-none text-[var(--fg)] placeholder:text-[var(--muted)]"
+            className="w-full bg-transparent outline-none text-sm"
+            style={{
+              color: 'var(--fg)',
+              fontFamily: 'var(--font-outfit, Outfit, sans-serif)',
+            }}
           />
         </div>
 
         {/* Command list */}
         <div className="max-h-80 overflow-y-auto">
           {filteredCommands.length === 0 ? (
-            <div className="p-4 text-center text-[var(--muted)]">No commands found</div>
+            <div className="p-4 text-center text-sm" style={{ color: 'var(--muted)' }}>
+              No commands found
+            </div>
           ) : (
             <ul className="py-1">
               {filteredCommands.map((cmd, index) => {
@@ -120,28 +133,40 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                 return (
                   <li key={cmd.id}>
                     {showHeader && (
-                      <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                      <div
+                        className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-mono"
+                        style={{ color: 'var(--muted)' }}
+                      >
                         {CATEGORY_LABELS[cmd.category] || cmd.category}
                       </div>
                     )}
                     <button
                       type="button"
-                      className={`w-full px-4 py-2 text-left flex items-center gap-3 transition-colors ${
-                        index === selectedIndex
-                          ? 'bg-[var(--hover)] text-[var(--fg)]'
-                          : 'text-[var(--fg)] hover:bg-[var(--hover)]'
-                      }`}
+                      className="w-full px-4 py-2 text-left flex items-center gap-3 transition-colors"
+                      style={{
+                        background: index === selectedIndex ? 'var(--hover)' : 'transparent',
+                        color: 'var(--fg)',
+                      }}
                       onClick={() => executeCommand(cmd)}
                       onMouseEnter={() => setSelectedIndex(index)}
                     >
                       <span className="flex-1">
-                        <span className="font-medium">{cmd.name}</span>
+                        <span className="font-medium text-sm">{cmd.name}</span>
                         {cmd.description && (
-                          <span className="ml-2 text-sm text-[var(--muted)]">{cmd.description}</span>
+                          <span className="ml-2 text-xs" style={{ color: 'var(--muted)' }}>
+                            {cmd.description}
+                          </span>
                         )}
                       </span>
                       {cmd.shortcut && (
-                        <kbd className="px-2 py-0.5 text-xs bg-[var(--bg)] border border-[var(--border)] rounded">
+                        <kbd
+                          className="px-2 py-0.5 text-[10px] font-mono rounded"
+                          style={{
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--muted)',
+                          }}
+                        >
                           {cmd.shortcut}
                         </kbd>
                       )}
@@ -154,7 +179,13 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         </div>
 
         {/* Footer hint */}
-        <div className="px-4 py-2 border-t border-[var(--border)] text-xs text-[var(--muted)] flex gap-4">
+        <div
+          className="px-4 py-2 text-[10px] flex gap-4 font-mono"
+          style={{
+            borderTop: '1px solid var(--border)',
+            color: 'var(--muted)',
+          }}
+        >
           <span>↑↓ Navigate</span>
           <span>↵ Execute</span>
           <span>ESC Close</span>

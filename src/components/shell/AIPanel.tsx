@@ -9,10 +9,11 @@ interface AIPanelProps {
   isOpen: boolean
   width: number
   onClose: () => void
+  onToggle: () => void
   onWidthChange: (width: number) => void
 }
 
-export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps) {
+export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIPanelProps) {
   const { workspace } = useWorkspace()
   const workspaceName = workspace?.name
   const workspaceId = workspace?.id
@@ -23,13 +24,11 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
   const [input, setInput] = useState('')
   const pathname = usePathname()
 
-  // Page label for UI only
   const pageName = getPageName(pathname)
 
   const { messages, isLoading, error, sendMessage, stopGeneration, clearMessages } = useChat({
     workspaceId: workspaceId || '',
     workspaceName: workspaceName || 'Unknown',
-    // Pass the actual route path so the agent + refresh logic are correct
     currentPage: pathname,
   })
 
@@ -45,7 +44,7 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
     }
   }, [isOpen])
 
-  // Listen for prefill events from other components (e.g. NewsOnboarding)
+  // Listen for prefill events from other components
   useEffect(() => {
     const handlePrefill = (e: Event) => {
       const detail = (e as CustomEvent).detail
@@ -59,7 +58,7 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
     return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
   }, [])
 
-  // Handle resize — use ref for onWidthChange to avoid re-attaching listeners
+  // Handle resize
   const onWidthChangeRef = useRef(onWidthChange)
   onWidthChangeRef.current = onWidthChange
 
@@ -101,43 +100,115 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
 
   return (
     <>
-      {/* Resize handle */}
+      {/* Resize handle — gradient glow on hover/drag */}
       <div
-        className={`w-1 cursor-col-resize hover:bg-[var(--border)] transition-colors ${
-          isResizing ? 'bg-[var(--border)]' : ''
-        }`}
+        className="w-1.5 cursor-col-resize group relative flex-shrink-0"
         onMouseDown={handleMouseDown}
-      />
+      >
+        <div
+          className={`absolute inset-0 transition-opacity duration-200 ${
+            isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
+          style={{
+            background: 'linear-gradient(180deg, var(--neon), var(--pink), var(--cyan))',
+            filter: 'blur(1px)',
+          }}
+        />
+        <div
+          className={`absolute inset-0 transition-opacity duration-200 ${
+            isResizing ? 'opacity-60' : 'opacity-0 group-hover:opacity-40'
+          }`}
+          style={{
+            background: 'linear-gradient(180deg, var(--neon), var(--pink))',
+            filter: 'blur(6px)',
+          }}
+        />
+      </div>
 
       {/* Panel */}
       <div
         ref={panelRef}
-        className="flex flex-col bg-[var(--card)] border-l border-[var(--border)] overflow-hidden"
-        style={{ width }}
+        className="flex flex-col overflow-hidden"
+        style={{
+          width,
+          background: 'rgba(6,6,10,0.5)',
+          backdropFilter: 'blur(30px)',
+          WebkitBackdropFilter: 'blur(30px)',
+          borderLeft: '1px solid var(--border)',
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-          <h2 className="font-semibold">Clawdbot</h2>
+        {/* Header — bot orb + context */}
+        <div
+          className="flex items-center gap-3 px-4 py-3"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          {/* Bot orb with spinning ring */}
+          <div className="relative flex-shrink-0" style={{ width: 36, height: 36 }}>
+            {/* Spinning ring */}
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: 'conic-gradient(var(--neon), var(--pink), var(--cyan), var(--neon))',
+                animation: 'spin 3s linear infinite',
+              }}
+            />
+            {/* Inner mask */}
+            <div
+              className="absolute rounded-full"
+              style={{
+                inset: 2,
+                background: 'var(--bg)',
+              }}
+            />
+            {/* Pulsing core dot */}
+            <div
+              className="absolute rounded-full"
+              style={{
+                width: 8,
+                height: 8,
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: 'var(--neon)',
+                boxShadow: '0 0 8px var(--neon-glow), 0 0 16px var(--neon-glow)',
+                animation: 'orbPulse 2s ease-in-out infinite',
+              }}
+            />
+          </div>
+
+          {/* Title + context */}
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>
+              Clawdbot
+            </div>
+            <div
+              className="text-xs truncate"
+              style={{ color: 'var(--muted)' }}
+            >
+              {workspaceName || 'No workspace'} / {pageName}
+            </div>
+          </div>
+
+          {/* Header actions */}
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={clearMessages}
-                className="p-1 hover:bg-[var(--hover)] rounded transition-colors text-[var(--muted)] hover:text-[var(--fg)]"
+                className="p-1.5 rounded-lg transition-colors"
+                style={{ color: 'var(--muted)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--fg)'
+                  e.currentTarget.style.background = 'var(--hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--muted)'
+                  e.currentTarget.style.background = 'transparent'
+                }}
                 aria-label="Clear chat"
-                title="Clear chat"
+                title="New conversation"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 6h18" />
                   <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
                   <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
@@ -147,20 +218,19 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
             <button
               type="button"
               onClick={onClose}
-              className="p-1 hover:bg-[var(--hover)] rounded transition-colors"
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--muted)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--fg)'
+                e.currentTarget.style.background = 'var(--hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--muted)'
+                e.currentTarget.style.background = 'transparent'
+              }}
               aria-label="Close panel"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -168,30 +238,10 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
           </div>
         </div>
 
-        {/* Context info */}
-        <div className="px-4 py-2 text-sm text-[var(--muted)] border-b border-[var(--border)]">
-          <div>
-            <span className="opacity-70">Workspace:</span>{' '}
-            <span className="text-[var(--fg)]">{workspaceName || 'None'}</span>
-          </div>
-          <div>
-            <span className="opacity-70">Page:</span>{' '}
-            <span className="text-[var(--fg)]">{pageName}</span>
-          </div>
-        </div>
-
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-[var(--muted)] p-4">
-              <div className="text-center">
-                <div className="mb-2 text-3xl">🤖</div>
-                <div className="font-medium">Clawdbot</div>
-                <div className="text-xs mt-1 max-w-[200px]">
-                  Your AI assistant. Ask questions, create tasks, or get help with anything.
-                </div>
-              </div>
-            </div>
+            <EmptyState />
           ) : (
             <div className="p-4 space-y-4">
               {messages.map((message) => (
@@ -204,27 +254,63 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
 
         {/* Error display */}
         {error && (
-          <div className="px-4 py-2 bg-[var(--error-bg)] text-[var(--error-fg)] text-sm">{error}</div>
+          <div
+            className="px-4 py-2 text-sm"
+            style={{
+              background: 'var(--error-bg)',
+              color: 'var(--error-fg)',
+            }}
+          >
+            {error}
+          </div>
         )}
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-[var(--border)]">
-          <div className="flex gap-2">
+        <form
+          onSubmit={handleSubmit}
+          className="p-3"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          <div
+            className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={workspaceId ? 'Ask Clawdbot...' : 'Select a workspace first'}
-              // Allow typing even while the previous request is streaming
               disabled={!workspaceId}
-              className="flex-1 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--border)]"
+              className="flex-1 bg-transparent text-sm outline-none placeholder-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: 'var(--fg)' }}
+              onFocus={(e) => {
+                const container = e.currentTarget.parentElement
+                if (container) {
+                  container.style.borderColor = 'var(--neon)'
+                  container.style.boxShadow = '0 0 0 1px var(--neon-dim), 0 0 12px var(--neon-dim)'
+                }
+              }}
+              onBlur={(e) => {
+                const container = e.currentTarget.parentElement
+                if (container) {
+                  container.style.borderColor = 'var(--border)'
+                  container.style.boxShadow = 'none'
+                }
+              }}
             />
             {isLoading ? (
               <button
                 type="button"
                 onClick={stopGeneration}
-                className="px-3 py-2 bg-[var(--error-bg)] text-[var(--error-fg)] rounded text-sm hover:opacity-80 transition-opacity"
+                className="flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                style={{
+                  background: 'var(--error-bg)',
+                  color: 'var(--error-fg)',
+                }}
               >
                 Stop
               </button>
@@ -232,9 +318,21 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
               <button
                 type="submit"
                 disabled={!input.trim() || !workspaceId}
-                className="px-3 py-2 bg-[var(--fg)] text-[var(--bg)] rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition-opacity"
+                className="flex-shrink-0 p-1.5 rounded-lg text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90"
+                style={{
+                  background: input.trim() && workspaceId
+                    ? 'linear-gradient(135deg, var(--neon), var(--pink))'
+                    : 'var(--muted-2)',
+                  color: input.trim() && workspaceId ? '#fff' : 'var(--muted)',
+                  boxShadow: input.trim() && workspaceId
+                    ? '0 0 12px var(--neon-glow)'
+                    : 'none',
+                }}
               >
-                Send
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
               </button>
             )}
           </div>
@@ -244,21 +342,120 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
   )
 }
 
-// Memoized to prevent O(n) re-renders when messages array updates
+/* Empty state with bot orb and hint chips */
+function EmptyState() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center p-6" style={{ color: 'var(--muted)' }}>
+      {/* Large orb */}
+      <div className="relative mb-6" style={{ width: 64, height: 64 }}>
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'conic-gradient(var(--neon), var(--pink), var(--cyan), var(--neon))',
+            animation: 'spin 4s linear infinite',
+            opacity: 0.6,
+          }}
+        />
+        <div
+          className="absolute rounded-full"
+          style={{
+            inset: 3,
+            background: 'var(--bg)',
+          }}
+        />
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: 14,
+            height: 14,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'var(--neon)',
+            boxShadow: '0 0 12px var(--neon-glow), 0 0 24px var(--neon-glow)',
+            animation: 'orbPulse 2s ease-in-out infinite',
+          }}
+        />
+      </div>
+
+      <div className="font-semibold text-sm mb-1" style={{ color: 'var(--fg)' }}>
+        Clawdbot
+      </div>
+      <div className="text-xs text-center mb-5 max-w-[220px]" style={{ color: 'var(--muted)' }}>
+        Your AI assistant for tasks, questions, and everything in between.
+      </div>
+
+      {/* Hint chips */}
+      <div className="flex flex-wrap gap-2 justify-center max-w-[260px]">
+        {['Create a task', 'Summarize my day', 'What can you do?'].map((hint) => (
+          <HintChip key={hint} label={hint} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function HintChip({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      className="px-3 py-1.5 rounded-full text-xs transition-all"
+      style={{
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        color: 'var(--muted)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--neon-dim)'
+        e.currentTarget.style.color = 'var(--neon)'
+        e.currentTarget.style.background = 'var(--neon-dim)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border)'
+        e.currentTarget.style.color = 'var(--muted)'
+        e.currentTarget.style.background = 'var(--card)'
+      }}
+      onClick={() => {
+        window.dispatchEvent(
+          new CustomEvent('lifeos:ai-prefill', { detail: { message: label } })
+        )
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+// Memoized message bubble with gradient/glass styling
 const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-lg px-3 py-2 ${
-          isUser ? 'bg-[var(--fg)] text-[var(--bg)]' : 'bg-[var(--hover)] text-[var(--fg)]'
-        }`}
+        className="max-w-[85%] rounded-2xl px-3.5 py-2.5"
+        style={
+          isUser
+            ? {
+                background: 'linear-gradient(135deg, var(--neon), var(--pink))',
+                color: '#fff',
+                boxShadow: '0 2px 12px var(--neon-glow)',
+              }
+            : {
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                color: 'var(--fg)',
+              }
+        }
       >
         {/* Message content */}
-        <div className="text-sm whitespace-pre-wrap break-words">
+        <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
           {message.content}
-          {message.isStreaming && <span className="animate-pulse">▊</span>}
+          {message.isStreaming && (
+            <span className="inline-block ml-0.5 animate-pulse" style={{ color: isUser ? '#fff' : 'var(--neon)' }}>
+              ▊
+            </span>
+          )}
         </div>
 
         {/* Tool calls */}
@@ -274,26 +471,36 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMe
   )
 })
 
-// Memoized to prevent unnecessary re-renders in nested loop
+// Memoized tool call display with glass styling
 const ToolCallDisplay = memo(function ToolCallDisplay({
   tool,
 }: {
   tool: NonNullable<ChatMessage['toolCalls']>[number]
 }) {
   return (
-    <div className="text-xs p-2 rounded bg-black/10 dark:bg-white/10">
+    <div
+      className="text-xs p-2 rounded-lg"
+      style={{
+        background: 'rgba(255,255,255,0.06)',
+        border: '1px solid var(--border)',
+      }}
+    >
       <div className="flex items-center gap-2">
-        <span className="font-mono">{tool.name}</span>
+        <span className="font-mono" style={{ color: 'var(--cyan)' }}>{tool.name}</span>
         <span
-          className={`px-1 rounded ${
-            tool.status === 'running'
-              ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
-              : tool.status === 'success'
-                ? 'bg-green-500/20 text-green-600 dark:text-green-400'
-                : tool.status === 'error'
-                  ? 'bg-red-500/20 text-red-600 dark:text-red-400'
-                  : 'bg-gray-500/20'
-          }`}
+          className="px-1.5 py-0.5 rounded text-[10px]"
+          style={{
+            background:
+              tool.status === 'running' ? 'rgba(251,191,36,0.15)' :
+              tool.status === 'success' ? 'rgba(110,231,183,0.15)' :
+              tool.status === 'error' ? 'rgba(251,113,133,0.15)' :
+              'rgba(255,255,255,0.05)',
+            color:
+              tool.status === 'running' ? 'var(--warm)' :
+              tool.status === 'success' ? 'var(--green)' :
+              tool.status === 'error' ? 'var(--red)' :
+              'var(--muted)',
+          }}
         >
           {tool.status === 'running' && '...'}
           {tool.status === 'success' && 'done'}
@@ -301,7 +508,9 @@ const ToolCallDisplay = memo(function ToolCallDisplay({
           {tool.status === 'pending' && '...'}
         </span>
       </div>
-      {tool.error && <div className="mt-1 text-red-500">{tool.error}</div>}
+      {tool.error && (
+        <div className="mt-1" style={{ color: 'var(--red)' }}>{tool.error}</div>
+      )}
     </div>
   )
 })
@@ -309,9 +518,6 @@ const ToolCallDisplay = memo(function ToolCallDisplay({
 function getPageName(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean)
   if (segments.length === 0) return 'Home'
-
   const last = segments[segments.length - 1]
-
-  // Capitalize first letter
   return last.charAt(0).toUpperCase() + last.slice(1)
 }

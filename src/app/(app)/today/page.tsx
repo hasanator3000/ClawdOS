@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   )
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-5">
       {/* Search bar */}
       <SearchWidget />
 

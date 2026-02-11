@@ -34,7 +34,6 @@ export function CurrencyWidget() {
 
     fetchRates()
 
-    // Refresh every 5 minutes
     const interval = setInterval(fetchRates, 5 * 60 * 1000)
     return () => {
       controller.abort()
@@ -44,11 +43,23 @@ export function CurrencyWidget() {
 
   if (loading) {
     return (
-      <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)]">
-        <div className="text-xs uppercase tracking-wide text-[var(--muted)] mb-3">Currencies</div>
+      <div
+        className="p-4 rounded-2xl"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+      >
+        <div
+          className="text-[10px] uppercase tracking-widest font-mono mb-3"
+          style={{ color: 'var(--muted)' }}
+        >
+          Currencies
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-16 animate-pulse bg-[var(--hover)] rounded-lg" />
+            <div
+              key={i}
+              className="h-16 animate-pulse rounded-xl"
+              style={{ background: 'var(--hover)' }}
+            />
           ))}
         </div>
       </div>
@@ -57,47 +68,72 @@ export function CurrencyWidget() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)]">
-        <div className="text-xs uppercase tracking-wide text-[var(--muted)] mb-3">Currencies</div>
-        <div className="text-sm text-[var(--muted)]">{error}</div>
+      <div
+        className="p-4 rounded-2xl"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+      >
+        <div
+          className="text-[10px] uppercase tracking-widest font-mono mb-3"
+          style={{ color: 'var(--muted)' }}
+        >
+          Currencies
+        </div>
+        <div className="text-sm" style={{ color: 'var(--muted)' }}>{error}</div>
       </div>
     )
   }
 
   return (
-    <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)]">
-      <div className="text-xs uppercase tracking-wide text-[var(--muted)] mb-3">Currencies</div>
+    <div
+      className="p-4 rounded-2xl"
+      style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+    >
+      <div
+        className="text-[10px] uppercase tracking-widest font-mono mb-3"
+        style={{ color: 'var(--muted)' }}
+      >
+        Currencies
+      </div>
       <div className="grid grid-cols-2 gap-3">
         {rates.map((rate) => (
           <div
             key={rate.symbol}
-            className="p-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+            className="p-3 rounded-xl group relative overflow-hidden transition-all"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
           >
             <div className="flex items-center justify-between">
-              <span className="font-medium">{rate.symbol}</span>
+              <span
+                className="font-mono text-xs uppercase tracking-wide"
+                style={{ color: 'var(--muted)' }}
+              >
+                {rate.symbol}
+              </span>
               {rate.type === 'crypto' && rate.change24h !== undefined && (
                 <span
-                  className={`text-xs ${
-                    rate.change24h >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`}
+                  className="text-xs font-mono"
+                  style={{
+                    color: rate.change24h >= 0 ? 'var(--green)' : 'var(--red)',
+                  }}
                 >
                   {rate.change24h >= 0 ? '+' : ''}
                   {rate.change24h.toFixed(1)}%
                 </span>
               )}
             </div>
-            <div className="text-lg font-semibold tabular-nums">
+            <div
+              className="text-xl font-mono font-bold tabular-nums mt-1"
+              style={{ color: 'var(--fg)' }}
+            >
               {rate.type === 'crypto' ? (
-                <>
-                  ${rate.rate < 10 ? cryptoFmtSmall.format(rate.rate) : cryptoFmt.format(rate.rate)}
-                </>
+                <>${rate.rate < 10 ? cryptoFmtSmall.format(rate.rate) : cryptoFmt.format(rate.rate)}</>
               ) : (
-                <>
-                  {rate.rate.toFixed(2)} ₽
-                </>
+                <>{rate.rate.toFixed(2)} &#8381;</>
               )}
             </div>
-            <div className="text-xs text-[var(--muted)]">{rate.name}</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{rate.name}</div>
           </div>
         ))}
       </div>
