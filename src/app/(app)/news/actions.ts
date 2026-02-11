@@ -19,9 +19,8 @@ import {
   removeSourceFromTab as removeAssignRepo,
   findTabsByWorkspace,
 } from '@/lib/db/repositories/news-tab.repository'
-import { findNewsByWorkspace, type FindNewsOptions } from '@/lib/db/repositories/news.repository'
 import { validateFeedUrl } from '@/lib/rss/validator'
-import { fetchSource, refreshStaleSources } from '@/lib/rss/fetcher'
+import { fetchLiveFeeds } from '@/lib/rss/live'
 
 // ---------------------------------------------------------------------------
 // Source management
@@ -57,10 +56,7 @@ export async function addSource(url: string, tabIds?: string[]) {
         }
       }
 
-      // Initial fetch to populate items
-      const fetchResult = await fetchSource(client, source, workspace.id)
-
-      return { source, fetchResult }
+      return { source }
     })
 
     revalidatePath('/news')
@@ -196,46 +192,25 @@ export async function removeSourceFromTab(sourceId: string, tabId: string) {
 // Feed operations
 // ---------------------------------------------------------------------------
 
+/**
+ * Fetch all RSS feeds live and return fresh items.
+ */
 export async function refreshNews() {
   const session = await getSession()
-  if (!session.userId) return { error: 'Unauthorized' }
+  if (!session.userId) return { error: 'Unauthorized', items: [] }
 
   const workspace = await getActiveWorkspace()
-  if (!workspace) return { error: 'No workspace selected' }
+  if (!workspace) return { error: 'No workspace selected', items: [] }
 
   try {
-    const results = await withUser(session.userId, (client) =>
-      refreshStaleSources(client, workspace.id, 15)
+    const sources = await withUser(session.userId, (client) =>
+      findSourcesByWorkspace(client, workspace.id)
     )
-
-    revalidatePath('/news')
-    return { results }
+    const items = await fetchLiveFeeds(sources)
+    return { items }
   } catch (error) {
-    return { error: 'Failed to refresh sources' }
+    return { error: 'Failed to refresh feeds', items: [] }
   }
-}
-
-export async function loadMoreNews(
-  cursor: string,
-  cursorId: string,
-  tabId?: string,
-  search?: string
-) {
-  const session = await getSession()
-  if (!session.userId) return { items: [] }
-
-  const workspace = await getActiveWorkspace()
-  if (!workspace) return { items: [] }
-
-  const opts: FindNewsOptions = { limit: 30, cursor, cursorId }
-  if (tabId) opts.tabId = tabId
-  if (search) opts.search = search
-
-  const items = await withUser(session.userId, (client) =>
-    findNewsByWorkspace(client, workspace.id, opts)
-  )
-
-  return { items }
 }
 
 export async function getSources() {
@@ -397,11 +372,6 @@ export async function setupNewsTopics(userTopics: string) {
         }
       }
     })
-
-    // 4. Fetch feeds immediately
-    await withUser(session.userId, (client) =>
-      refreshStaleSources(client, workspace.id, 0)
-    )
 
     revalidatePath('/news')
     return { success: true, topicCount: config.tabs.length }

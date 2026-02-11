@@ -21,6 +21,13 @@ import {
   assignSourceToTab as assignSourceToTabRepo,
   findTabsByWorkspace,
 } from '@/lib/db/repositories/news-tab.repository'
+import {
+  createConversation,
+  createMessage,
+  getActiveConversation,
+  getMessagesByConversation,
+  updateConversation,
+} from '@/lib/ai/repository'
 
 export const dynamic = 'force-dynamic'
 
@@ -230,7 +237,8 @@ const MAX_ASSISTANT_TEXT_BUFFER = 50_000 // 50KB should be enough for <lifeos> b
 async function processStreamWithActions(
   upstreamResponse: Response,
   userId: string,
-  workspaceId: string | null
+  workspaceId: string | null,
+  conversationId: string | null = null
 ): Promise<ReadableStream> {
   const reader = upstreamResponse.body?.getReader()
   if (!reader) throw new Error('No upstream body')
@@ -239,10 +247,18 @@ async function processStreamWithActions(
   const encoder = new TextEncoder()
 
   let fullAssistantText = '' // Accumulate text for action parsing (bounded)
+  let fullVisibleText = '' // Accumulate visible text (without <lifeos> blocks) for DB persistence
   let buffer = ''
 
   return new ReadableStream({
     async start(controller) {
+      // Emit conversationId to client so it can track the session
+      if (conversationId) {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: 'conversationId', id: conversationId })}\n\n`)
+        )
+      }
+
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -352,6 +368,7 @@ async function processStreamWithActions(
 
                 // Send filtered delta to client
                 if (filtered) {
+                  fullVisibleText += filtered
                   const filteredEvt = {
                     ...evt,
                     choices: [
@@ -383,6 +400,10 @@ async function processStreamWithActions(
           // Ignore if we can't send error event
         }
       } finally {
+        // Persist assistant message to DB (fire-and-forget)
+        if (conversationId && fullVisibleText.trim()) {
+          saveAssistantMessage(userId, conversationId, fullVisibleText.trim()).catch(() => {})
+        }
         controller.close()
       }
     },
@@ -734,6 +755,49 @@ async function buildNewsTabSwitchResponse(
 }
 
 // ---------------------------------------------------------------------------
+// Conversation persistence helpers
+// ---------------------------------------------------------------------------
+
+/** Ensure a conversation exists (create if needed) and save the user message. */
+async function ensureConversation(
+  userId: string,
+  incomingConversationId: string | null,
+  workspaceId: string | null,
+  userMessage: string
+): Promise<string | null> {
+  if (!workspaceId) return null
+  try {
+    let convId = incomingConversationId
+    await withUser(userId, async (client) => {
+      if (!convId) {
+        const conv = await createConversation(client, {
+          workspaceId,
+          title: userMessage.slice(0, 80),
+        })
+        convId = conv.id
+      }
+      await createMessage(client, { conversationId: convId!, role: 'user', content: userMessage })
+    })
+    return convId
+  } catch (err) {
+    console.error('[chat] Failed to persist conversation:', err)
+    return incomingConversationId
+  }
+}
+
+/** Save the assistant's reply after streaming completes. */
+async function saveAssistantMessage(userId: string, conversationId: string | null, content: string) {
+  if (!conversationId || !content.trim()) return
+  try {
+    await withUser(userId, (client) =>
+      createMessage(client, { conversationId, role: 'assistant', content })
+    )
+  } catch (err) {
+    console.error('[chat] Failed to persist assistant message:', err)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/ai/chat
 // ---------------------------------------------------------------------------
 
@@ -767,6 +831,14 @@ export async function POST(request: Request) {
 
   const encoder = new TextEncoder()
 
+  // Persist conversation + user message
+  const conversationId = await ensureConversation(
+    session.userId,
+    body?.conversationId ?? null,
+    workspaceId,
+    message
+  )
+
   // --- 3-Layer Intent Router ---
   // Layer 0: regex fast-path (<1ms)
   // Layer 1: embedding semantic match (~6ms)
@@ -774,7 +846,11 @@ export async function POST(request: Request) {
   const routed = await routeCommand(message, { workspaceId, workspaceName, currentPage })
 
   if (routed) {
-    return buildFastPathResponse(routed.result, encoder, session.userId, workspaceId)
+    // Fast-path: persist response text after building it
+    const response = await buildFastPathResponse(routed.result, encoder, session.userId, workspaceId)
+    // We can't easily extract text from the SSE stream, so save a summary
+    saveAssistantMessage(session.userId, conversationId, `[fast-path: ${routed.result.type}]`)
+    return response
   }
 
   // --- Layer 2: No fast-path match → forward to Clawdbot LLM ---
@@ -886,7 +962,7 @@ export async function POST(request: Request) {
 
   if (stream) {
     // Process stream: filter <lifeos> blocks and execute actions server-side
-    const processedStream = await processStreamWithActions(upstream, session.userId, workspaceId)
+    const processedStream = await processStreamWithActions(upstream, session.userId, workspaceId, conversationId)
 
     return new Response(processedStream, {
       status: 200,
@@ -902,6 +978,43 @@ export async function POST(request: Request) {
   return NextResponse.json(json)
 }
 
-export async function GET() {
-  return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
+export async function GET(request: Request) {
+  const session = await getSession()
+  if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { searchParams } = new URL(request.url)
+  const workspaceId = searchParams.get('workspaceId')
+  if (!workspaceId) return NextResponse.json({ conversationId: null, messages: [] })
+
+  const conversation = await getActiveConversation(workspaceId, session.userId)
+  if (!conversation) return NextResponse.json({ conversationId: null, messages: [] })
+
+  const dbMessages = await withUser(session.userId, (client) =>
+    getMessagesByConversation(client, conversation.id)
+  )
+
+  const messages = dbMessages
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant',
+      content: m.content || '',
+    }))
+
+  return NextResponse.json({ conversationId: conversation.id, messages })
+}
+
+export async function DELETE(request: Request) {
+  const session = await getSession()
+  if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json().catch(() => null)
+  const conversationId = body?.conversationId
+  if (!conversationId) return NextResponse.json({ error: 'Missing conversationId' }, { status: 400 })
+
+  await withUser(session.userId, (client) =>
+    updateConversation(client, conversationId, { status: 'archived' })
+  )
+
+  return NextResponse.json({ success: true })
 }

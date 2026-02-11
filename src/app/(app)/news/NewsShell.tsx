@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useTransition, useCallback, useRef } from 'react'
+import { useState, useEffect, useTransition, useCallback, useRef, useMemo } from 'react'
 import type { NewsItem, NewsSource, NewsTab } from '@/types/news'
 import { NewsTabs } from './NewsTabs'
 import { NewsFeed } from './NewsFeed'
 import { NewsSourcesPanel } from './NewsSourcesPanel'
 import { NewsSearch } from './NewsSearch'
 import { NewsOnboarding } from './NewsOnboarding'
-import { refreshNews, loadMoreNews, getSources, getTabs } from './actions'
+import { refreshNews, getSources, getTabs } from './actions'
 
 interface Props {
   initialNews: NewsItem[]
@@ -16,10 +16,8 @@ interface Props {
   initialSourceTabMap: Record<string, string[]>
 }
 
-const PAGE_SIZE = 30
-
 export function NewsShell({ initialNews, initialSources, initialTabs, initialSourceTabMap }: Props) {
-  const [news, setNews] = useState(initialNews)
+  const [allNews, setAllNews] = useState(initialNews)
   const [sources, setSources] = useState(initialSources)
   const [tabs, setTabs] = useState(initialTabs)
   const [sourceTabMap, setSourceTabMap] = useState(initialSourceTabMap)
@@ -29,11 +27,10 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const feedRef = useRef<HTMLDivElement>(null)
   const [showSources, setShowSources] = useState(false)
-  const [hasMore, setHasMore] = useState(initialNews.length >= PAGE_SIZE)
   const [isPending, startTransition] = useTransition()
 
   // Sync props when server data changes (workspace switch, revalidation)
-  useEffect(() => { setNews(initialNews) }, [initialNews])
+  useEffect(() => { setAllNews(initialNews) }, [initialNews])
   useEffect(() => { setSources(initialSources) }, [initialSources])
   useEffect(() => { setTabs(initialTabs) }, [initialTabs])
   useEffect(() => { setSourceTabMap(initialSourceTabMap) }, [initialSourceTabMap])
@@ -45,40 +42,54 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
   }, [search])
 
-  // Re-fetch when tab or debounced search changes; scroll to top
+  // Client-side filtering by tab and search
+  const filteredNews = useMemo(() => {
+    let items = allNews
+
+    // Filter by active tab (via sourceTabMap)
+    if (activeTabId) {
+      const sourceIdsInTab = new Set<string>()
+      for (const [sourceId, tabIds] of Object.entries(sourceTabMap)) {
+        if (tabIds.includes(activeTabId)) sourceIdsInTab.add(sourceId)
+      }
+      items = items.filter((item) => item.sourceId && sourceIdsInTab.has(item.sourceId))
+    }
+
+    // Filter by search
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase()
+      items = items.filter(
+        (item) =>
+          item.title.toLowerCase().includes(q) ||
+          item.summary?.toLowerCase().includes(q) ||
+          item.sourceName?.toLowerCase().includes(q)
+      )
+    }
+
+    return items
+  }, [allNews, activeTabId, sourceTabMap, debouncedSearch])
+
+  // Scroll to top when filters change
   useEffect(() => {
     feedRef.current?.scrollTo(0, 0)
-    startTransition(async () => {
-      const result = await loadMoreNews('', '', activeTabId ?? undefined, debouncedSearch || undefined)
-      if (result.items) {
-        setNews(result.items)
-        setHasMore(result.items.length >= PAGE_SIZE)
-      }
-    })
   }, [activeTabId, debouncedSearch])
 
-  // Refs for stable event handlers (avoids re-attaching listeners on every state change)
+  // Refs for stable event handlers
   const tabsRef = useRef(tabs)
-  const activeTabIdRef = useRef(activeTabId)
-  const searchRef = useRef(search)
   tabsRef.current = tabs
-  activeTabIdRef.current = activeTabId
-  searchRef.current = search
 
-  // Listen for chat SSE events — single registration on mount
+  // Listen for custom events — single registration on mount
   useEffect(() => {
     const handleRefresh = () => {
       startTransition(async () => {
-        const [srcResult, tabResult] = await Promise.all([getSources(), getTabs()])
+        const [srcResult, tabResult, newsResult] = await Promise.all([
+          getSources(),
+          getTabs(),
+          refreshNews(),
+        ])
         if (srcResult.sources) setSources(srcResult.sources)
         if (tabResult.tabs) setTabs(tabResult.tabs)
-
-        await refreshNews()
-        const result = await loadMoreNews('', '', activeTabIdRef.current ?? undefined, searchRef.current || undefined)
-        if (result.items) {
-          setNews(result.items)
-          setHasMore(result.items.length >= PAGE_SIZE)
-        }
+        if (newsResult.items) setAllNews(newsResult.items)
       })
     }
 
@@ -106,36 +117,23 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     }
   }, [])
 
-  const handleLoadMore = useCallback(() => {
-    if (news.length === 0 || isPending) return
-
-    const lastItem = news[news.length - 1]
-    if (!lastItem.publishedAt) return
-
+  const handleRefreshClick = useCallback(() => {
     startTransition(async () => {
-      const result = await loadMoreNews(
-        lastItem.publishedAt!,
-        lastItem.id,
-        activeTabId ?? undefined,
-        search || undefined
-      )
-      if (result.items) {
-        setNews((prev) => [...prev, ...result.items])
-        if (result.items.length < PAGE_SIZE) setHasMore(false)
-      }
+      const result = await refreshNews()
+      if (result.items) setAllNews(result.items)
     })
-  }, [news, isPending, activeTabId, search])
+  }, [])
 
   const handleSetupComplete = useCallback(() => {
     startTransition(async () => {
-      const [srcResult, tabResult] = await Promise.all([getSources(), getTabs()])
+      const [srcResult, tabResult, newsResult] = await Promise.all([
+        getSources(),
+        getTabs(),
+        refreshNews(),
+      ])
       if (srcResult.sources) setSources(srcResult.sources)
       if (tabResult.tabs) setTabs(tabResult.tabs)
-      const result = await loadMoreNews('', '', undefined, undefined)
-      if (result.items) {
-        setNews(result.items)
-        setHasMore(result.items.length >= PAGE_SIZE)
-      }
+      if (newsResult.items) setAllNews(newsResult.items)
     })
   }, [])
 
@@ -160,6 +158,14 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
           <NewsSearch value={search} onChange={setSearch} />
           <button
             type="button"
+            onClick={handleRefreshClick}
+            disabled={isPending}
+            className="px-3 py-1.5 border border-[var(--border)] rounded-lg text-sm text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--hover)] transition-colors disabled:opacity-50"
+          >
+            {isPending ? 'Loading...' : 'Refresh'}
+          </button>
+          <button
+            type="button"
             onClick={() => setShowSources(true)}
             className="px-3 py-1.5 border border-[var(--border)] rounded-lg text-sm text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--hover)] transition-colors"
           >
@@ -175,12 +181,12 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
         </div>
       )}
 
-      {/* Feed — scrolls independently, stretched to edges */}
+      {/* Feed — scrolls independently */}
       <div ref={feedRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-4">
         <NewsFeed
-          items={news}
-          onLoadMore={handleLoadMore}
-          hasMore={hasMore}
+          items={filteredNews}
+          onLoadMore={() => {}}
+          hasMore={false}
           isLoading={isPending}
         />
       </div>

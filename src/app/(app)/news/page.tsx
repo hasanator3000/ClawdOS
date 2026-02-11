@@ -2,9 +2,9 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
-import { findNewsByWorkspace } from '@/lib/db/repositories/news.repository'
 import { findSourcesByWorkspace } from '@/lib/db/repositories/news-source.repository'
 import { findTabsByWorkspace } from '@/lib/db/repositories/news-tab.repository'
+import { fetchLiveFeeds } from '@/lib/rss/live'
 import { NewsShell } from './NewsShell'
 import type { PoolClient } from 'pg'
 
@@ -42,14 +42,16 @@ export default async function NewsPage() {
     )
   }
 
-  const [news, sources, tabs, sourceTabMap] = await withUser(session.userId, async (client) => {
+  const [sources, tabs, sourceTabMap] = await withUser(session.userId, async (client) => {
     return Promise.all([
-      findNewsByWorkspace(client, workspace.id, { limit: 30 }),
       findSourcesByWorkspace(client, workspace.id),
       findTabsByWorkspace(client, workspace.id),
       getSourceTabMap(client, workspace.id),
     ])
   })
+
+  // Fetch RSS feeds live (no DB storage)
+  const news = await fetchLiveFeeds(sources)
 
   return (
     <NewsShell
