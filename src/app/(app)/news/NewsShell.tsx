@@ -27,6 +27,7 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const feedRef = useRef<HTMLDivElement>(null)
   const [showSources, setShowSources] = useState(false)
   const [hasMore, setHasMore] = useState(initialNews.length >= PAGE_SIZE)
   const [isPending, startTransition] = useTransition()
@@ -44,8 +45,9 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
   }, [search])
 
-  // Re-fetch when tab or debounced search changes
+  // Re-fetch when tab or debounced search changes; scroll to top
   useEffect(() => {
+    feedRef.current?.scrollTo(0, 0)
     startTransition(async () => {
       const result = await loadMoreNews('', '', activeTabId ?? undefined, debouncedSearch || undefined)
       if (result.items) {
@@ -155,7 +157,7 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
       )}
 
       {/* Feed — scrolls independently, stretched to edges */}
-      <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-4">
+      <div ref={feedRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-4">
         <NewsFeed
           items={news}
           onLoadMore={handleLoadMore}
