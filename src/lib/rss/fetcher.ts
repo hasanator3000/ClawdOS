@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg'
 import type { NewsSource } from '@/types/news'
-import { parseFeed } from './parser'
-import { upsertNewsItem, cleanupOldItems } from '@/lib/db/repositories/news.repository'
+import { parseFeed, type ParsedFeed } from './parser'
+import { batchUpsertNewsItems, cleanupOldItems } from '@/lib/db/repositories/news.repository'
 import {
   markSourceFetched,
   incrementSourceError,
@@ -13,6 +13,9 @@ export interface FetchResult {
   newItems: number
   error?: string
 }
+
+/** Max concurrent HTTP fetches */
+const HTTP_CONCURRENCY = 5
 
 /**
  * Fetch a single RSS source, parse items, and upsert into DB.
@@ -50,9 +53,10 @@ export async function fetchSource(
       )
     }
 
-    // Upsert each item (dedup by guid)
-    for (const item of feed.items) {
-      const inserted = await upsertNewsItem(client, {
+    // Batch upsert all items at once
+    result.newItems = await batchUpsertNewsItems(
+      client,
+      feed.items.map((item) => ({
         workspaceId,
         sourceId: source.id,
         title: item.title,
@@ -61,9 +65,8 @@ export async function fetchSource(
         imageUrl: item.imageUrl,
         publishedAt: item.publishedAt?.toISOString() ?? null,
         guid: item.guid,
-      })
-      if (inserted) result.newItems++
-    }
+      }))
+    )
 
     // Cleanup old items (max 200 per source, max 30 days)
     await cleanupOldItems(client, source.id, 200, 30)
@@ -81,7 +84,9 @@ export async function fetchSource(
 
 /**
  * Refresh all stale sources for a workspace.
- * Each source is fetched independently — one failure doesn't block others.
+ *
+ * Phase 1: Fetch all HTTP responses in parallel (network I/O).
+ * Phase 2: Process DB writes sequentially (single client connection).
  */
 export async function refreshStaleSources(
   client: PoolClient,
@@ -91,22 +96,85 @@ export async function refreshStaleSources(
   const { findStaleSources } = await import('@/lib/db/repositories/news-source.repository')
   const sources = await findStaleSources(client, workspaceId, staleMinutes)
 
+  if (sources.length === 0) return []
+
+  // Phase 1: Parallel HTTP fetches with concurrency limit
+  type FeedData = { source: NewsSource; feed: ParsedFeed }
+  type FeedError = { source: NewsSource; error: string }
+  const feedResults: Array<FeedData | FeedError> = []
+
+  for (let i = 0; i < sources.length; i += HTTP_CONCURRENCY) {
+    const batch = sources.slice(i, i + HTTP_CONCURRENCY)
+    const settled = await Promise.allSettled(
+      batch.map(async (source): Promise<FeedData> => {
+        const response = await fetch(source.url, {
+          headers: { 'User-Agent': 'LifeOS/1.0 (RSS Reader)' },
+          signal: AbortSignal.timeout(10_000),
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`)
+        const text = await response.text()
+        return { source, feed: parseFeed(text, source.url) }
+      })
+    )
+
+    for (let j = 0; j < settled.length; j++) {
+      const r = settled[j]
+      if (r.status === 'fulfilled') {
+        feedResults.push(r.value)
+      } else {
+        feedResults.push({
+          source: batch[j],
+          error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+        })
+      }
+    }
+  }
+
+  // Phase 2: Sequential DB writes (single connection, savepoints for isolation)
   const results: FetchResult[] = []
-  for (const source of sources) {
-    // Savepoint so one failing source doesn't abort the entire transaction
+
+  for (const data of feedResults) {
     await client.query('SAVEPOINT fetch_source')
     try {
-      const result = await fetchSource(client, source, workspaceId)
+      if ('error' in data) {
+        throw new Error(data.error)
+      }
+
+      const { source, feed } = data
+
+      // Update source title if not set yet
+      if (!source.title && feed.title) {
+        await client.query(
+          'update content.news_source set title = $1 where id = $2 and title is null',
+          [feed.title, source.id]
+        )
+      }
+
+      // Batch insert all items
+      const newItems = await batchUpsertNewsItems(
+        client,
+        feed.items.map((item) => ({
+          workspaceId,
+          sourceId: source.id,
+          title: item.title,
+          url: item.url,
+          summary: item.summary,
+          imageUrl: item.imageUrl,
+          publishedAt: item.publishedAt?.toISOString() ?? null,
+          guid: item.guid,
+        }))
+      )
+
+      await cleanupOldItems(client, source.id, 200, 30)
+      await markSourceFetched(client, source.id)
       await client.query('RELEASE SAVEPOINT fetch_source')
-      results.push(result)
+
+      results.push({ sourceId: source.id, sourceTitle: source.title, newItems })
     } catch (err) {
       await client.query('ROLLBACK TO SAVEPOINT fetch_source')
-      results.push({
-        sourceId: source.id,
-        sourceTitle: source.title,
-        newItems: 0,
-        error: err instanceof Error ? err.message : String(err),
-      })
+      const msg = err instanceof Error ? err.message : String(err)
+      await incrementSourceError(client, data.source.id, msg).catch(() => {})
+      results.push({ sourceId: data.source.id, sourceTitle: data.source.title, newItems: 0, error: msg })
     }
   }
 

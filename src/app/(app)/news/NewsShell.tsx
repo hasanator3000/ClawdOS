@@ -154,8 +154,8 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
         </div>
       )}
 
-      {/* Feed — scrolls independently */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* Feed — scrolls independently, stretched to edges */}
+      <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-4">
         <NewsFeed
           items={news}
           onLoadMore={handleLoadMore}

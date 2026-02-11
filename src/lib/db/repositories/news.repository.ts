@@ -122,6 +122,59 @@ export async function upsertNewsItem(
   return (result.rows[0] as NewsItem) || null
 }
 
+/**
+ * Batch-insert news items in a single multi-row INSERT.
+ * Returns the number of newly inserted items (deduped by guid).
+ */
+export async function batchUpsertNewsItems(
+  client: PoolClient,
+  items: Array<{
+    workspaceId: string
+    sourceId: string
+    title: string
+    url?: string | null
+    summary?: string | null
+    imageUrl?: string | null
+    publishedAt?: string | null
+    guid: string
+    topic?: string | null
+  }>
+): Promise<number> {
+  if (items.length === 0) return 0
+
+  const values: unknown[] = []
+  const rows: string[] = []
+  let idx = 1
+
+  for (const item of items) {
+    rows.push(
+      `($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5}, $${idx + 6}::timestamptz, $${idx + 7}, $${idx + 8}, core.current_user_id())`
+    )
+    values.push(
+      item.workspaceId,
+      item.sourceId,
+      item.title || 'Untitled',
+      item.url || '',
+      item.summary || '',
+      item.imageUrl || null,
+      item.publishedAt || null,
+      item.guid,
+      item.topic || 'other'
+    )
+    idx += 9
+  }
+
+  const result = await client.query(
+    `INSERT INTO content.news_item
+       (workspace_id, source_id, title, url, summary, image_url, published_at, guid, topic, created_by)
+     VALUES ${rows.join(', ')}
+     ON CONFLICT (source_id, guid) WHERE guid IS NOT NULL DO NOTHING`,
+    values
+  )
+
+  return result.rowCount ?? 0
+}
+
 export async function cleanupOldItems(
   client: PoolClient,
   sourceId: string,
