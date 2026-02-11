@@ -25,8 +25,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru">
       <body className={`${outfit.variable} ${spaceMono.variable} antialiased bg-[var(--bg)] text-[var(--fg)]`}>
         <div className="bg-mesh" />
-        <div className="grid-overlay" />
-        <div className="scanline" />
         {children}
       </body>
     </html>

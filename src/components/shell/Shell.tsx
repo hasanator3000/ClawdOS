@@ -5,8 +5,6 @@ import { AIPanel } from './AIPanel'
 import { useCommandPalette } from '@/hooks/useCommandPalette'
 import { useAIPanel } from '@/hooks/useAIPanel'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import { SECTIONS } from '@/lib/nav/sections'
 import { AIPanelProvider } from '@/contexts/AIPanelContext'
 
 const RAIL_STORAGE_KEY = 'clawd-rail-open'
@@ -22,8 +20,6 @@ interface ShellProps {
 export function Shell({ children }: ShellProps) {
   const commandPalette = useCommandPalette()
   const aiPanel = useAIPanel()
-  const router = useRouter()
-  const pathname = usePathname()
 
   // Rail collapsed/expanded state with localStorage persistence
   const [railExpanded, setRailExpanded] = useState(false)
@@ -52,20 +48,6 @@ export function Shell({ children }: ShellProps) {
     })
   }, [])
 
-  // Warm-up: prefetch common sections to make navigation feel instant.
-  useEffect(() => {
-    for (const s of SECTIONS) {
-      if (s.path !== pathname) {
-        try {
-          router.prefetch(s.path)
-        } catch {
-          // ignore
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- router object is stable in practice
-  }, [pathname])
-
   // Open AI panel when any component dispatches lifeos:ai-prefill
   const openRef = useRef(aiPanel.open)
   openRef.current = aiPanel.open
@@ -92,7 +74,6 @@ export function Shell({ children }: ShellProps) {
         style={{
           display: 'grid',
           gridTemplateColumns: `${railWidth} 1fr ${chatWidth}`,
-          transition: 'grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         {children}
