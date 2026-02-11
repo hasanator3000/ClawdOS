@@ -8,6 +8,8 @@ export interface Command {
   id: string
   name: string
   description?: string
+  /** Extra search keywords (not displayed, but matched by search) */
+  keywords?: string[]
   icon?: string
   shortcut?: string
   action: () => void | Promise<void>
@@ -70,7 +72,8 @@ class CommandRegistry {
     return this.getAll().filter((cmd) => {
       const nameMatch = cmd.name.toLowerCase().includes(lowerQuery)
       const descMatch = cmd.description?.toLowerCase().includes(lowerQuery)
-      return nameMatch || descMatch
+      const keywordMatch = cmd.keywords?.some((k) => k.toLowerCase().includes(lowerQuery))
+      return nameMatch || descMatch || keywordMatch
     })
   }
 
