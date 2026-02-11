@@ -1,52 +1,134 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-outfit);
+  --font-mono: var(--font-space-mono);
 }
 
 :root {
-  /* Light theme */
-  --bg: #ffffff;
-  --fg: #0f172a;
-  --card: #ffffff;
-  --card-fg: #0f172a;
-  --muted: #475569;
-  --muted-2: #64748b;
-  --border: #cbd5e1;
-  --hover: rgba(15, 23, 42, 0.06);
-  --input-bg: #ffffff;
-  --input-fg: #0f172a;
-  --input-placeholder: #94a3b8;
-  --ring: #0f172a;
-  --error-bg: #fef2f2;
-  --error-fg: #b91c1c;
-  --success-bg: #f0fdf4;
-  --success-fg: #15803d;
-}
+  /* Void dark theme — always dark */
+  --bg: #06060a;
+  --fg: #e2e0ec;
+  --card: rgba(255,255,255,0.04);
+  --card-fg: #e2e0ec;
+  --surface: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.07);
+  --hover: rgba(255,255,255,0.06);
+  --input-bg: rgba(255,255,255,0.04);
+  --input-fg: #e2e0ec;
+  --input-placeholder: #5c5a6a;
+  --ring: #a78bfa;
+  --muted: #5c5a6a;
+  --muted-2: #2a2935;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark theme */
-    --bg: #020617;
-    --fg: #e2e8f0;
-    --card: #0b1220;
-    --card-fg: #e2e8f0;
-    --muted: #94a3b8;
-    --muted-2: #cbd5e1;
-    --border: #1f2937;
-    --hover: rgba(226, 232, 240, 0.08);
-    --input-bg: #0b1220;
-    --input-fg: #e2e8f0;
-    --input-placeholder: #64748b;
-    --ring: #e2e8f0;
-    --error-bg: rgba(185, 28, 28, 0.15);
-    --error-fg: #fca5a5;
-    --success-bg: rgba(21, 128, 61, 0.15);
-    --success-fg: #86efac;
-  }
+  /* Neon accents */
+  --neon: #a78bfa;
+  --neon-hot: #c084fc;
+  --neon-dim: rgba(167,139,250,0.1);
+  --neon-glow: rgba(167,139,250,0.25);
+  --pink: #f472b6;
+  --pink-dim: rgba(244,114,182,0.1);
+  --cyan: #67e8f9;
+  --cyan-dim: rgba(103,232,249,0.08);
+  --red: #fb7185;
+  --green: #6ee7b7;
+  --warm: #fbbf24;
+
+  /* Status */
+  --error-bg: rgba(185, 28, 28, 0.15);
+  --error-fg: #fca5a5;
+  --success-bg: rgba(21, 128, 61, 0.15);
+  --success-fg: #86efac;
+
+  /* Layout */
+  --rail-w: 64px;
+  --rail-w-open: 220px;
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-outfit, 'Outfit', sans-serif);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* === BACKGROUND EFFECTS === */
+
+.bg-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 80%, rgba(167,139,250,0.06) 0%, transparent 100%),
+    radial-gradient(ellipse 500px 500px at 80% 20%, rgba(244,114,182,0.04) 0%, transparent 100%),
+    radial-gradient(ellipse 400px 300px at 60% 60%, rgba(103,232,249,0.03) 0%, transparent 100%);
+  animation: meshShift 20s ease-in-out infinite alternate;
+}
+
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(167,139,250,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(167,139,250,0.02) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask: radial-gradient(ellipse 60% 60% at 50% 50%, black 0%, transparent 100%);
+  -webkit-mask: radial-gradient(ellipse 60% 60% at 50% 50%, black 0%, transparent 100%);
+}
+
+.scanline {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(167,139,250,0.008) 2px,
+    rgba(167,139,250,0.008) 4px
+  );
+}
+
+/* === KEYFRAMES === */
+
+@keyframes meshShift {
+  0% { background-position: 0% 0%, 100% 0%, 50% 50%; }
+  100% { background-position: 20% 20%, 80% 80%, 30% 70%; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbPulse {
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+/* === SCROLLBAR === */
+
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted-2);
+  border-radius: 2px;
 }

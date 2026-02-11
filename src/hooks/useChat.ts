@@ -38,6 +38,24 @@ export function useChat(options: UseChatOptions) {
   const abortControllerRef = useRef<AbortController | null>(null)
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
   const requestSeqRef = useRef(0)
+  const loadedWorkspaceRef = useRef<string | null>(null)
+
+  // Load existing conversation on mount (or workspace change)
+  useEffect(() => {
+    if (!options.workspaceId || loadedWorkspaceRef.current === options.workspaceId) return
+    loadedWorkspaceRef.current = options.workspaceId
+
+    fetch(`/api/ai/chat?workspaceId=${encodeURIComponent(options.workspaceId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return
+        if (data.conversationId) setConversationId(data.conversationId)
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          setMessages(data.messages)
+        }
+      })
+      .catch(() => {})
+  }, [options.workspaceId])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -265,6 +283,12 @@ export function useChat(options: UseChatOptions) {
                 continue
               }
 
+              // Track conversationId from server
+              if (evt?.type === 'conversationId' && evt?.id) {
+                setConversationId(String(evt.id))
+                continue
+              }
+
               // Handle navigation events from server
               if (evt?.type === 'navigation' && evt?.target) {
                 const target = String(evt.target)
@@ -402,10 +426,19 @@ export function useChat(options: UseChatOptions) {
   }, [])
 
   const clearMessages = useCallback(() => {
+    // Archive conversation in DB before clearing local state
+    if (conversationId) {
+      fetch('/api/ai/chat', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId }),
+      }).catch(() => {})
+    }
     setMessages([])
     setConversationId(null)
     setError(null)
-  }, [])
+    loadedWorkspaceRef.current = null
+  }, [conversationId])
 
   return {
     messages,
