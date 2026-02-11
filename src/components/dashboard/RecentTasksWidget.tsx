@@ -36,10 +36,7 @@ export function RecentTasksWidget({ tasks }: RecentTasksWidgetProps) {
         </div>
         <Link
           href="/tasks"
-          className="text-xs transition-colors"
-          style={{ color: 'var(--muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--neon)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)' }}
+          className="text-xs text-[var(--muted)] hover:text-[var(--neon)] transition-colors"
         >
           View all
         </Link>
