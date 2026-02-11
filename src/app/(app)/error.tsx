@@ -9,16 +9,39 @@ export default function AppError({
 }) {
   return (
     <div style={{ padding: 40 }}>
-      <h2 style={{ color: '#f55', marginBottom: 12 }}>Something went wrong</h2>
-      <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'var(--hover, #222)', padding: 16, borderRadius: 8, fontSize: 13 }}>
+      <h2 style={{ color: 'var(--red, #fb7185)', marginBottom: 12, fontWeight: 600 }}>Something went wrong</h2>
+      <pre
+        style={{
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+          background: 'var(--card, rgba(255,255,255,0.04))',
+          border: '1px solid var(--border, rgba(255,255,255,0.07))',
+          padding: 16,
+          borderRadius: 8,
+          fontSize: 13,
+          color: 'var(--muted, #5c5a6a)',
+          fontFamily: 'var(--font-space-mono, monospace)',
+        }}
+      >
         {error.message}
         {'\n\n'}
         {error.stack}
       </pre>
-      {error.digest && <p style={{ color: 'var(--muted, #888)', fontSize: 12 }}>Digest: {error.digest}</p>}
+      {error.digest && (
+        <p style={{ color: 'var(--muted, #5c5a6a)', fontSize: 12, marginTop: 8 }}>Digest: {error.digest}</p>
+      )}
       <button
         onClick={reset}
-        style={{ marginTop: 16, padding: '8px 20px', background: 'var(--card, #333)', color: 'var(--fg, #eee)', border: '1px solid var(--border, #555)', borderRadius: 6, cursor: 'pointer' }}
+        style={{
+          marginTop: 16,
+          padding: '8px 20px',
+          background: 'var(--neon, #a78bfa)',
+          color: 'var(--bg, #06060a)',
+          border: 'none',
+          borderRadius: 6,
+          cursor: 'pointer',
+          fontWeight: 500,
+        }}
       >
         Try again
       </button>

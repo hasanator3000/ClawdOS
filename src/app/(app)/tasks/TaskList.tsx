@@ -20,10 +20,10 @@ const PRIORITY_LABELS: Record<number, string> = {
 
 const PRIORITY_COLORS: Record<number, string> = {
   0: '',
-  1: 'text-blue-500',
-  2: 'text-yellow-500',
-  3: 'text-orange-500',
-  4: 'text-red-500',
+  1: 'text-[var(--cyan)]',
+  2: 'text-[var(--warm)]',
+  3: 'text-[var(--pink)]',
+  4: 'text-[var(--red)]',
 }
 
 export function TaskList({ initialTasks }: TaskListProps) {
@@ -129,26 +129,30 @@ export function TaskList({ initialTasks }: TaskListProps) {
           value={newTaskTitle}
           onChange={(e) => setNewTaskTitle(e.target.value)}
           placeholder="Add a new task..."
-          className="flex-1 px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--border)]"
+          className="flex-1 px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-all"
           disabled={isPending}
         />
         <button
           type="submit"
           disabled={!newTaskTitle.trim() || isPending}
-          className="px-4 py-2 bg-[var(--fg)] text-[var(--bg)] rounded-lg disabled:opacity-50 hover:opacity-80 transition-opacity"
+          className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
+          style={{
+            background: 'linear-gradient(135deg, var(--neon), var(--pink))',
+            color: 'var(--bg)',
+          }}
         >
           Add
         </button>
       </form>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 border-b border-[var(--border)]">
+      <div className="flex gap-1 border-b border-[var(--border)]">
         <button
           type="button"
           onClick={() => setFilter('active')}
-          className={`px-4 py-2 -mb-px border-b-2 transition-colors ${
+          className={`px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
             filter === 'active'
-              ? 'border-[var(--fg)] text-[var(--fg)]'
+              ? 'border-[var(--neon)] text-[var(--neon)]'
               : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
           }`}
         >
@@ -157,9 +161,9 @@ export function TaskList({ initialTasks }: TaskListProps) {
         <button
           type="button"
           onClick={() => setFilter('completed')}
-          className={`px-4 py-2 -mb-px border-b-2 transition-colors ${
+          className={`px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
             filter === 'completed'
-              ? 'border-[var(--fg)] text-[var(--fg)]'
+              ? 'border-[var(--neon)] text-[var(--neon)]'
               : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
           }`}
         >
@@ -168,9 +172,9 @@ export function TaskList({ initialTasks }: TaskListProps) {
         <button
           type="button"
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 -mb-px border-b-2 transition-colors ${
+          className={`px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
             filter === 'all'
-              ? 'border-[var(--fg)] text-[var(--fg)]'
+              ? 'border-[var(--neon)] text-[var(--neon)]'
               : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
           }`}
         >
@@ -188,17 +192,17 @@ export function TaskList({ initialTasks }: TaskListProps) {
           filteredTasks.map((task) => (
             <div
               key={task.id}
-              className="flex items-center gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-lg group"
+              className="flex items-center gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-lg group hover:border-[var(--neon-dim)] transition-colors"
             >
               {/* Checkbox */}
               <button
                 type="button"
                 onClick={() => handleToggleComplete(task)}
                 disabled={isPending}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
                   task.status === 'done'
-                    ? 'bg-green-500 border-green-500 text-white'
-                    : 'border-[var(--border)] hover:border-[var(--fg)]'
+                    ? 'bg-[var(--green)] border-[var(--green)] text-[var(--bg)]'
+                    : 'border-[var(--border)] hover:border-[var(--neon)]'
                 }`}
               >
                 {task.status === 'done' && (
@@ -235,7 +239,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
                 type="button"
                 onClick={() => handleDelete(task.id)}
                 disabled={isPending}
-                className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-red-500 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--red)] transition-all"
                 aria-label="Delete task"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -260,7 +264,7 @@ const DueDate = memo(function DueDate({ dueDate, isDone }: { dueDate: string; is
   const d = new Date(dueDate)
   const overdue = d < new Date() && !isDone
   return (
-    <span className={`text-xs ${overdue ? 'text-red-500' : 'text-[var(--muted)]'}`}>
+    <span className={`text-xs ${overdue ? 'text-[var(--red)]' : 'text-[var(--muted)]'}`}>
       {d.toLocaleDateString()}
     </span>
   )

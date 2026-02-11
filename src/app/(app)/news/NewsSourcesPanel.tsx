@@ -264,7 +264,7 @@ export function NewsSourcesPanel({
                       type="button"
                       onClick={() => handleRemoveSource(source.id)}
                       disabled={isPending}
-                      className="text-xs text-[var(--muted)] hover:text-red-500 transition-colors"
+                      className="text-xs text-[var(--muted)] hover:text-[var(--red)] transition-colors"
                     >
                       Remove
                     </button>
@@ -326,7 +326,7 @@ export function NewsSourcesPanel({
                   type="button"
                   onClick={() => handleDeleteTab(tab.id)}
                   disabled={isPending}
-                  className="text-xs text-[var(--muted)] hover:text-red-500 transition-colors"
+                  className="text-xs text-[var(--muted)] hover:text-[var(--red)] transition-colors"
                 >
                   Del
                 </button>

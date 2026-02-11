@@ -65,13 +65,17 @@ export function NewsOnboarding({ onManualSetup, onSetupComplete }: Props) {
             onKeyDown={(e) => { if (e.key === 'Enter') handleSetup() }}
             placeholder="e.g. AI, ecology, medicine, space..."
             disabled={isPending}
-            className="flex-1 px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--fg)] disabled:opacity-50"
+            className="flex-1 px-4 py-3 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-all disabled:opacity-50"
           />
           <button
             type="button"
             onClick={handleSetup}
             disabled={!input.trim() || isPending}
-            className="px-5 py-3 bg-[var(--fg)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            className="px-5 py-3 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            style={{
+              background: 'linear-gradient(135deg, var(--neon), var(--pink))',
+              color: 'var(--bg)',
+            }}
           >
             {isPending ? (
               <span className="flex items-center gap-2">
@@ -92,7 +96,7 @@ export function NewsOnboarding({ onManualSetup, onSetupComplete }: Props) {
               type="button"
               disabled={isPending}
               onClick={() => addSuggestion(s)}
-              className="px-3 py-1 rounded-full text-xs border border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--fg)] transition-colors disabled:opacity-50"
+              className="px-3 py-1 rounded-full text-xs border border-[var(--border)] text-[var(--muted)] hover:text-[var(--neon)] hover:border-[var(--neon)] transition-colors disabled:opacity-50"
             >
               + {s}
             </button>
@@ -101,7 +105,7 @@ export function NewsOnboarding({ onManualSetup, onSetupComplete }: Props) {
       </div>
 
       {error && (
-        <p className="text-sm text-red-500 max-w-md text-center">{error}</p>
+        <p className="text-sm text-[var(--red)] max-w-md text-center">{error}</p>
       )}
 
       <button
