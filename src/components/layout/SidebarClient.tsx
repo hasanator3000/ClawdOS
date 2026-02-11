@@ -177,21 +177,21 @@ export default function SidebarClient({ username }: { username?: string }) {
               textShadow: '0 0 20px var(--neon-glow)',
             }}
           >
-            c
+            C
           </span>
-          <span
-            className={`font-bold whitespace-nowrap overflow-hidden transition-all duration-300 ${
-              exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
-            }`}
-            style={{
-              fontFamily: 'var(--font-space-mono, monospace)',
-              fontSize: '15px',
-              letterSpacing: '2px',
-              marginLeft: exp ? '-4px' : 0,
-            }}
-          >
-            lawd
-          </span>
+          {exp && (
+            <span
+              className="font-bold whitespace-nowrap"
+              style={{
+                fontFamily: 'var(--font-space-mono, monospace)',
+                fontSize: '15px',
+                letterSpacing: '1px',
+                marginLeft: '-2px',
+              }}
+            >
+              lawdOS
+            </span>
+          )}
         </button>
         {exp && (
           <button
@@ -209,15 +209,13 @@ export default function SidebarClient({ username }: { username?: string }) {
       </div>
 
       {/* Section label */}
-      <div className="w-full px-3 mb-1 flex items-center min-h-5">
-        <span
-          className={`text-[9px] font-semibold uppercase tracking-[1.5px] text-[var(--muted-2)] whitespace-nowrap overflow-hidden transition-all duration-300 ${
-            exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
-          }`}
-        >
-          Pages
-        </span>
-      </div>
+      {exp && (
+        <div className="w-full px-3 mb-1 flex items-center min-h-5">
+          <span className="text-[9px] font-semibold uppercase tracking-[1.5px] text-[var(--muted-2)] whitespace-nowrap">
+            Pages
+          </span>
+        </div>
+      )}
 
       {/* Navigation */}
       {SIDEBAR_SECTIONS.map((s) => {
@@ -227,8 +225,8 @@ export default function SidebarClient({ username }: { username?: string }) {
             key={s.id}
             href={s.path}
             prefetch
-            className={`w-full h-10 flex items-center gap-3 rounded-xl transition-all relative whitespace-nowrap ${
-              exp ? 'justify-start px-3' : 'justify-center px-0'
+            className={`relative flex items-center rounded-xl transition-colors whitespace-nowrap ${
+              exp ? 'h-10 justify-start px-3 gap-3' : 'h-10 w-10 mx-auto justify-center'
             } ${
               isActive
                 ? 'text-[var(--neon)]'
@@ -246,13 +244,7 @@ export default function SidebarClient({ username }: { username?: string }) {
               />
             )}
             <span className="shrink-0">{NAV_ICONS[s.id] || NAV_ICONS.settings}</span>
-            <span
-              className={`text-[13px] font-normal overflow-hidden transition-all duration-300 ${
-                exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
-              }`}
-            >
-              {s.title}
-            </span>
+            {exp && <span className="text-[13px] font-normal">{s.title}</span>}
           </Link>
         )
       })}
@@ -274,13 +266,11 @@ export default function SidebarClient({ username }: { username?: string }) {
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
           </svg>
-          <span
-            className={`text-[13px] truncate overflow-hidden transition-all duration-300 ${
-              exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
-            }`}
-          >
-            {active?.name || 'Workspace'}
-          </span>
+          {exp && (
+            <span className="text-[13px] truncate">
+              {active?.name || 'Workspace'}
+            </span>
+          )}
         </button>
 
         {wsDropdownOpen && (
@@ -365,14 +355,12 @@ export default function SidebarClient({ username }: { username?: string }) {
             />
           </button>
 
-          <div
-            className={`flex flex-col ml-2.5 whitespace-nowrap overflow-hidden transition-all duration-300 ${
-              exp ? 'opacity-100 w-auto' : 'opacity-0 w-0'
-            }`}
-          >
-            <span className="text-xs font-medium">{username || 'User'}</span>
-            <span className="text-[10px] text-[var(--muted-2)]">Free</span>
-          </div>
+          {exp && (
+            <div className="flex flex-col ml-2.5 whitespace-nowrap">
+              <span className="text-xs font-medium">{username || 'User'}</span>
+              <span className="text-[10px] text-[var(--muted-2)]">Free</span>
+            </div>
+          )}
         </div>
 
         {userMenuOpen && (

@@ -56,8 +56,9 @@ function getServerSnapshot() {
 
 export function GreetingWidget({ username }: GreetingWidgetProps) {
   const time = useSyncExternalStore(subscribeToTime, getTimeSnapshot, getServerSnapshot)
-  const [date, setDate] = useState(formatDate)
-  const [greeting, setGreeting] = useState(getGreeting)
+  // Use empty defaults to avoid hydration mismatch (server date != client date across midnight)
+  const [date, setDate] = useState('')
+  const [greeting, setGreeting] = useState('')
 
   useEffect(() => {
     setDate(formatDate())

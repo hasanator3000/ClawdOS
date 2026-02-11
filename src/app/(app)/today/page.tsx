@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   )
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="space-y-5">
       {/* Top row: Greeting + Currency */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <GreetingWidget username={session.username} />

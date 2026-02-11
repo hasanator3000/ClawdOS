@@ -16,7 +16,7 @@ const spaceMono = Space_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'clawd',
+  title: 'ClawdOS',
   description: 'Personal ops dashboard',
 }
 
