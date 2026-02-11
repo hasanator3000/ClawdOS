@@ -5,7 +5,7 @@ import { AIPanel } from './AIPanel'
 import { AIPanelToggle } from './AIPanelToggle'
 import { useCommandPalette } from '@/hooks/useCommandPalette'
 import { useAIPanel } from '@/hooks/useAIPanel'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { SECTIONS } from '@/lib/nav/sections'
 
@@ -34,14 +34,18 @@ export function Shell({ children }: ShellProps) {
         }
       }
     }
-  }, [router, pathname])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router object is stable in practice
+  }, [pathname])
 
   // Open AI panel when any component dispatches lifeos:ai-prefill
+  const openRef = useRef(aiPanel.open)
+  openRef.current = aiPanel.open
+
   useEffect(() => {
-    const handlePrefill = () => aiPanel.open()
+    const handlePrefill = () => openRef.current()
     window.addEventListener('lifeos:ai-prefill', handlePrefill)
     return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
-  }, [aiPanel.open])
+  }, [])
 
   return (
     <>

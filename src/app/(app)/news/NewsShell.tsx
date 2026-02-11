@@ -57,17 +57,24 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     })
   }, [activeTabId, debouncedSearch])
 
-  // Listen for chat SSE events
+  // Refs for stable event handlers (avoids re-attaching listeners on every state change)
+  const tabsRef = useRef(tabs)
+  const activeTabIdRef = useRef(activeTabId)
+  const searchRef = useRef(search)
+  tabsRef.current = tabs
+  activeTabIdRef.current = activeTabId
+  searchRef.current = search
+
+  // Listen for chat SSE events — single registration on mount
   useEffect(() => {
     const handleRefresh = () => {
       startTransition(async () => {
-        // Re-fetch sources/tabs (may have been added via chat)
         const [srcResult, tabResult] = await Promise.all([getSources(), getTabs()])
         if (srcResult.sources) setSources(srcResult.sources)
         if (tabResult.tabs) setTabs(tabResult.tabs)
 
         await refreshNews()
-        const result = await loadMoreNews('', '', activeTabId ?? undefined, search || undefined)
+        const result = await loadMoreNews('', '', activeTabIdRef.current ?? undefined, searchRef.current || undefined)
         if (result.items) {
           setNews(result.items)
           setHasMore(result.items.length >= PAGE_SIZE)
@@ -78,10 +85,9 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     const handleTabSwitch = (e: Event) => {
       const detail = (e as CustomEvent).detail
       if (detail?.tabId !== undefined) {
-        // Prefer resolved tabId (server already matched the name)
         setActiveTabId(detail.tabId)
       } else if (detail?.tabName) {
-        const tab = tabs.find((t) => t.name.toLowerCase() === detail.tabName.toLowerCase())
+        const tab = tabsRef.current.find((t) => t.name.toLowerCase() === detail.tabName.toLowerCase())
         setActiveTabId(tab?.id ?? null)
       }
     }
@@ -98,7 +104,7 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
       window.removeEventListener('lifeos:news-tab-switch', handleTabSwitch)
       window.removeEventListener('lifeos:news-sources-open', handleSourcesOpen)
     }
-  }, [tabs, activeTabId, search])
+  }, [])
 
   const handleLoadMore = useCallback(() => {
     if (news.length === 0 || isPending) return

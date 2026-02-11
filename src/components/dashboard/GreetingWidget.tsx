@@ -14,20 +14,16 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
+// Pre-create formatters to avoid re-creating them on every call
+const dateFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+const timeFmt = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+
 function formatDate(): string {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  })
+  return dateFmt.format(new Date())
 }
 
 function formatTime(): string {
-  return new Date().toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  return timeFmt.format(new Date())
 }
 
 // Subscription for time updates - fires once per minute instead of every second

@@ -80,12 +80,10 @@ export function useAIPanel() {
   const toggleRef = useRef(toggle)
   const closeRef = useRef(close)
 
-  // Keep refs in sync
-  useEffect(() => {
-    stateRef.current = state
-    toggleRef.current = toggle
-    closeRef.current = close
-  })
+  // Keep refs in sync (direct assignment, no useEffect needed)
+  stateRef.current = state
+  toggleRef.current = toggle
+  closeRef.current = close
 
   // Keyboard shortcuts - single listener registered on mount
   useEffect(() => {

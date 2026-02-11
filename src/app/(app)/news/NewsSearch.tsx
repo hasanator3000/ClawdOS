@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface Props {
   value: string
@@ -9,19 +9,21 @@ interface Props {
 
 export function NewsSearch({ value, onChange }: Props) {
   const [local, setLocal] = useState(value)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
   // Sync external value changes
   useEffect(() => {
     setLocal(value)
   }, [value])
 
-  // Debounced update
+  // Debounced update — use ref for onChange to avoid re-running on parent re-render
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (local !== value) onChange(local)
+      if (local !== value) onChangeRef.current(local)
     }, 300)
     return () => clearTimeout(timer)
-  }, [local, value, onChange])
+  }, [local, value])
 
   return (
     <input

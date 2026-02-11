@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect } from 'react'
 import type { NewsItem } from '@/types/news'
 import { NewsCard } from './NewsCard'
 
@@ -15,26 +15,24 @@ export function NewsFeed({ items, onLoadMore, hasMore, isLoading }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const onLoadMoreRef = useRef(onLoadMore)
   onLoadMoreRef.current = onLoadMore
-
-  const handleIntersect = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      if (entries[0].isIntersecting && !isLoading) {
-        onLoadMoreRef.current()
-      }
-    },
-    [isLoading]
-  )
+  const isLoadingRef = useRef(isLoading)
+  isLoadingRef.current = isLoading
 
   useEffect(() => {
     const el = sentinelRef.current
     if (!el || !hasMore) return
 
-    const observer = new IntersectionObserver(handleIntersect, {
-      rootMargin: '200px',
-    })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingRef.current) {
+          onLoadMoreRef.current()
+        }
+      },
+      { rootMargin: '200px' }
+    )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [hasMore, handleIntersect])
+  }, [hasMore])
 
   if (items.length === 0 && !isLoading) {
     return (

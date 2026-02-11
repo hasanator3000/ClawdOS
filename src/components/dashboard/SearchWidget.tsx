@@ -17,11 +17,12 @@ export function SearchWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
 
-  const filteredPages = query.trim()
+  const lowerQuery = query.trim().toLowerCase()
+  const filteredPages = lowerQuery
     ? searchablePages.filter(
         (page) =>
-          page.name.toLowerCase().includes(query.toLowerCase()) ||
-          page.keywords.some((kw) => kw.includes(query.toLowerCase()))
+          page.name.toLowerCase().includes(lowerQuery) ||
+          page.keywords.some((kw) => kw.includes(lowerQuery))
       )
     : []
 
@@ -31,7 +32,8 @@ export function SearchWidget() {
       setQuery('')
       setIsOpen(false)
     },
-    [router]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable in practice
+    []
   )
 
   return (

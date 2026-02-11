@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, memo } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { createTask, completeTask, reopenTask, deleteTask } from './actions'
 
@@ -228,17 +228,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
               )}
 
               {/* Due date */}
-              {task.dueDate && (
-                <span
-                  className={`text-xs ${
-                    new Date(task.dueDate) < new Date() && task.status !== 'done'
-                      ? 'text-red-500'
-                      : 'text-[var(--muted)]'
-                  }`}
-                >
-                  {new Date(task.dueDate).toLocaleDateString()}
-                </span>
-              )}
+              {task.dueDate && <DueDate dueDate={task.dueDate} isDone={task.status === 'done'} />}
 
               {/* Delete button */}
               <button
@@ -264,3 +254,14 @@ export function TaskList({ initialTasks }: TaskListProps) {
     </div>
   )
 }
+
+// Memoized to avoid creating Date objects for every task on every render
+const DueDate = memo(function DueDate({ dueDate, isDone }: { dueDate: string; isDone: boolean }) {
+  const d = new Date(dueDate)
+  const overdue = d < new Date() && !isDone
+  return (
+    <span className={`text-xs ${overdue ? 'text-red-500' : 'text-[var(--muted)]'}`}>
+      {d.toLocaleDateString()}
+    </span>
+  )
+})

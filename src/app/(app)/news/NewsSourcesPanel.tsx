@@ -204,6 +204,7 @@ export function NewsSourcesPanel({
             )}
             {sources.map((source) => {
               const badge = STATUS_BADGE[source.status] || STATUS_BADGE.active
+              const assignedSet = new Set(sourceTabMap[source.id] || [])
               return (
                 <div
                   key={source.id}
@@ -229,7 +230,7 @@ export function NewsSourcesPanel({
                   {tabs.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {tabs.map((tab) => {
-                        const assigned = (sourceTabMap[source.id] || []).includes(tab.id)
+                        const assigned = assignedSet.has(tab.id)
                         return (
                           <button
                             key={tab.id}

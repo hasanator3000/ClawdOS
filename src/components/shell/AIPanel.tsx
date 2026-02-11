@@ -51,14 +51,18 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
       const detail = (e as CustomEvent).detail
       if (typeof detail?.message === 'string') {
         setInput(detail.message)
-        setTimeout(() => inputRef.current?.focus(), 50)
+        const timerId = setTimeout(() => inputRef.current?.focus(), 50)
+        return () => clearTimeout(timerId)
       }
     }
     window.addEventListener('lifeos:ai-prefill', handlePrefill)
     return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
   }, [])
 
-  // Handle resize
+  // Handle resize — use ref for onWidthChange to avoid re-attaching listeners
+  const onWidthChangeRef = useRef(onWidthChange)
+  onWidthChangeRef.current = onWidthChange
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setIsResizing(true)
@@ -69,7 +73,7 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
 
     const handleMouseMove = (e: MouseEvent) => {
       const newWidth = window.innerWidth - e.clientX
-      onWidthChange(newWidth)
+      onWidthChangeRef.current(newWidth)
     }
 
     const handleMouseUp = () => {
@@ -83,7 +87,7 @@ export function AIPanel({ isOpen, width, onClose, onWidthChange }: AIPanelProps)
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, onWidthChange])
+  }, [isResizing])
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()

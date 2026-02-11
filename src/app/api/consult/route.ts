@@ -77,6 +77,7 @@ export async function POST(req: Request) {
         { role: 'user', content: question },
       ],
     }),
+    signal: AbortSignal.timeout(30_000),
   })
 
   if (!upstream.ok) {
