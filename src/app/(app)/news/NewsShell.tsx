@@ -120,6 +120,19 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     })
   }, [news, isPending, activeTabId, search])
 
+  const handleSetupComplete = useCallback(() => {
+    startTransition(async () => {
+      const [srcResult, tabResult] = await Promise.all([getSources(), getTabs()])
+      if (srcResult.sources) setSources(srcResult.sources)
+      if (tabResult.tabs) setTabs(tabResult.tabs)
+      const result = await loadMoreNews('', '', undefined, undefined)
+      if (result.items) {
+        setNews(result.items)
+        setHasMore(result.items.length >= PAGE_SIZE)
+      }
+    })
+  }, [])
+
   // Onboarding
   if (sources.length === 0 && !showSources) {
     return (
@@ -127,7 +140,7 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">News</h1>
         </div>
-        <NewsOnboarding onManualSetup={() => setShowSources(true)} />
+        <NewsOnboarding onManualSetup={() => setShowSources(true)} onSetupComplete={handleSetupComplete} />
       </div>
     )
   }

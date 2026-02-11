@@ -18,6 +18,8 @@ import {
 } from '@/lib/db/repositories/news-source.repository'
 import {
   createNewsTab,
+  assignSourceToTab as assignSourceToTabRepo,
+  findTabsByWorkspace,
 } from '@/lib/db/repositories/news-tab.repository'
 
 export const dynamic = 'force-dynamic'
@@ -56,6 +58,21 @@ async function executeActions(
 ): Promise<{ navigation?: string; results: any[] }> {
   let navigationTarget: string | undefined
   const results: any[] = []
+
+  // Track tab name→id for source-tab assignment within same batch
+  const tabNameToId = new Map<string, string>()
+
+  // Pre-load existing tabs so source.add can reference them
+  if (workspaceId && actions.some((a) => a?.k === 'news.source.add' && a?.tabs?.length)) {
+    try {
+      const existingTabs = await withUser(userId, (client) =>
+        findTabsByWorkspace(client, workspaceId)
+      )
+      for (const t of existingTabs) {
+        tabNameToId.set(t.name.toLowerCase(), t.id)
+      }
+    } catch { /* ignore */ }
+  }
 
   for (const action of actions) {
     const k = action?.k
@@ -150,9 +167,20 @@ async function executeActions(
       }
 
       try {
-        const source = await withUser(userId, async (client) =>
-          createNewsSource(client, { workspaceId, url, title: action?.title as string | undefined })
-        )
+        const source = await withUser(userId, async (client) => {
+          const s = await createNewsSource(client, { workspaceId, url, title: action?.title as string | undefined })
+
+          // Assign to tabs by name (supports both newly created and existing tabs)
+          const tabNames: string[] = Array.isArray(action?.tabs) ? action.tabs : []
+          for (const tn of tabNames) {
+            const tabId = tabNameToId.get(String(tn).toLowerCase())
+            if (tabId) {
+              await assignSourceToTabRepo(client, s.id, tabId)
+            }
+          }
+
+          return s
+        })
         results.push({ action: 'news.source.add', source })
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -184,6 +212,7 @@ async function executeActions(
         const tab = await withUser(userId, async (client) =>
           createNewsTab(client, { workspaceId, name })
         )
+        tabNameToId.set(name.toLowerCase(), tab.id)
         results.push({ action: 'news.tab.create', tab })
       } catch (err) {
         results.push({ action: 'news.tab.create', error: String(err) })
@@ -770,7 +799,7 @@ export async function POST(request: Request) {
     '3. Complete task: {"k":"task.complete","taskId":"uuid-here"}',
     '4. Reopen task: {"k":"task.reopen","taskId":"uuid-here"}',
     '5. Delete task: {"k":"task.delete","taskId":"uuid-here"}',
-    '6. Add news source: {"k":"news.source.add","url":"https://...","title":"Optional display name"}',
+    '6. Add news source: {"k":"news.source.add","url":"https://...","title":"Optional display name","tabs":["TabName1","TabName2"]}',
     '7. Remove news source: {"k":"news.source.remove","sourceId":"uuid-here"}',
     '8. Create news tab: {"k":"news.tab.create","name":"Technology"}',
     '',
@@ -813,7 +842,8 @@ export async function POST(request: Request) {
     'When user asks to set up news, create tabs first, then add sources. Emit ALL actions in ONE <lifeos> block.',
     'Example: user says "настрой новости по AI и крипте" →',
     'Создал вкладки AI и Crypto, добавил источники. Фиды загрузятся в течение минуты.',
-    '<lifeos>{"actions":[{"k":"news.tab.create","name":"AI"},{"k":"news.tab.create","name":"Crypto"},{"k":"news.source.add","url":"https://openai.com/blog/rss.xml","title":"OpenAI Blog"},{"k":"news.source.add","url":"https://www.coindesk.com/arc/outboundfeeds/rss/","title":"CoinDesk"},{"k":"navigate","to":"/news"}]}</lifeos>',
+    '<lifeos>{"actions":[{"k":"news.tab.create","name":"AI"},{"k":"news.tab.create","name":"Crypto"},{"k":"news.source.add","url":"https://openai.com/blog/rss.xml","title":"OpenAI Blog","tabs":["AI"]},{"k":"news.source.add","url":"https://www.coindesk.com/arc/outboundfeeds/rss/","title":"CoinDesk","tabs":["Crypto"]},{"k":"navigate","to":"/news"}]}</lifeos>',
+    'IMPORTANT: Always create tabs BEFORE sources in the actions array. Always include "tabs" in each source with the tab names to assign.',
     '',
     'Important:',
     '- When you execute any action, ALWAYS say what you did in plain text BEFORE the <lifeos> block.',
