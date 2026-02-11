@@ -65,24 +65,6 @@ body {
   /* Static mesh — no animation for performance */
 }
 
-.grid-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(167,139,250,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(167,139,250,0.02) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mask: radial-gradient(ellipse 60% 60% at 50% 50%, black 0%, transparent 100%);
-  -webkit-mask: radial-gradient(ellipse 60% 60% at 50% 50%, black 0%, transparent 100%);
-}
-
-/* Scanline removed — 0.8% opacity effect not worth the compositing cost */
-.scanline {
-  display: none;
-}
-
 /* === KEYFRAMES === */
 
 @keyframes spin {

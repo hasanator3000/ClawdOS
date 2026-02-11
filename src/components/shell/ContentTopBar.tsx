@@ -65,22 +65,9 @@ export function ContentTopBar() {
             setIsOpen(true)
           }}
           onFocus={() => setIsOpen(true)}
+          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
           placeholder="Search..."
-          className="w-full pl-10 pr-14 py-2.5 rounded-xl text-sm outline-none transition-all"
-          style={{
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            color: 'var(--fg)',
-          }}
-          onFocusCapture={(e) => {
-            e.currentTarget.style.borderColor = 'var(--neon)'
-            e.currentTarget.style.boxShadow = '0 0 0 1px var(--neon-dim), 0 0 12px var(--neon-dim)'
-          }}
-          onBlurCapture={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)'
-            e.currentTarget.style.boxShadow = 'none'
-            setTimeout(() => setIsOpen(false), 200)
-          }}
+          className="w-full pl-10 pr-14 py-2.5 rounded-xl text-sm outline-none bg-[var(--card)] border border-[var(--border)] text-[var(--fg)] focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim),0_0_12px_var(--neon-dim)]"
         />
         <div
           className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] px-1.5 py-0.5 rounded"
@@ -133,7 +120,7 @@ export function ContentTopBar() {
         <button
           type="button"
           onClick={aiPanel.toggle}
-          className="flex-shrink-0 flex items-center justify-center w-[38px] h-[38px] rounded-xl transition-all"
+          className="flex-shrink-0 flex items-center justify-center w-[38px] h-[38px] rounded-xl transition-colors"
           style={{
             background: aiPanel.isOpen ? 'var(--neon-dim)' : 'var(--card)',
             border: `1px solid ${aiPanel.isOpen ? 'var(--neon)' : 'var(--border)'}`,

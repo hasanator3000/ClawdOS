@@ -65,24 +65,11 @@ export function QuickLinksWidget() {
             <Link
               key={link.href}
               href={link.href}
-              className="flex flex-col items-center justify-center p-4 rounded-xl transition-all"
-              style={{
-                background: isActive ? 'var(--neon-dim)' : 'var(--surface)',
-                border: `1px solid ${isActive ? 'var(--neon)' : 'var(--border)'}`,
-                color: isActive ? 'var(--neon)' : 'var(--muted)',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = 'var(--neon)'
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = 'var(--muted)'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }
-              }}
+              className={`flex flex-col items-center justify-center p-4 rounded-xl transition-colors border ${
+                isActive
+                  ? 'bg-[var(--neon-dim)] border-[var(--neon)] text-[var(--neon)]'
+                  : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--neon)]'
+              }`}
             >
               {link.icon}
               <span className="mt-2 text-sm font-medium">{link.label}</span>

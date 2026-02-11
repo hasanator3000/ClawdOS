@@ -65,7 +65,7 @@ export function NewsOnboarding({ onManualSetup, onSetupComplete }: Props) {
             onKeyDown={(e) => { if (e.key === 'Enter') handleSetup() }}
             placeholder="e.g. AI, ecology, medicine, space..."
             disabled={isPending}
-            className="flex-1 px-4 py-3 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-all disabled:opacity-50"
+            className="flex-1 px-4 py-3 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-colors disabled:opacity-50"
           />
           <button
             type="button"

@@ -196,7 +196,7 @@ export default function SidebarClient({ username }: { username?: string }) {
           <button
             type="button"
             onClick={toggleRail}
-            className="w-6 h-6 border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[rgba(255,255,255,0.06)] transition-all ml-auto shrink-0"
+            className="w-6 h-6 border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors ml-auto shrink-0"
             style={{ background: 'var(--card)' }}
             title="Collapse sidebar"
           >
@@ -256,7 +256,7 @@ export default function SidebarClient({ username }: { username?: string }) {
         <button
           type="button"
           onClick={() => setWsDropdownOpen(!wsDropdownOpen)}
-          className={`flex items-center gap-2 rounded-lg transition-all text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card)] ${
+          className={`flex items-center gap-2 rounded-lg transition-colors text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card)] ${
             exp ? 'w-full px-3 py-2' : 'w-full justify-center py-2'
           }`}
           title={active?.name || 'Select workspace'}

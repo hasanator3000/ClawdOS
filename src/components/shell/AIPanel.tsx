@@ -192,16 +192,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
               <button
                 type="button"
                 onClick={clearMessages}
-                className="p-1.5 rounded-lg transition-colors"
-                style={{ color: 'var(--muted)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = 'var(--fg)'
-                  e.currentTarget.style.background = 'var(--hover)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = 'var(--muted)'
-                  e.currentTarget.style.background = 'transparent'
-                }}
+                className="p-1.5 rounded-lg transition-colors text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--hover)]"
                 aria-label="Clear chat"
                 title="New conversation"
               >
@@ -215,16 +206,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--muted)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--fg)'
-                e.currentTarget.style.background = 'var(--hover)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--muted)'
-                e.currentTarget.style.background = 'transparent'
-              }}
+              className="p-1.5 rounded-lg transition-colors text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--hover)]"
               aria-label="Close panel"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -269,11 +251,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
           style={{ borderTop: '1px solid var(--border)' }}
         >
           <div
-            className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all"
-            style={{
-              background: 'var(--card)',
-              border: '1px solid var(--border)',
-            }}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 transition-colors bg-[var(--card)] border border-[var(--border)] focus-within:border-[var(--neon)] focus-within:shadow-[0_0_0_1px_var(--neon-dim),0_0_12px_var(--neon-dim)]"
           >
             <input
               ref={inputRef}
@@ -282,22 +260,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
               onChange={(e) => setInput(e.target.value)}
               placeholder={workspaceId ? 'Ask Clawdbot...' : 'Select a workspace first'}
               disabled={!workspaceId}
-              className="flex-1 bg-transparent text-sm outline-none placeholder-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ color: 'var(--fg)' }}
-              onFocus={(e) => {
-                const container = e.currentTarget.parentElement
-                if (container) {
-                  container.style.borderColor = 'var(--neon)'
-                  container.style.boxShadow = '0 0 0 1px var(--neon-dim), 0 0 12px var(--neon-dim)'
-                }
-              }}
-              onBlur={(e) => {
-                const container = e.currentTarget.parentElement
-                if (container) {
-                  container.style.borderColor = 'var(--border)'
-                  container.style.boxShadow = 'none'
-                }
-              }}
+              className="flex-1 bg-transparent text-sm outline-none placeholder-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--fg)]"
             />
             {isLoading ? (
               <button
@@ -315,12 +278,12 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
               <button
                 type="submit"
                 disabled={!input.trim() || !workspaceId}
-                className="flex-shrink-0 p-1.5 rounded-lg text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90"
+                className="flex-shrink-0 p-1.5 rounded-lg text-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90"
                 style={{
                   background: input.trim() && workspaceId
                     ? 'linear-gradient(135deg, var(--neon), var(--pink))'
                     : 'var(--muted-2)',
-                  color: input.trim() && workspaceId ? '#fff' : 'var(--muted)',
+                  color: input.trim() && workspaceId ? '#ffffff' : 'var(--muted)',
                   boxShadow: input.trim() && workspaceId
                     ? '0 0 12px var(--neon-glow)'
                     : 'none',
@@ -396,22 +359,7 @@ function HintChip({ label }: { label: string }) {
   return (
     <button
       type="button"
-      className="px-3 py-1.5 rounded-full text-xs transition-all"
-      style={{
-        background: 'var(--card)',
-        border: '1px solid var(--border)',
-        color: 'var(--muted)',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'var(--neon-dim)'
-        e.currentTarget.style.color = 'var(--neon)'
-        e.currentTarget.style.background = 'var(--neon-dim)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border)'
-        e.currentTarget.style.color = 'var(--muted)'
-        e.currentTarget.style.background = 'var(--card)'
-      }}
+      className="px-3 py-1.5 rounded-full text-xs transition-colors bg-[var(--card)] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--neon-dim)] hover:text-[var(--neon)] hover:bg-[var(--neon-dim)]"
       onClick={() => {
         window.dispatchEvent(
           new CustomEvent('lifeos:ai-prefill', { detail: { message: label } })
@@ -435,7 +383,7 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMe
           isUser
             ? {
                 background: 'linear-gradient(135deg, var(--neon), var(--pink))',
-                color: '#fff',
+                color: '#ffffff',
                 boxShadow: '0 2px 12px var(--neon-glow)',
               }
             : {
@@ -449,7 +397,7 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMe
         <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
           {message.content}
           {message.isStreaming && (
-            <span className="inline-block ml-0.5 animate-pulse" style={{ color: isUser ? '#fff' : 'var(--neon)' }}>
+            <span className="inline-block ml-0.5 animate-pulse" style={{ color: isUser ? '#ffffff' : 'var(--neon)' }}>
               ▊
             </span>
           )}

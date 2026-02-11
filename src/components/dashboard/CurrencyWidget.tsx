@@ -98,7 +98,7 @@ export function CurrencyWidget() {
         {rates.map((rate) => (
           <div
             key={rate.symbol}
-            className="p-3 rounded-xl group relative overflow-hidden transition-all"
+            className="p-3 rounded-xl group relative overflow-hidden transition-colors"
             style={{
               background: 'var(--surface)',
               border: '1px solid var(--border)',

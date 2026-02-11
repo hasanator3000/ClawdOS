@@ -41,7 +41,6 @@ export function TaskList({ initialTasks }: TaskListProps) {
   useEffect(() => {
     const handleTaskRefresh = (event: CustomEvent) => {
       const actions = event.detail?.actions || []
-      console.log('[TaskList] Received task refresh:', actions)
 
       for (const result of actions) {
         if (result.task) {
@@ -129,7 +128,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
           value={newTaskTitle}
           onChange={(e) => setNewTaskTitle(e.target.value)}
           placeholder="Add a new task..."
-          className="flex-1 px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-all"
+          className="flex-1 px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-colors"
           disabled={isPending}
         />
         <button
@@ -239,7 +238,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
                 type="button"
                 onClick={() => handleDelete(task.id)}
                 disabled={isPending}
-                className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--red)] transition-all"
+                className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--red)] transition-colors"
                 aria-label="Delete task"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -94,10 +94,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       <div
         className="relative w-full max-w-lg rounded-2xl overflow-hidden"
         style={{
-          background: 'rgba(6,6,10,0.85)',
+          background: 'rgba(6,6,10,0.97)',
           border: '1px solid var(--border)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
           boxShadow: '0 16px 64px rgba(0,0,0,0.6), 0 0 0 1px var(--border)',
         }}
       >
