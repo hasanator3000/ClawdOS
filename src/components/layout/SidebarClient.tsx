@@ -87,7 +87,10 @@ export default function SidebarClient({ username }: { username?: string }) {
     setRailExpanded((prev) => {
       const next = !prev
       localStorage.setItem(RAIL_STORAGE_KEY, String(next))
-      window.dispatchEvent(new StorageEvent('storage', { key: RAIL_STORAGE_KEY, newValue: String(next) }))
+      // Defer the cross-component notification so it doesn't fire mid-render
+      queueMicrotask(() => {
+        window.dispatchEvent(new StorageEvent('storage', { key: RAIL_STORAGE_KEY, newValue: String(next) }))
+      })
       return next
     })
   }, [])
