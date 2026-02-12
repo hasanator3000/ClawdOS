@@ -3,31 +3,50 @@ import { parseFeed } from './parser'
 
 const HTTP_CONCURRENCY = 5
 const FETCH_TIMEOUT = 10_000
+const PAGE_LOAD_TIMEOUT = 5_000  // Max time to wait for feeds before rendering
+const ITEMS_PER_SOURCE = 15      // Limit items per source to reduce load
 
 /**
  * Fetch all RSS sources live (no DB storage), merge, sort by date.
  * Returns NewsItem[] ready for the UI.
+ * Uses timeout to prevent page hang — returns partial results if slow.
  */
 export async function fetchLiveFeeds(sources: NewsSource[]): Promise<NewsItem[]> {
   const active = sources.filter((s) => s.status === 'active')
   if (active.length === 0) return []
 
   const allItems: NewsItem[] = []
+  let timedOut = false
 
-  // Fetch in batches to limit concurrency
-  for (let i = 0; i < active.length; i += HTTP_CONCURRENCY) {
-    const batch = active.slice(i, i + HTTP_CONCURRENCY)
-    const settled = await Promise.allSettled(
-      batch.map((source) => fetchSingleFeed(source))
-    )
+  // Race against timeout
+  const fetchPromise = (async () => {
+    // Fetch in batches to limit concurrency
+    for (let i = 0; i < active.length; i += HTTP_CONCURRENCY) {
+      if (timedOut) break
 
-    for (const result of settled) {
-      if (result.status === 'fulfilled') {
-        allItems.push(...result.value)
+      const batch = active.slice(i, i + HTTP_CONCURRENCY)
+      const settled = await Promise.allSettled(
+        batch.map((source) => fetchSingleFeed(source))
+      )
+
+      for (const result of settled) {
+        if (result.status === 'fulfilled') {
+          allItems.push(...result.value)
+        }
+        // Silently skip failed feeds
       }
-      // Silently skip failed feeds
     }
-  }
+  })()
+
+  const timeoutPromise = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      timedOut = true
+      resolve()
+    }, PAGE_LOAD_TIMEOUT)
+  })
+
+  // Wait for fetch or timeout, whichever comes first
+  await Promise.race([fetchPromise, timeoutPromise])
 
   // Sort by published date descending
   allItems.sort((a, b) => {
@@ -50,7 +69,8 @@ async function fetchSingleFeed(source: NewsSource): Promise<NewsItem[]> {
   const text = await response.text()
   const feed = parseFeed(text, source.url)
 
-  return feed.items.map((item) => ({
+  // Limit to ITEMS_PER_SOURCE to reduce load
+  return feed.items.slice(0, ITEMS_PER_SOURCE).map((item) => ({
     id: item.guid,
     title: item.title,
     url: item.url,
