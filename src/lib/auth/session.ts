@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { getIronSession, type IronSession } from 'iron-session'
 import type { SessionData } from '@/types/session'
@@ -16,10 +17,15 @@ const sessionOptions = {
   },
 }
 
-export async function getSession(): Promise<IronSession<SessionData>> {
+/**
+ * Returns the current session.
+ * Wrapped in React.cache() so multiple calls within the same RSC request
+ * hit the cookie jar only once (layout + page both call getSession).
+ */
+export const getSession = cache(async (): Promise<IronSession<SessionData>> => {
   if (!process.env.SESSION_PASSWORD) {
     throw new Error('SESSION_PASSWORD is not set')
   }
   const cookieStore = await cookies()
   return getIronSession<SessionData>(cookieStore as any, sessionOptions)
-}
+})
