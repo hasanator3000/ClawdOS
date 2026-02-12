@@ -20,7 +20,7 @@ import {
   findTabsByWorkspace,
 } from '@/lib/db/repositories/news-tab.repository'
 import { validateFeedUrl } from '@/lib/rss/validator'
-import { fetchLiveFeeds } from '@/lib/rss/live'
+import { fetchLiveFeeds, invalidateFeedCache } from '@/lib/rss/live'
 
 // ---------------------------------------------------------------------------
 // Source management
@@ -203,6 +203,8 @@ export async function refreshNews() {
   if (!workspace) return { error: 'No workspace selected', items: [] }
 
   try {
+    // Invalidate cache so we get fresh data
+    invalidateFeedCache()
     const sources = await withUser(session.userId, (client) =>
       findSourcesByWorkspace(client, workspace.id)
     )

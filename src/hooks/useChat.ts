@@ -40,6 +40,10 @@ export function useChat(options: UseChatOptions) {
   const requestSeqRef = useRef(0)
   const loadedWorkspaceRef = useRef<string | null>(null)
 
+  // Use refs for values that change often but shouldn't recreate sendMessage
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+
   // Load existing conversation on mount (or workspace change)
   useEffect(() => {
     if (!options.workspaceId || loadedWorkspaceRef.current === options.workspaceId) return
@@ -105,9 +109,9 @@ export function useChat(options: UseChatOptions) {
             conversationId,
             message: content.trim(),
             context: {
-              workspaceId: options.workspaceId,
-              workspaceName: options.workspaceName,
-              currentPage: options.currentPage,
+              workspaceId: optionsRef.current.workspaceId,
+              workspaceName: optionsRef.current.workspaceName,
+              currentPage: optionsRef.current.currentPage,
             },
           }),
           signal: abortControllerRef.current.signal,
@@ -301,7 +305,7 @@ export function useChat(options: UseChatOptions) {
                 const value = String(evt.value)
                 window.dispatchEvent(new CustomEvent('lifeos:tasks-filter', { detail: { value } }))
                 // If we're not on /tasks, navigate there.
-                if (options.currentPage !== '/tasks') {
+                if (optionsRef.current.currentPage !== '/tasks') {
                   pendingNavigation = '/tasks'
                 }
                 continue
@@ -336,7 +340,7 @@ export function useChat(options: UseChatOptions) {
               // Handle news sources panel open
               if (evt?.type === 'news.sources.open') {
                 window.dispatchEvent(new CustomEvent('lifeos:news-sources-open'))
-                if (options.currentPage !== '/news') {
+                if (optionsRef.current.currentPage !== '/news') {
                   pendingNavigation = '/news'
                 }
                 continue
@@ -415,7 +419,7 @@ export function useChat(options: UseChatOptions) {
         }
       }
     },
-    [conversationId, isLoading, options.workspaceId, options.workspaceName, options.currentPage]
+    [conversationId, isLoading]
   )
 
   const stopGeneration = useCallback(() => {

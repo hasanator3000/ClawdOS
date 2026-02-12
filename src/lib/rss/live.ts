@@ -5,15 +5,25 @@ const HTTP_CONCURRENCY = 5
 const FETCH_TIMEOUT = 10_000
 const PAGE_LOAD_TIMEOUT = 5_000  // Max time to wait for feeds before rendering
 const ITEMS_PER_SOURCE = 15      // Limit items per source to reduce load
+const CACHE_TTL = 3 * 60_000     // 3 minutes
+
+// In-memory cache keyed by sorted source IDs
+let feedCache: { key: string; items: NewsItem[]; ts: number } | null = null
 
 /**
  * Fetch all RSS sources live (no DB storage), merge, sort by date.
  * Returns NewsItem[] ready for the UI.
- * Uses timeout to prevent page hang — returns partial results if slow.
+ * Uses in-memory cache (3 min TTL) + timeout to prevent page hang.
  */
 export async function fetchLiveFeeds(sources: NewsSource[]): Promise<NewsItem[]> {
   const active = sources.filter((s) => s.status === 'active')
   if (active.length === 0) return []
+
+  // Cache hit — return immediately
+  const cacheKey = active.map((s) => s.id).sort().join(',')
+  if (feedCache && feedCache.key === cacheKey && Date.now() - feedCache.ts < CACHE_TTL) {
+    return feedCache.items
+  }
 
   const allItems: NewsItem[] = []
   let timedOut = false
@@ -55,7 +65,15 @@ export async function fetchLiveFeeds(sources: NewsSource[]): Promise<NewsItem[]>
     return db - da
   })
 
+  // Cache result
+  feedCache = { key: cacheKey, items: allItems, ts: Date.now() }
+
   return allItems
+}
+
+/** Invalidate cache (called on manual refresh) */
+export function invalidateFeedCache() {
+  feedCache = null
 }
 
 async function fetchSingleFeed(source: NewsSource): Promise<NewsItem[]> {

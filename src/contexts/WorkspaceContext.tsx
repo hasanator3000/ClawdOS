@@ -38,7 +38,8 @@ export function WorkspaceProvider({
     setWorkspaces(initialWorkspaces)
   }, [initialWorkspaces])
 
-  // Poll workspaces in background (moved from SidebarClient)
+  // Poll workspaces in background — 90s interval, skip if data unchanged
+  const prevWorkspacesJson = useRef('')
   useEffect(() => {
     let alive = true
     const tick = async () => {
@@ -47,25 +48,35 @@ export function WorkspaceProvider({
         if (!res.ok || !alive) return
         const data = (await res.json()) as { workspaces: Workspace[] }
         if (!alive) return
-        setWorkspaces(data.workspaces)
+        const json = JSON.stringify(data.workspaces.map((w) => w.id).sort())
+        if (json !== prevWorkspacesJson.current) {
+          prevWorkspacesJson.current = json
+          setWorkspaces(data.workspaces)
+        }
       } catch {
         // ignore
       }
     }
 
     tick()
-    const id = window.setInterval(tick, 30_000)
+    const id = window.setInterval(tick, 90_000)
     return () => {
       alive = false
       window.clearInterval(id)
     }
   }, [])
 
+  // Use refs for stable callback — avoids recreating on every workspace/workspaces change
+  const workspaceRef = useRef(workspace)
+  workspaceRef.current = workspace
+  const workspacesRef = useRef(workspaces)
+  workspacesRef.current = workspaces
+
   const switchWorkspace = useCallback(
     async (id: string) => {
-      if (id === workspace?.id || switchingRef.current) return
-      const prev = workspace
-      const target = workspaces.find((w) => w.id === id)
+      if (id === workspaceRef.current?.id || switchingRef.current) return
+      const prev = workspaceRef.current
+      const target = workspacesRef.current.find((w) => w.id === id)
       if (!target) return
 
       // 1. INSTANT context update — all consumers see new workspace immediately
@@ -76,7 +87,7 @@ export function WorkspaceProvider({
       try {
         // 2. Cookie update (server-side, for RSC on next render)
         await setActiveWorkspace(id)
-        // 3. RSC refresh (background, updates server-rendered parts)
+        // 3. RSC refresh — fire and forget, don't block UI
         router.refresh()
       } catch {
         // Revert on error
@@ -86,7 +97,7 @@ export function WorkspaceProvider({
         switchingRef.current = false
       }
     },
-    [workspace, workspaces, router]
+    [router]
   )
 
   return (

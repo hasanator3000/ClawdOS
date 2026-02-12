@@ -58,8 +58,11 @@ export function Shell({ children }: ShellProps) {
     return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
   }, [])
 
-  const railWidth = railExpanded ? 'var(--rail-w-open)' : 'var(--rail-w)'
-  const chatWidth = aiPanel.isOpen && aiPanel.isHydrated ? `${aiPanel.width}px` : '0px'
+  const gridColumns = useMemo(() => {
+    const rail = railExpanded ? 'var(--rail-w-open)' : 'var(--rail-w)'
+    const chat = aiPanel.isOpen && aiPanel.isHydrated ? `${aiPanel.width}px` : '0px'
+    return `${rail} 1fr ${chat}`
+  }, [railExpanded, aiPanel.isOpen, aiPanel.isHydrated, aiPanel.width])
 
   const aiPanelCtx = useMemo(
     () => ({ isOpen: aiPanel.isOpen, toggle: aiPanel.toggle, isHydrated: aiPanel.isHydrated }),
@@ -73,7 +76,7 @@ export function Shell({ children }: ShellProps) {
         className="h-screen relative z-[1]"
         style={{
           display: 'grid',
-          gridTemplateColumns: `${railWidth} 1fr ${chatWidth}`,
+          gridTemplateColumns: gridColumns,
         }}
       >
         {children}

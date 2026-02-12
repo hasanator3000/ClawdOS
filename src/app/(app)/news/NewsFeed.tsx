@@ -46,7 +46,7 @@ export function NewsFeed({ items, onLoadMore, hasMore, isLoading }: Props) {
     <div>
       <div className="grid grid-cols-1 sm:[grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] gap-4">
         {items.map((item, i) => (
-          <NewsCard key={`${item.id}-${i}`} item={item} />
+          <NewsCard key={item.guid || item.id} item={item} />
         ))}
       </div>
       {hasMore && <div ref={sentinelRef} className="h-4" />}

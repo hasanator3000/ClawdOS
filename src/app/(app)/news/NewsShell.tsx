@@ -32,11 +32,13 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   const [showSources, setShowSources] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Sync props when server data changes (workspace switch, revalidation)
-  useEffect(() => { setAllNews(initialNews) }, [initialNews])
-  useEffect(() => { setSources(initialSources) }, [initialSources])
-  useEffect(() => { setTabs(initialTabs) }, [initialTabs])
-  useEffect(() => { setSourceTabMap(initialSourceTabMap) }, [initialSourceTabMap])
+  // Sync all props atomically when server data changes (workspace switch, revalidation)
+  useEffect(() => {
+    setAllNews(initialNews)
+    setSources(initialSources)
+    setTabs(initialTabs)
+    setSourceTabMap(initialSourceTabMap)
+  }, [initialNews, initialSources, initialTabs, initialSourceTabMap])
 
   // Debounce search input (300ms)
   useEffect(() => {
