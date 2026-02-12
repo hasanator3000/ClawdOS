@@ -1,11 +1,17 @@
 'use client'
 
-import { CommandPalette } from './CommandPalette'
-import { AIPanel } from './AIPanel'
+import dynamic from 'next/dynamic'
 import { useCommandPalette } from '@/hooks/useCommandPalette'
 import { useAIPanel } from '@/hooks/useAIPanel'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { AIPanelProvider } from '@/contexts/AIPanelContext'
+
+const CommandPalette = dynamic(() => import('./CommandPalette').then((m) => m.CommandPalette), {
+  ssr: false,
+})
+const AIPanel = dynamic(() => import('./AIPanel').then((m) => m.AIPanel), {
+  ssr: false,
+})
 
 const RAIL_STORAGE_KEY = 'clawd-rail-open'
 

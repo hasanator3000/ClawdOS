@@ -82,12 +82,16 @@ export async function reorderTabs(
   client: PoolClient,
   tabIds: string[]
 ): Promise<void> {
-  for (let i = 0; i < tabIds.length; i++) {
-    await client.query(
-      'update content.news_tab set sort_order = $1 where id = $2',
-      [i, tabIds[i]]
-    )
-  }
+  if (tabIds.length === 0) return
+
+  // Single bulk UPDATE instead of N individual queries
+  await client.query(
+    `update content.news_tab as t
+     set sort_order = v.ord
+     from (select unnest($1::uuid[]) as id, generate_series(0, $2) as ord) as v
+     where t.id = v.id`,
+    [tabIds, tabIds.length - 1]
+  )
 }
 
 export async function assignSourceToTab(

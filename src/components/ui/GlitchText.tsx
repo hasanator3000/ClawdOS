@@ -14,7 +14,12 @@ export default function GlitchText({ text, className = '' }: GlitchTextProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const maskId = useId()
 
+  const containerRef = useRef<HTMLSpanElement>(null)
+
   useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
     const len = GLITCH_CHARS.length
     const buf = new Array<string>(200)
     const animate = () => {
@@ -25,20 +30,35 @@ export default function GlitchText({ text, className = '' }: GlitchTextProps) {
     }
 
     animate()
-    // 250ms is still visually glitchy but halves the CPU cost vs 100ms
-    intervalRef.current = setInterval(animate, 250)
+
+    // Only run animation when element is visible on screen
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          if (!intervalRef.current) {
+            intervalRef.current = setInterval(animate, 250)
+          }
+        } else {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
+        }
+      },
+      { threshold: 0 }
+    )
+    observer.observe(el)
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
+      observer.disconnect()
+      if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [])
 
   const safeMaskId = maskId.replace(/:/g, '')
 
   return (
-    <span className={`relative inline-block ${className}`} style={{ lineHeight: 1.4 }}>
+    <span ref={containerRef} className={`relative inline-block ${className}`} style={{ lineHeight: 1.4 }}>
       <svg width="0" height="0" style={{ position: 'absolute' }} viewBox="0 0 120 30">
         <defs>
           <mask id={safeMaskId}>

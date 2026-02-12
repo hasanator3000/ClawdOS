@@ -168,29 +168,17 @@ export default function SidebarClient({ username }: { username?: string }) {
           title={exp ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           <span
-            className="text-lg font-bold"
+            className="font-bold whitespace-nowrap"
             style={{
               fontFamily: 'var(--font-space-mono, monospace)',
+              fontSize: '16px',
               color: 'var(--neon)',
-              letterSpacing: '-1px',
+              letterSpacing: '0.5px',
               textShadow: '0 0 20px var(--neon-glow)',
             }}
           >
-            C
+            {exp ? 'ClawdOS' : 'C'}
           </span>
-          {exp && (
-            <span
-              className="font-bold whitespace-nowrap"
-              style={{
-                fontFamily: 'var(--font-space-mono, monospace)',
-                fontSize: '15px',
-                letterSpacing: '1px',
-                marginLeft: '-2px',
-              }}
-            >
-              lawdOS
-            </span>
-          )}
         </button>
         {exp && (
           <button

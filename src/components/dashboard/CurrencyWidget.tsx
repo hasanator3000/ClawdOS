@@ -34,10 +34,22 @@ export function CurrencyWidget() {
 
     fetchRates()
 
-    const interval = setInterval(fetchRates, 5 * 60 * 1000)
+    // Only poll when tab is visible
+    let interval: ReturnType<typeof setInterval> | null = null
+    const start = () => {
+      if (!interval) interval = setInterval(fetchRates, 5 * 60 * 1000)
+    }
+    const stop = () => {
+      if (interval) { clearInterval(interval); interval = null }
+    }
+    const onVisibility = () => document.hidden ? stop() : start()
+
+    start()
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       controller.abort()
-      clearInterval(interval)
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 
