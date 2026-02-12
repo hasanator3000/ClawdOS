@@ -31,5 +31,10 @@ export async function setActiveWorkspace(workspaceId: string) {
     maxAge: 60 * 60 * 24 * 365,
   })
 
-  revalidatePath('/')
+  // Revalidate only the pages that depend on workspace data.
+  // Using '/' would nuke the entire RSC cache and cause full re-render of all pages.
+  revalidatePath('/today')
+  revalidatePath('/tasks')
+  revalidatePath('/news')
+  revalidatePath('/settings')
 }

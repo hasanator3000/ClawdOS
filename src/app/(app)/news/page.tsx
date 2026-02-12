@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
@@ -7,6 +8,7 @@ import { findTabsByWorkspace } from '@/lib/db/repositories/news-tab.repository'
 import { fetchLiveFeeds } from '@/lib/rss/live'
 import { NewsShell } from './NewsShell'
 import type { PoolClient } from 'pg'
+import type { NewsSource, NewsTab } from '@/types/news'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +29,54 @@ async function getSourceTabMap(
     map[row.sourceId].push(row.tabId)
   }
   return map
+}
+
+/**
+ * Async component that fetches RSS feeds and renders NewsShell.
+ * Wrapped in Suspense so the page shell renders immediately
+ * while RSS feeds load in the background (streaming).
+ */
+async function NewsFeedLoader({
+  userId,
+  sources,
+  tabs,
+  sourceTabMap,
+}: {
+  userId: string
+  sources: NewsSource[]
+  tabs: NewsTab[]
+  sourceTabMap: Record<string, string[]>
+}) {
+  const news = await fetchLiveFeeds(sources)
+
+  return (
+    <NewsShell
+      initialNews={news}
+      initialSources={sources}
+      initialTabs={tabs}
+      initialSourceTabMap={sourceTabMap}
+    />
+  )
+}
+
+function NewsSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="flex items-center justify-between mb-4">
+        <div className="h-8 w-24 rounded-lg bg-[var(--hover)]" />
+        <div className="flex gap-3">
+          <div className="h-9 w-24 rounded-lg bg-[var(--hover)]" />
+          <div className="h-9 w-20 rounded-lg bg-[var(--hover)]" />
+          <div className="h-9 w-20 rounded-lg bg-[var(--hover)]" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-48 rounded-xl bg-[var(--hover)]" />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default async function NewsPage() {
@@ -50,15 +100,27 @@ export default async function NewsPage() {
     ])
   })
 
-  // Fetch RSS feeds live (no DB storage)
-  const news = await fetchLiveFeeds(sources)
+  // If no sources yet, render NewsShell immediately (onboarding mode)
+  if (sources.length === 0) {
+    return (
+      <NewsShell
+        initialNews={[]}
+        initialSources={sources}
+        initialTabs={tabs}
+        initialSourceTabMap={sourceTabMap}
+      />
+    )
+  }
 
+  // Stream: render page shell instantly, RSS feeds load in background
   return (
-    <NewsShell
-      initialNews={news}
-      initialSources={sources}
-      initialTabs={tabs}
-      initialSourceTabMap={sourceTabMap}
-    />
+    <Suspense fallback={<NewsSkeleton />}>
+      <NewsFeedLoader
+        userId={session.userId}
+        sources={sources}
+        tabs={tabs}
+        sourceTabMap={sourceTabMap}
+      />
+    </Suspense>
   )
 }

@@ -48,7 +48,10 @@ export async function POST(request: Request) {
     maxAge: 60 * 60 * 24 * 365,
   })
 
-  revalidatePath('/')
+  revalidatePath('/today')
+  revalidatePath('/tasks')
+  revalidatePath('/news')
+  revalidatePath('/settings')
 
   return NextResponse.json({
     switched: true,

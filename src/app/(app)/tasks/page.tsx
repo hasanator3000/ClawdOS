@@ -8,10 +8,8 @@ import { TaskList } from './TaskList'
 export const dynamic = 'force-dynamic'
 
 export default async function TasksPage() {
-  const session = await getSession()
+  const [session, workspace] = await Promise.all([getSession(), getActiveWorkspace()])
   if (!session.userId) redirect('/login')
-
-  const workspace = await getActiveWorkspace()
   if (!workspace) {
     return (
       <div className="p-6">
