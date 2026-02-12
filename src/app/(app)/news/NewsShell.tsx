@@ -9,6 +9,8 @@ import { NewsSearch } from './NewsSearch'
 import { NewsOnboarding } from './NewsOnboarding'
 import { refreshNews, getSources, getTabs } from './actions'
 
+const ITEMS_PER_PAGE = 12
+
 interface Props {
   initialNews: NewsItem[]
   initialSources: NewsSource[]
@@ -24,6 +26,7 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [displayedCount, setDisplayedCount] = useState(ITEMS_PER_PAGE)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const feedRef = useRef<HTMLDivElement>(null)
   const [showSources, setShowSources] = useState(false)
@@ -69,9 +72,15 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     return items
   }, [allNews, activeTabId, sourceTabMap, debouncedSearch])
 
-  // Scroll to top when filters change
+  // Pagination: only show displayedCount items
+  const displayedNews = useMemo(() => {
+    return filteredNews.slice(0, displayedCount)
+  }, [filteredNews, displayedCount])
+
+  // Scroll to top and reset pagination when filters change
   useEffect(() => {
     feedRef.current?.scrollTo(0, 0)
+    setDisplayedCount(ITEMS_PER_PAGE)
   }, [activeTabId, debouncedSearch])
 
   // Refs for stable event handlers
@@ -137,6 +146,10 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
     })
   }, [])
 
+  const handleLoadMore = useCallback(() => {
+    setDisplayedCount((prev) => Math.min(prev + ITEMS_PER_PAGE, filteredNews.length))
+  }, [filteredNews.length])
+
   // Onboarding
   if (sources.length === 0 && !showSources) {
     return (
@@ -184,9 +197,9 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
       {/* Feed — scrolls independently */}
       <div ref={feedRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-4">
         <NewsFeed
-          items={filteredNews}
-          onLoadMore={() => {}}
-          hasMore={false}
+          items={displayedNews}
+          onLoadMore={handleLoadMore}
+          hasMore={displayedCount < filteredNews.length}
           isLoading={isPending}
         />
       </div>
