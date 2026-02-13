@@ -75,6 +75,9 @@ id_ed25519*
 *.sqlite3
 db/backups/
 
+# Dev-only files (architecture docs, planning, agent rules)
+/dev/
+
 # IDE and local
 .idea/
 .vscode/settings.json
