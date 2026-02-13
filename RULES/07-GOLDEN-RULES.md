@@ -5,21 +5,21 @@
 
 ## The 5 golden rules
 
-### 1. No Claude/Anthropic API in LifeOS
+### 1. No Claude/Anthropic API in ClawdOS
 
-LifeOS **never** calls Claude, OpenAI, or any LLM API directly. Clawdbot is the single agent runtime.
+ClawdOS **never** calls Claude, OpenAI, or any LLM API directly. Clawdbot is the single agent runtime.
 
 - DO NOT install `@anthropic-ai/sdk`, `openai`, or any LLM SDK
 - DO NOT create API routes that call LLM endpoints directly
 - All AI goes through Clawdbot gateway at `POST /api/ai/chat` -> `POST ${CLAWDBOT_URL}/v1/chat/completions`
 
-### 2. No Telegram in LifeOS
+### 2. No Telegram in ClawdOS
 
-Telegram is a Clawdbot channel, configured in the Clawdbot repo — NOT in LifeOS.
+Telegram is a Clawdbot channel, configured in the Clawdbot repo — NOT in ClawdOS.
 
 - DO NOT create `/api/telegram/webhook` or any Telegram bot handler
 - DO NOT install `telegraf`, `node-telegram-bot-api`, or similar
-- The only Telegram interaction in LifeOS is sending auth codes via the Bot API (one-way)
+- The only Telegram interaction in ClawdOS is sending auth codes via the Bot API (one-way)
 - Identity bridge: `core.user.telegram_user_id` column in DB
 
 ### 3. No DOM selectors from model output
@@ -60,7 +60,7 @@ PostgreSQL 16.11 does **NOT** support `CREATE POLICY IF NOT EXISTS`.
 |---------|---------|
 | `@anthropic-ai/sdk` | Rule 1: no direct LLM API |
 | `openai` | Rule 1: no direct LLM API |
-| `telegraf` / `node-telegram-bot-api` | Rule 2: no Telegram in LifeOS |
+| `telegraf` / `node-telegram-bot-api` | Rule 2: no Telegram in ClawdOS |
 | `@shadcn/ui` / `@radix-ui/*` | Custom UI only |
 | `prisma` / `drizzle-orm` / `typeorm` | Raw `pg` only |
 | `tailwindcss` config-based plugins | Tailwind v4 uses CSS config |

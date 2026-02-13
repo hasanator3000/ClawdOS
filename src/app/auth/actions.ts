@@ -20,7 +20,7 @@ export async function signIn(formData: FormData) {
   // If Telegram is linked, require a second factor.
   if (user.telegramUserId) {
     const challenge = await createAuthChallenge(user.id, 'login')
-    await enqueueTelegram(user.telegramUserId, `LifeOS login code: ${challenge.code} (valid 10 min)`)
+    await enqueueTelegram(user.telegramUserId, `ClawdOS login code: ${challenge.code} (valid 10 min)`)
 
     session.pendingUserId = user.id
     session.pendingUsername = user.username

@@ -301,9 +301,9 @@ async function processStreamWithActions(
 
                     const actions: any[] = Array.isArray(payload?.actions) ? payload.actions : []
                     if (actions.length > 0) {
-                      console.log('[LifeOS] Executing actions:', actions)
+                      console.log('[ClawdOS] Executing actions:', actions)
                       const result = await executeActions(actions, userId, workspaceId)
-                      console.log('[LifeOS] Actions result:', result)
+                      console.log('[ClawdOS] Actions result:', result)
 
                       // Send navigation instruction to client if present
                       if (result.navigation) {
@@ -858,15 +858,15 @@ export async function POST(request: Request) {
   const telegramUserId = await getTelegramUserIdForSessionUser(session.userId)
 
   const system = [
-    'You are Clawdbot running inside LifeOS WebUI.',
+    'You are Clawdbot running inside ClawdOS WebUI.',
     'Reply like Telegram/TUI: direct, helpful, no boilerplate.',
-    `LifeOS page: ${currentPage}`,
-    `LifeOS workspace: ${workspaceName ?? workspaceId ?? 'unknown'}`,
+    `ClawdOS page: ${currentPage}`,
+    `ClawdOS workspace: ${workspaceName ?? workspaceId ?? 'unknown'}`,
     telegramUserId
       ? `Telegram DM target for this user is fixed: ${telegramUserId}. If asked to send a Telegram message, send only to that id.`
       : 'No Telegram user id is linked. If asked to send to Telegram, ask the user to link Telegram in Settings first.',
     '',
-    'You can control LifeOS by embedding action commands in your response.',
+    'You can control ClawdOS by embedding action commands in your response.',
     'Format: <lifeos>{"actions":[...]}</lifeos>',
     '',
     'Available actions:',

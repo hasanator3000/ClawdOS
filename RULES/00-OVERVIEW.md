@@ -1,8 +1,8 @@
-# LifeOS — Developer Rules & Standards
+# ClawdOS — Developer Rules & Standards
 
 ## What is this?
 
-This directory contains everything a developer (or coding agent) needs to add new sections, features, and integrations to LifeOS without breaking existing contracts.
+This directory contains everything a developer (or coding agent) needs to add new sections, features, and integrations to ClawdOS without breaking existing contracts.
 
 ## Stack (facts, not assumptions)
 
@@ -27,7 +27,7 @@ This directory contains everything a developer (or coding agent) needs to add ne
 | [03-FRONTEND.md](03-FRONTEND.md) | SSR/CSR boundary, components, contexts, Tailwind v4 |
 | [04-API.md](04-API.md) | API route structure, Zod validation, session auth, error handling |
 | [05-DATABASE.md](05-DATABASE.md) | Migrations (two systems), RLS, repositories, `withUser()`, raw `pg` |
-| [06-CLAWDBOT-INTEGRATION.md](06-CLAWDBOT-INTEGRATION.md) | How LifeOS talks to Clawdbot, action protocol, manifest updates |
+| [06-CLAWDBOT-INTEGRATION.md](06-CLAWDBOT-INTEGRATION.md) | How ClawdOS talks to Clawdbot, action protocol, manifest updates |
 | [07-GOLDEN-RULES.md](07-GOLDEN-RULES.md) | Architectural prohibitions (what NOT to do) |
 | [08-DEPLOY-CONTRACT.md](08-DEPLOY-CONTRACT.md) | Install contract: env vars, health, idempotency, secrets |
 

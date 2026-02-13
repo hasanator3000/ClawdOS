@@ -126,7 +126,7 @@ x-clawdbot-agent-id: main
   "stream": true,
   "user": "lifeos:<userId>:ws:<workspaceId>",
   "messages": [
-    { "role": "system", "content": "You are Clawdbot running inside LifeOS WebUI..." },
+    { "role": "system", "content": "You are Clawdbot running inside ClawdOS WebUI..." },
     { "role": "user", "content": "User's message here" }
   ]
 }

@@ -13,7 +13,7 @@ export default async function LoginPage({
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-fg)] p-6">
-        <h1 className="text-xl font-semibold">LifeOS</h1>
+        <h1 className="text-xl font-semibold">ClawdOS</h1>
         <p className="text-sm text-[var(--muted)] mt-1">Local sign-in (tailnet only recommended).</p>
 
         {error ? (

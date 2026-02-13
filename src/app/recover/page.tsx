@@ -17,7 +17,7 @@ async function requestRecovery(formData: FormData) {
   // Always redirect (avoid username enumeration). If Telegram isn't linked, recovery won't work.
   if (row?.telegram_user_id) {
     const ch = await createAuthChallenge(row.id, 'recovery')
-    await enqueueTelegram(row.telegram_user_id, `LifeOS recovery code: ${ch.code} (valid 10 min)`)
+    await enqueueTelegram(row.telegram_user_id, `ClawdOS recovery code: ${ch.code} (valid 10 min)`)
     redirect(`/recover/verify?cid=${encodeURIComponent(ch.id)}`)
   }
 

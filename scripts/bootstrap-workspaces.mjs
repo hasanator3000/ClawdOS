@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Bootstrap workspaces for LifeOS.
+ * Bootstrap workspaces for ClawdOS.
  *
  * Usage:
  *   OWNER=<username> node scripts/bootstrap-workspaces.mjs

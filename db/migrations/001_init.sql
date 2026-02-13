@@ -1,4 +1,4 @@
--- LifeOS local Postgres schema with RLS (multi-workspace)
+-- ClawdOS local Postgres schema with RLS (multi-workspace)
 
 create extension if not exists pgcrypto;
 

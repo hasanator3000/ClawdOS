@@ -1,4 +1,4 @@
-# STATE (LifeOS)
+# STATE (ClawdOS)
 
 ## Current DB state (2026-02-03)
 - Live tables exist in `public`: app_user, workspace, workspace_member, digest, news_item

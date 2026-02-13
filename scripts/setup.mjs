@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * LifeOS — One-command setup
+ * ClawdOS — One-command setup
  *
  * Usage:
  *   npm run setup
@@ -195,7 +195,7 @@ async function seedUser() {
 // ── Main ────────────────────────────────────────────────────────────────────
 
 console.log()
-console.log('\x1b[1m  LifeOS Setup\x1b[0m')
+console.log('\x1b[1m  ClawdOS Setup\x1b[0m')
 console.log()
 
 await ensureEnv()

@@ -1,5 +1,5 @@
 /**
- * Intent cards — declarative definitions for all actions LifeOS can handle.
+ * Intent cards — declarative definitions for all actions ClawdOS can handle.
  *
  * Each card carries:
  * - examples: phrases used to compute embedding centroids (Layer 1)

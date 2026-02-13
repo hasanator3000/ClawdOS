@@ -25,7 +25,7 @@ export async function validateFeedUrl(url: string): Promise<ValidationResult> {
 
   try {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'LifeOS/1.0 (RSS Reader)' },
+      headers: { 'User-Agent': 'ClawdOS/1.0 (RSS Reader)' },
       signal: AbortSignal.timeout(10_000),
     })
 

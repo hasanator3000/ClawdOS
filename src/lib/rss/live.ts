@@ -78,7 +78,7 @@ export function invalidateFeedCache() {
 
 async function fetchSingleFeed(source: NewsSource): Promise<NewsItem[]> {
   const response = await fetch(source.url, {
-    headers: { 'User-Agent': 'LifeOS/1.0 (RSS Reader)' },
+    headers: { 'User-Agent': 'ClawdOS/1.0 (RSS Reader)' },
     signal: AbortSignal.timeout(FETCH_TIMEOUT),
   })
 

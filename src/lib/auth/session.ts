@@ -9,7 +9,7 @@ const sessionOptions = {
   cookieOptions: {
     httpOnly: true,
     sameSite: 'lax' as const,
-    // We often run LifeOS over plain HTTP on a private VPS/tailnet.
+    // We often run ClawdOS over plain HTTP on a private VPS/tailnet.
     // Setting `secure=true` would make the cookie disappear on http:// and break login ("Session expired").
     // Enable secure cookies only when explicitly configured and you serve via HTTPS.
     secure: process.env.SESSION_COOKIE_SECURE === 'true',

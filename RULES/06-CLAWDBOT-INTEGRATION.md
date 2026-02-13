@@ -7,7 +7,7 @@ Browser  ──POST /api/ai/chat──>  Next.js API  ──POST /v1/chat/comple
          <──SSE stream──────────               <──SSE stream────────────────
 ```
 
-- LifeOS is the **UI + DB + RLS layer**
+- ClawdOS is the **UI + DB + RLS layer**
 - Clawdbot is the **agent runtime** (separate repo, separate process)
 - Communication: HTTP over loopback (`127.0.0.1:18789`)
 - Auth: `Authorization: Bearer ${CLAWDBOT_TOKEN}` (server-side only)
@@ -39,7 +39,7 @@ Browser  ──POST /api/ai/chat──>  Next.js API  ──POST /v1/chat/comple
 
 **File:** `src/app/api/consult/route.ts`
 
-**Purpose:** Meta-queries about LifeOS architecture (used by coding agents before making changes).
+**Purpose:** Meta-queries about ClawdOS architecture (used by coding agents before making changes).
 
 **Auth:** Session OR `x-lifeos-consult-token` header
 
@@ -125,11 +125,11 @@ useEffect(() => {
 The system prompt sent to Clawdbot includes:
 
 ```
-You are Clawdbot running inside LifeOS WebUI.
-LifeOS page: <current page>
-LifeOS workspace: <workspace name>
+You are Clawdbot running inside ClawdOS WebUI.
+ClawdOS page: <current page>
+ClawdOS workspace: <workspace name>
 
-You can control LifeOS by embedding action commands in your response.
+You can control ClawdOS by embedding action commands in your response.
 Action format: <lifeos>{"actions":[...]}</lifeos>
 
 Available actions:
@@ -164,8 +164,8 @@ const token = process.env.CLAWDBOT_TOKEN  // Required, throws if missing
 
 - **DO NOT** call Clawdbot from client-side code — always proxy through Next.js API
 - **DO NOT** expose `CLAWDBOT_TOKEN` or `CLAWDBOT_URL` to the browser
-- **DO NOT** add Telegram bot/webhook handling in LifeOS — that's Clawdbot's domain
+- **DO NOT** add Telegram bot/webhook handling in ClawdOS — that's Clawdbot's domain
 - **DO NOT** install `@anthropic-ai/sdk` or any LLM SDK — Clawdbot is the only runtime
 - **DO NOT** add actions without adding them to the whitelist
 - **DO NOT** execute arbitrary model-provided DOM selectors — only whitelisted action keys
-- **DO NOT** modify Clawdbot's internal configuration from LifeOS code
+- **DO NOT** modify Clawdbot's internal configuration from ClawdOS code

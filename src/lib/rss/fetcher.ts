@@ -34,7 +34,7 @@ export async function fetchSource(
 
   try {
     const response = await fetch(source.url, {
-      headers: { 'User-Agent': 'LifeOS/1.0 (RSS Reader)' },
+      headers: { 'User-Agent': 'ClawdOS/1.0 (RSS Reader)' },
       signal: AbortSignal.timeout(10_000),
     })
 
@@ -108,7 +108,7 @@ export async function refreshStaleSources(
     const settled = await Promise.allSettled(
       batch.map(async (source): Promise<FeedData> => {
         const response = await fetch(source.url, {
-          headers: { 'User-Agent': 'LifeOS/1.0 (RSS Reader)' },
+          headers: { 'User-Agent': 'ClawdOS/1.0 (RSS Reader)' },
           signal: AbortSignal.timeout(10_000),
         })
         if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`)

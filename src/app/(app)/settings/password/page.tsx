@@ -23,7 +23,7 @@ async function startPasswordChange(formData: FormData) {
   // If Telegram is linked, require a confirmation code.
   if (user.telegramUserId) {
     const ch = await createAuthChallenge(user.id, 'recovery')
-    await enqueueTelegram(user.telegramUserId, `LifeOS password change code: ${ch.code} (valid 10 min)`)
+    await enqueueTelegram(user.telegramUserId, `ClawdOS password change code: ${ch.code} (valid 10 min)`)
 
     session.pendingUserId = user.id
     session.pendingUsername = session.username

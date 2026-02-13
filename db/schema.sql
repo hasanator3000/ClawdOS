@@ -1,4 +1,4 @@
--- LifeOS — Baseline Schema (auto-generated from live database)
+-- ClawdOS — Baseline Schema (auto-generated from live database)
 -- This file is used for FRESH installs. For upgrades, use db/migrations/.
 --
 -- Usage:  psql $DATABASE_URL < db/schema.sql

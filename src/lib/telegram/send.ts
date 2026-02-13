@@ -88,6 +88,6 @@ export async function sendTelegramCode(
   code: string,
   purpose: string
 ): Promise<boolean> {
-  const message = `LifeOS ${purpose} code: ${code} (valid 10 min)`
+  const message = `ClawdOS ${purpose} code: ${code} (valid 10 min)`
   return sendTelegramMessage(telegramUserId, message)
 }

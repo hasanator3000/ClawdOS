@@ -25,7 +25,7 @@ async function startLink(formData: FormData) {
 
   console.log('[TelegramLink] Enqueueing Telegram message')
   try {
-    await enqueueTelegram(telegramUserId, `LifeOS link code: ${ch.code} (valid 10 min)`)
+    await enqueueTelegram(telegramUserId, `ClawdOS link code: ${ch.code} (valid 10 min)`)
     console.log('[TelegramLink] Message enqueued successfully')
   } catch (error) {
     console.error('[TelegramLink] Failed to enqueue message:', error)

@@ -23,7 +23,7 @@ Read the `RULES/` directory — 9 files covering everything from database migrat
 ## Golden rules (never violate)
 
 1. **No LLM SDK in this repo** — no `@anthropic-ai/sdk`, no `openai`. Clawdbot is the only AI runtime.
-2. **No Telegram handlers** — Telegram is a Clawdbot channel, not a LifeOS feature.
+2. **No Telegram handlers** — Telegram is a Clawdbot channel, not a ClawdOS feature.
 3. **No tokens to browser** — `CLAWDBOT_TOKEN` stays server-side only.
 4. **RLS on all queries** — use `withUser(userId, client => ...)` for every DB operation.
 5. **No ORM** — raw `pg` with parameterized queries. No Prisma, no Drizzle.
