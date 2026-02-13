@@ -108,32 +108,33 @@ export async function GET() {
 ## Install flow for new users
 
 ```bash
-# 1. Clone
+# 1. Clone and install
 git clone <repo> && cd lifeos
+npm install
 
-# 2. Install deps
-npm ci
+# 2. One-command setup (does everything)
+npm run setup
+# Creates .env.local, starts PostgreSQL, applies schema, creates user+workspace
 
-# 3. Start database
-docker compose up -d
-# Wait for healthcheck to pass
+# 3. Start
+npm run dev          # development
+npm run build && npm start  # production
+```
 
-# 4. Configure environment
-cp .env.local.example .env.local
-# Edit .env.local — fill in SESSION_PASSWORD, CLAWDBOT_TOKEN, etc.
+`npm run setup` is idempotent — safe to re-run. It:
+- Creates `.env.local` with auto-generated `SESSION_PASSWORD`, `CLAWDBOT_TOKEN`, `LIFEOS_CONSULT_TOKEN`
+- Starts PostgreSQL via `docker compose up -d`
+- Detects fresh vs existing DB (`db/schema.sql` baseline vs incremental migrations)
+- Prompts for first user credentials interactively
 
-# 5. Run migrations
-node scripts/migrate.mjs
+### Individual scripts (for advanced use)
 
-# 6. Create user
-node scripts/create-user.mjs <username> <password>
-
-# 7. Bootstrap workspace
-OWNER=<username> node scripts/bootstrap-workspaces.mjs
-
-# 8. Build & start
-npm run build
-npm start
+```bash
+npm run db:up              # Start PostgreSQL only
+npm run db:down            # Stop PostgreSQL
+npm run db:migrate         # Run pending migrations
+npm run db:reset           # Destroy and recreate database
+npm run user:create -- <user> <pass>  # Create/update user
 ```
 
 ### Rules for maintaining install flow

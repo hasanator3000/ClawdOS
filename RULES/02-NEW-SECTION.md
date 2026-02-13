@@ -12,21 +12,22 @@ Step-by-step guide with dependency order. Each step depends on the previous one.
 
 > Reference section: [05-DATABASE.md](05-DATABASE.md)
 
-### Step 1 — Create migration
+### Step 1 — Create migration + update YAML registry
 
+Follow the complete cookbook in [05-DATABASE.md § Cookbook](05-DATABASE.md#cookbook-adding-a-db-table-for-a-new-section):
+
+- [ ] Pick the correct schema namespace (see namespace table in 05-DATABASE.md)
 - [ ] Create file `db/migrations/NNN_<section>_schema.sql` (next number in sequence)
+- [ ] Copy the [Migration Template](05-DATABASE.md#migration-template) — includes table, trigger, indexes, RLS
 - [ ] Use the correct schema namespace (`core.*` for core entities, `content.*` for content, etc.)
-- [ ] Include `CREATE TABLE` with all columns, types, defaults, foreign keys
-- [ ] Add indexes for common query patterns
-- [ ] Enable RLS: `ALTER TABLE <schema>.<table> ENABLE ROW LEVEL SECURITY;`
-- [ ] Create RLS policies using `core.is_workspace_member(workspace_id)`:
-  - SELECT policy (member access)
-  - INSERT policy (member + `created_by = core.current_user_id()`)
-  - UPDATE policy (member access)
-  - DELETE policy (member access)
-- [ ] Test migration: `node scripts/migrate.mjs`
+- [ ] Enable RLS + create all 4 policies (SELECT, INSERT, UPDATE, DELETE)
+- [ ] Add `updated_at` trigger using `core.trigger_set_updated_at()`
+- [ ] **Update `db/schema_registry.yaml`** — add table name to schema's list, bump version
+- [ ] **Update `db/schema/<namespace>/schema.yaml`** — add full table definition with all columns, indexes, RLS (see [YAML column type patterns](05-DATABASE.md#yaml-column-type-patterns))
+- [ ] Test migration: `npm run db:migrate`
 
-**Etalon:** `db/migrations/004_tasks_schema.sql`
+**Etalon migration:** `db/migrations/004_tasks_schema.sql`
+**Etalon YAML:** `db/schema/content/schema.yaml` (news_source entry)
 
 ### Step 2 — Create repository
 
