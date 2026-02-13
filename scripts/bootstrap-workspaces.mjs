@@ -1,10 +1,31 @@
 #!/usr/bin/env node
+/**
+ * Bootstrap workspaces for LifeOS.
+ *
+ * Usage:
+ *   OWNER=<username> node scripts/bootstrap-workspaces.mjs
+ *
+ * Environment variables:
+ *   DATABASE_URL  — required
+ *   OWNER         — username of the primary user (must already exist via create-user.mjs)
+ *   WS_NAME       — workspace display name (default: capitalised OWNER)
+ *
+ * Creates one personal workspace owned by OWNER.
+ * You can run the script multiple times — it upserts.
+ */
 import pg from 'pg'
 
 const { Pool } = pg
 
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL is required')
+  process.exit(1)
+}
+
+const owner = process.env.OWNER
+if (!owner) {
+  console.error('OWNER is required. Set OWNER=<username> (the user must already exist).')
+  console.error('Example: OWNER=alice node scripts/bootstrap-workspaces.mjs')
   process.exit(1)
 }
 
@@ -28,7 +49,7 @@ async function ensureWorkspace(slug, name, kind, ownerUsername = null) {
   return res.rows[0]
 }
 
-async function ensureMembership(workspaceId, username, role='member') {
+async function ensureMembership(workspaceId, username, role = 'member') {
   const u = await pool.query('SELECT id FROM core."user" WHERE username=$1', [username])
   if (u.rowCount === 0) throw new Error(`User not found: ${username}`)
   const userId = u.rows[0].id
@@ -43,18 +64,9 @@ async function ensureMembership(workspaceId, username, role='member') {
   return res.rows[0]
 }
 
-const agUser = process.env.AG_USERNAME || 'ag'
-const germanUser = process.env.GERMAN_USERNAME || 'german'
+const wsName = process.env.WS_NAME || owner.charAt(0).toUpperCase() + owner.slice(1)
+const ws = await ensureWorkspace(owner, wsName, 'personal', owner)
+await ensureMembership(ws.id, owner, 'owner')
 
-const agWs = await ensureWorkspace('ag', 'AG', 'personal', agUser)
-const germanWs = await ensureWorkspace('german', 'German', 'personal', germanUser)
-const sharedWs = await ensureWorkspace('shared', 'Shared', 'shared', null)
-
-await ensureMembership(agWs.id, agUser, 'owner')
-await ensureMembership(sharedWs.id, agUser, 'owner')
-
-await ensureMembership(germanWs.id, germanUser, 'owner')
-await ensureMembership(sharedWs.id, germanUser, 'member')
-
-console.log(JSON.stringify({ workspaces: { ag: agWs, german: germanWs, shared: sharedWs } }, null, 2))
+console.log(JSON.stringify({ workspace: ws }, null, 2))
 await pool.end()
