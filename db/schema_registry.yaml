@@ -1,0 +1,40 @@
+registry_version: 1
+last_updated: 2026-02-10
+schemas:
+  core:
+    version: 1
+    status: stable
+    # NOTE: currently implemented as public.* tables, scheduled to migrate to core.*
+    tables: [app_user, workspace, workspace_member]
+    functions: [app_current_user_id]
+    triggers: []
+  content:
+    version: 2
+    status: stable
+    depends_on: [core]
+    tables: [digest, news_item, news_source, news_tab, news_source_tab]
+  finance:
+    version: 1
+    status: development
+    depends_on: [core]
+    tables: []
+  biz:
+    version: 1
+    status: development
+    depends_on: [core]
+    tables: []
+  docs:
+    version: 1
+    status: development
+    depends_on: [core]
+    tables: []
+  analytics:
+    version: 1
+    status: experimental
+    depends_on: [core]
+    tables: []
+  ai:
+    version: 1
+    status: experimental
+    depends_on: [core]
+    tables: []

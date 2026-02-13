@@ -1,0 +1,134 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { getSession } from '@/lib/auth/session'
+import { getActiveWorkspace } from '@/lib/workspace'
+import { withUser } from '@/lib/db'
+import {
+  createTask as createTaskRepo,
+  updateTask as updateTaskRepo,
+  deleteTask as deleteTaskRepo,
+  completeTask as completeTaskRepo,
+  reopenTask as reopenTaskRepo,
+  type CreateTaskParams,
+  type UpdateTaskParams,
+} from '@/lib/db/repositories/task.repository'
+
+export async function createTask(params: Omit<CreateTaskParams, 'workspaceId'>) {
+  const session = await getSession()
+  if (!session.userId) {
+    return { error: 'Unauthorized' }
+  }
+
+  const workspace = await getActiveWorkspace()
+  if (!workspace) {
+    return { error: 'No workspace selected' }
+  }
+
+  try {
+    const task = await withUser(session.userId, async (client) => {
+      return createTaskRepo(client, {
+        ...params,
+        workspaceId: workspace.id,
+      })
+    })
+
+    revalidatePath('/tasks')
+    return { task }
+  } catch (error) {
+    console.error('Create task error:', error)
+    return { error: 'Failed to create task' }
+  }
+}
+
+export async function updateTask(taskId: string, params: UpdateTaskParams) {
+  const session = await getSession()
+  if (!session.userId) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const task = await withUser(session.userId, async (client) => {
+      return updateTaskRepo(client, taskId, params)
+    })
+
+    if (!task) {
+      return { error: 'Task not found' }
+    }
+
+    revalidatePath('/tasks')
+    return { task }
+  } catch (error) {
+    console.error('Update task error:', error)
+    return { error: 'Failed to update task' }
+  }
+}
+
+export async function deleteTask(taskId: string) {
+  const session = await getSession()
+  if (!session.userId) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const deleted = await withUser(session.userId, async (client) => {
+      return deleteTaskRepo(client, taskId)
+    })
+
+    if (!deleted) {
+      return { error: 'Task not found' }
+    }
+
+    revalidatePath('/tasks')
+    return { success: true }
+  } catch (error) {
+    console.error('Delete task error:', error)
+    return { error: 'Failed to delete task' }
+  }
+}
+
+export async function completeTask(taskId: string) {
+  const session = await getSession()
+  if (!session.userId) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const task = await withUser(session.userId, async (client) => {
+      return completeTaskRepo(client, taskId)
+    })
+
+    if (!task) {
+      return { error: 'Task not found' }
+    }
+
+    revalidatePath('/tasks')
+    return { task }
+  } catch (error) {
+    console.error('Complete task error:', error)
+    return { error: 'Failed to complete task' }
+  }
+}
+
+export async function reopenTask(taskId: string) {
+  const session = await getSession()
+  if (!session.userId) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const task = await withUser(session.userId, async (client) => {
+      return reopenTaskRepo(client, taskId)
+    })
+
+    if (!task) {
+      return { error: 'Task not found' }
+    }
+
+    revalidatePath('/tasks')
+    return { task }
+  } catch (error) {
+    console.error('Reopen task error:', error)
+    return { error: 'Failed to reopen task' }
+  }
+}

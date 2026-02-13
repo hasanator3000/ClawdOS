@@ -1,0 +1,3 @@
+-- Common triggers live here.
+-- NOTE: We'll implement core.trigger_set_updated_at() later
+-- when we migrate to schema namespaces.

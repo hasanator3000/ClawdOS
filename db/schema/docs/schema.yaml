@@ -1,0 +1,5 @@
+schema: docs
+description: "Документы — файлы, OCR, версии, извлечённые данные"
+version: 1
+last_updated: 2026-02-03
+tables: {}
