@@ -356,7 +356,7 @@ SCHEMA_EXISTS=$(PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -p "$DB_PORT" -U "$DB_US
 
 if [[ "$SCHEMA_EXISTS" != "1" ]]; then
   log "Applying baseline schema..."
-  PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f db/schema.sql >/dev/null 2>&1
+  PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f db/schema.sql
   ok "Schema applied"
 else
   log "Schema already exists, running migrations..."

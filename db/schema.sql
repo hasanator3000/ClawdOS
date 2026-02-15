@@ -15,17 +15,6 @@ CREATE FUNCTION core.current_user_id() RETURNS uuid
   select nullif(current_setting('app.user_id', true), '')::uuid;
 $$;
 
-CREATE FUNCTION core.is_workspace_member(p_workspace_id uuid) RETURNS boolean
-    LANGUAGE sql STABLE
-    AS $$
-  select exists (
-    select 1
-    from core.membership m
-    where m.workspace_id = p_workspace_id
-      and m.user_id = core.current_user_id()
-  );
-$$;
-
 CREATE FUNCTION core.trigger_set_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -206,6 +195,17 @@ CREATE TABLE core.membership (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT workspace_member_role_check CHECK ((role = ANY (ARRAY['owner'::text, 'member'::text])))
 );
+
+CREATE FUNCTION core.is_workspace_member(p_workspace_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  select exists (
+    select 1
+    from core.membership m
+    where m.workspace_id = p_workspace_id
+      and m.user_id = core.current_user_id()
+  );
+$$;
 
 CREATE TABLE core.memory (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
