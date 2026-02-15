@@ -21,7 +21,11 @@
 
 ## 🤖 For AI Agents (Clawdbot, Claude, etc.)
 
-**To deploy this project, run ONE of these commands:**
+**IMPORTANT:** This repository has an auto-deploy protocol. Read [.clawdbot-deploy](.clawdbot-deploy) for automated deployment instructions.
+
+**When user says "настрой" or "deploy":** Execute the protocol in `.clawdbot-deploy` automatically.
+
+**Manual deployment commands:**
 
 ```bash
 npm run deploy  # Preferred for Node.js environments
