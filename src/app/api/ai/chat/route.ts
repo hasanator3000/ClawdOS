@@ -846,6 +846,12 @@ export async function POST(request: Request) {
   const routed = await routeCommand(message, { workspaceId, workspaceName, currentPage })
 
   if (routed) {
+    console.log('[AI Chat] Fast-path triggered:', {
+      message,
+      layer: routed.layer,
+      intentId: routed.intentId,
+      resultType: routed.result.type
+    })
     // Fast-path: persist response text after building it
     const response = await buildFastPathResponse(routed.result, encoder, session.userId, workspaceId)
     // We can't easily extract text from the SSE stream, so save a summary

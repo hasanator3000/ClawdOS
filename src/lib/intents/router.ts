@@ -12,10 +12,10 @@ import { resolveCommand, type CommandResult, type CommandContext } from '@/lib/c
 import { matchIntent } from './embeddings'
 
 /** Minimum gap between top-1 and top-2 to trust embedding match */
-const MIN_GAP = 0.008
+const MIN_GAP = 0.015
 
 /** Minimum absolute score to consider a match */
-const MIN_SCORE = 0.83
+const MIN_SCORE = 0.85
 
 export interface RouteResult {
   result: CommandResult

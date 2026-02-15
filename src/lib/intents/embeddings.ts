@@ -152,6 +152,12 @@ export async function matchIntent(input: string): Promise<SemanticMatch | null> 
   const second = scored[1]
   const gap = second ? top.score - second.score : 1
 
+  console.log(`[IntentRouter] matchIntent("${input}")`, {
+    top: { id: top.card.id, score: top.score.toFixed(4) },
+    second: second ? { id: second.card.id, score: second.score.toFixed(4) } : null,
+    gap: gap.toFixed(4),
+  })
+
   return { card: top.card, score: top.score, gap }
 }
 

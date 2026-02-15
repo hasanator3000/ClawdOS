@@ -72,6 +72,31 @@ function detectFilter(input: string): TasksFilter {
 // ---------------------------------------------------------------------------
 
 export const INTENT_CARDS: IntentCard[] = [
+  // --- Conversational / Greetings (always fall through to LLM) ---
+  {
+    id: 'conversation.general',
+    examples: [
+      // Greetings
+      'привет', 'здравствуй', 'здравствуйте', 'хай', 'хэй', 'йо',
+      'hi', 'hello', 'hey', 'good morning', 'good afternoon',
+      // Questions about the assistant
+      'кто ты', 'что ты умеешь', 'как тебя зовут', 'расскажи о себе',
+      'какая ты модель', 'какая у тебя версия', 'кто тебя создал',
+      'who are you', 'what can you do', 'what model are you',
+      'tell me about yourself', 'what version are you',
+      // Small talk
+      'как дела', 'что нового', 'как ты', 'что делаешь',
+      'how are you', 'whats up', 'how is it going', 'what are you doing',
+      // Thanks
+      'спасибо', 'благодарю', 'thanks', 'thank you', 'appreciated',
+      // General queries
+      'помоги', 'не понимаю', 'что это', 'как это работает', 'объясни',
+      'help', 'i dont understand', 'what is this', 'how does this work', 'explain',
+    ],
+    // Always fall through to LLM for natural conversation
+    resolve: () => null,
+  },
+
   // --- Task Creation (explicit + implicit) ---
   {
     id: 'task.create',
