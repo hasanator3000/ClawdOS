@@ -19,6 +19,14 @@
 
 ---
 
+## 🤖 For AI Agents (Clawdbot, Claude, etc.)
+
+**To deploy this project automatically, see [DEPLOY.md](DEPLOY.md).**
+
+**TL;DR:** Clone the repo, run `bash scripts/auto-host.sh --systemd --json` from inside it. The script auto-detects your Clawdbot tokens from `~/.clawdbot/clawdbot.json`, finds free ports, sets up PostgreSQL, applies schema, creates admin user, builds, and starts the server. Output is JSON with URL + credentials.
+
+---
+
 ## Why ClawdOS?
 
 Most "AI productivity apps" give you a chatbot that answers questions. ClawdOS gives you an **AI that controls your workspace** — it creates tasks, manages news feeds, navigates pages, and executes actions on your behalf, all through natural language.
