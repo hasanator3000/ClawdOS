@@ -21,9 +21,9 @@
 
 ## 🤖 For AI Agents (Clawdbot, Claude, etc.)
 
-**To deploy this project automatically, see [DEPLOY.md](DEPLOY.md).**
+**To deploy this project: run `./setup` from the repo root.** See [AI.md](AI.md) for details.
 
-**TL;DR:** Clone the repo, run `bash scripts/auto-host.sh --systemd --json` from inside it. The script auto-detects your Clawdbot tokens from `~/.clawdbot/clawdbot.json`, finds free ports, sets up PostgreSQL, applies schema, creates admin user, builds, and starts the server. Output is JSON with URL + credentials.
+The script auto-detects your Clawdbot tokens from `~/.clawdbot/clawdbot.json`, finds free ports, sets up PostgreSQL, applies schema, creates admin user, builds, and starts the server. Output is JSON with URL + credentials.
 
 ---
 

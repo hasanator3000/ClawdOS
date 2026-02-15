@@ -15,13 +15,19 @@ The `scripts/auto-host.sh` script does EVERYTHING automatically:
 - Applies DB schema, creates user, builds, starts server
 - Verifies connectivity
 
-## Deploy (one command)
+## Deploy (simplest way)
+
+```bash
+git clone <REPO_URL> <DIR> && cd <DIR> && ./setup
+```
+
+That's it. The `setup` script calls `auto-host.sh` with the right flags and reads `~/.clawdbot/clawdbot.json` automatically.
+
+### Manual (if you need custom options)
 
 ```bash
 git clone <REPO_URL> <DIR> && bash <DIR>/scripts/auto-host.sh --dir <DIR> --systemd --json
 ```
-
-That's it. The script reads `~/.clawdbot/clawdbot.json` automatically.
 
 ### Example
 
