@@ -216,21 +216,24 @@ ok "docker-compose.override.yml created (container: ${CONTAINER_NAME}, port: ${D
 # ── Auto-detect Clawdbot config ────────────────────────────────────────────
 # Priority: CLI arg > auto-detect from Clawdbot config > generate random
 CLAWDBOT_CONFIG=""
-for cfg in "$HOME/.clawdbot/clawdbot.json" "/root/.clawdbot/clawdbot.json"; do
-  if [[ -f "$cfg" ]]; then
-    CLAWDBOT_CONFIG="$cfg"
+
+# Search for config in multiple locations
+for cfg in "$HOME/.clawdbot/clawdbot.json" "/root/.clawdbot/clawdbot.json" "~/.clawdbot/clawdbot.json"; do
+  cfg_expanded="${cfg/#\~/$HOME}"
+  if [[ -f "$cfg_expanded" ]]; then
+    CLAWDBOT_CONFIG="$cfg_expanded"
     break
   fi
 done
 
 if [[ -n "$CLAWDBOT_CONFIG" ]]; then
-  log "Found Clawdbot config: $CLAWDBOT_CONFIG"
+  log "Found Clawdbot config at: $CLAWDBOT_CONFIG"
 
   # Auto-detect gateway token
   if [[ -z "$CLAWDBOT_TOKEN_ARG" ]]; then
     CLAWDBOT_TOKEN_ARG=$(python3 -c "import json; c=json.load(open('$CLAWDBOT_CONFIG')); print(c['gateway']['auth']['token'])" 2>/dev/null || echo "")
     if [[ -n "$CLAWDBOT_TOKEN_ARG" ]]; then
-      ok "Auto-detected Clawdbot gateway token"
+      ok "Auto-detected Clawdbot gateway token ($(echo $CLAWDBOT_TOKEN_ARG | cut -c1-12)...)"
     fi
   fi
 
@@ -249,7 +252,13 @@ if [[ -n "$CLAWDBOT_CONFIG" ]]; then
     fi
   fi
 else
-  warn "No Clawdbot config found (checked ~/.clawdbot/clawdbot.json)"
+  # Try to read from env if Clawdbot set it
+  if [[ -n "${CLAWDBOT_TOKEN:-}" ]]; then
+    CLAWDBOT_TOKEN_ARG="$CLAWDBOT_TOKEN"
+    ok "Using CLAWDBOT_TOKEN from environment"
+  else
+    warn "No Clawdbot config found at ~/.clawdbot/clawdbot.json — will generate random token"
+  fi
 fi
 
 # Final resolution: arg/auto-detect or generate random
@@ -294,16 +303,20 @@ else
     sed -i "s|APP_URL=http://localhost:[0-9]*|APP_URL=http://localhost:${WEB_PORT}|" .env.local
     ok ".env.local APP_URL updated to port ${WEB_PORT}"
   fi
-  # Update Clawdbot token if provided
+
+  # ALWAYS update Clawdbot token if auto-detected (might be wrong from previous run)
+  # This ensures subsequent runs with auto-detect will fix stale tokens
   if [[ -n "$CLAWDBOT_TOKEN_ARG" ]]; then
     sed -i "s|^CLAWDBOT_TOKEN=.*|CLAWDBOT_TOKEN=${CLAWDBOT_TOKEN_ARG}|" .env.local
     ok ".env.local CLAWDBOT_TOKEN updated"
   fi
+
   # Update Clawdbot URL if provided
   if [[ -n "$CLAWDBOT_URL_ARG" ]]; then
     sed -i "s|^CLAWDBOT_URL=.*|CLAWDBOT_URL=${CLAWDBOT_URL_ARG}|" .env.local
     ok ".env.local CLAWDBOT_URL updated"
   fi
+
   # Update Telegram token if provided
   if [[ -n "$TELEGRAM_TOKEN_ARG" ]]; then
     if grep -q "^TELEGRAM_BOT_TOKEN=" .env.local; then
@@ -436,6 +449,18 @@ EOF
     fi
     sleep 2
   done
+fi
+
+# ── Reload service if tokens were updated ──────────────────────────────────
+if [[ "$USE_SYSTEMD" == true ]] && [[ -n "$CLAWDBOT_TOKEN_ARG" ]]; then
+  # Service exists from earlier creation; reload to pick up updated .env.local
+  SERVICE_NAME="clawdos-${INSTANCE_ID}"
+  if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    log "Reloading systemd service to apply updated Clawdbot tokens..."
+    systemctl restart "$SERVICE_NAME"
+    ok "Service restarted"
+    sleep 2
+  fi
 fi
 
 # ── Verify Clawdbot connectivity ──────────────────────────────────────────
