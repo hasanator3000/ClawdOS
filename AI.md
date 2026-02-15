@@ -2,17 +2,25 @@
 
 ## Quick Start
 
-```bash
-./setup
-```
-
-OR
+**Run ONE of these from repo root:**
 
 ```bash
-make install
+npm run deploy  # ← Recommended (works in any Node.js environment)
 ```
 
-That's it. Run from repo root. The script outputs JSON with URL and credentials.
+**OR**
+
+```bash
+./setup         # ← Direct bash script
+```
+
+**OR**
+
+```bash
+make install    # ← Using Makefile
+```
+
+That's it. The script outputs JSON with URL and credentials.
 
 ---
 

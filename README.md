@@ -21,9 +21,17 @@
 
 ## 🤖 For AI Agents (Clawdbot, Claude, etc.)
 
-**To deploy this project: run `./setup` from the repo root.** See [AI.md](AI.md) for details.
+**To deploy this project, run ONE of these commands:**
 
-The script auto-detects your Clawdbot tokens from `~/.clawdbot/clawdbot.json`, finds free ports, sets up PostgreSQL, applies schema, creates admin user, builds, and starts the server. Output is JSON with URL + credentials.
+```bash
+npm run deploy  # Preferred for Node.js environments
+# OR
+./setup         # Direct bash script
+# OR
+make install    # Using Makefile
+```
+
+See [AI.md](AI.md) for full details. The deployment script auto-detects your Clawdbot tokens from `~/.clawdbot/clawdbot.json`, finds free ports, sets up PostgreSQL, applies schema, creates admin user, builds, and starts the server. Output is JSON with URL + credentials.
 
 ---
 

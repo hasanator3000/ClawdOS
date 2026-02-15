@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "deploy": "bash ./setup",
     "setup": "node scripts/setup.mjs",
     "dev": "next dev",
     "build": "next build",
