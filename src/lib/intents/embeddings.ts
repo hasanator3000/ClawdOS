@@ -94,6 +94,8 @@ function computeCentroid(vectors: Float64Array[]): Float64Array {
 async function buildCentroids(): Promise<IntentCentroid[]> {
   const results: IntentCentroid[] = []
 
+  console.log(`[IntentRouter] Loading ${INTENT_CARDS.length} intent cards:`, INTENT_CARDS.map(c => c.id).join(', '))
+
   for (const card of INTENT_CARDS) {
     const vecs = await Promise.all(card.examples.map((ex) => embed(ex, false)))
     results.push({ card, centroid: computeCentroid(vecs) })

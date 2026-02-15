@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { SIDEBAR_SECTIONS } from '@/lib/nav/sections'
 
@@ -65,11 +66,14 @@ export default function SidebarClient({ username }: { username?: string }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false)
   const [railExpanded, setRailExpanded] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const wsDropdownRef = useRef<HTMLDivElement>(null)
+  const wsButtonRef = useRef<HTMLButtonElement>(null)
 
   // Hydrate state from localStorage
   useEffect(() => {
+    setIsMounted(true)
     setPinnedIdsState(getPinnedIds())
     setRailExpanded(localStorage.getItem(RAIL_STORAGE_KEY) === 'true')
 
@@ -153,7 +157,7 @@ export default function SidebarClient({ username }: { username?: string }) {
 
   return (
     <nav
-      className="flex flex-col gap-1 border-r border-[var(--border)] overflow-hidden h-screen"
+      className="flex flex-col gap-1 border-r border-[var(--border)] overflow-y-auto overflow-x-visible h-screen"
       style={{
         background: 'rgba(6,6,10,0.92)',
         padding: '20px 0',
@@ -240,12 +244,13 @@ export default function SidebarClient({ username }: { username?: string }) {
       <div className="flex-1" />
 
       {/* Workspace selector */}
-      <div ref={wsDropdownRef} className="relative w-full px-3 mb-2">
+      <div ref={wsDropdownRef} className={`relative w-full mb-2 ${exp ? 'px-3' : 'px-0'}`}>
         <button
+          ref={wsButtonRef}
           type="button"
           onClick={() => setWsDropdownOpen(!wsDropdownOpen)}
           className={`flex items-center gap-2 rounded-lg transition-colors text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card)] ${
-            exp ? 'w-full px-3 py-2' : 'w-full justify-center py-2'
+            exp ? 'w-full px-3 py-2' : 'w-10 h-10 mx-auto justify-center'
           }`}
           title={active?.name || 'Select workspace'}
         >
@@ -260,49 +265,74 @@ export default function SidebarClient({ username }: { username?: string }) {
           )}
         </button>
 
-        {wsDropdownOpen && (
-          <div
-            className="absolute bottom-full left-3 right-3 mb-1 border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50 max-h-60 overflow-y-auto"
-            style={{ background: 'rgba(6,6,10,0.97)' }}
-          >
-            <div className="px-3 py-2 text-[9px] font-semibold uppercase tracking-[1.5px] text-[var(--muted-2)] border-b border-[var(--border)]">
-              Workspaces
-            </div>
-            {filteredWorkspaces.map((ws) => {
-              const isCurrent = ws.id === active?.id
-              const isPinned = pinnedIds.includes(ws.id)
-              return (
-                <div
-                  key={ws.id}
-                  className={`flex items-center hover:bg-[var(--hover)] ${isCurrent ? 'bg-[var(--hover)]' : ''}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      switchWorkspace(ws.id)
-                      setWsDropdownOpen(false)
-                    }}
-                    disabled={isSwitching}
-                    className={`flex-1 text-left px-3 py-2 text-sm ${isCurrent ? 'font-medium text-[var(--neon)]' : 'text-[var(--fg)]'}`}
-                  >
-                    {isPinned && <span className="mr-1 text-xs">📌</span>}
-                    {ws.name}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => togglePin(ws.id)}
-                    className="px-2 py-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors text-sm"
-                    title={isPinned ? 'Unpin' : 'Pin'}
-                  >
-                    {isPinned ? '★' : '☆'}
-                  </button>
+        {wsDropdownOpen && isMounted && typeof window !== 'undefined' && createPortal(
+          (() => {
+            const buttonRect = wsButtonRef.current?.getBoundingClientRect()
+            if (!buttonRect) return null
+
+            const dropdownStyle: React.CSSProperties = exp
+              ? {
+                  position: 'fixed',
+                  left: `${buttonRect.left}px`,
+                  right: `calc(100vw - ${buttonRect.right}px)`,
+                  bottom: `calc(100vh - ${buttonRect.top}px + 4px)`,
+                  background: 'rgba(6,6,10,0.97)',
+                }
+              : {
+                  position: 'fixed',
+                  left: `${buttonRect.right + 8}px`,
+                  bottom: `${window.innerHeight - buttonRect.bottom}px`,
+                  width: '224px',
+                  background: 'rgba(6,6,10,0.97)',
+                }
+
+            return (
+              <div
+                ref={wsDropdownRef}
+                className="border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50 max-h-60 overflow-y-auto"
+                style={dropdownStyle}
+              >
+                <div className="px-3 py-2 text-[9px] font-semibold uppercase tracking-[1.5px] text-[var(--muted-2)] border-b border-[var(--border)]">
+                  Workspaces
                 </div>
-              )
-            })}
-            {workspaces.length === 0 && (
-              <div className="px-3 py-2 text-sm text-[var(--muted)]">No workspaces</div>
-            )}
-          </div>
+                {filteredWorkspaces.map((ws) => {
+                  const isCurrent = ws.id === active?.id
+                  const isPinned = pinnedIds.includes(ws.id)
+                  return (
+                    <div
+                      key={ws.id}
+                      className={`flex items-center hover:bg-[var(--hover)] ${isCurrent ? 'bg-[var(--hover)]' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          switchWorkspace(ws.id)
+                          setWsDropdownOpen(false)
+                        }}
+                        disabled={isSwitching}
+                        className={`flex-1 text-left px-3 py-2 text-sm ${isCurrent ? 'font-medium text-[var(--neon)]' : 'text-[var(--fg)]'}`}
+                      >
+                        {isPinned && <span className="mr-1 text-xs">📌</span>}
+                        {ws.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => togglePin(ws.id)}
+                        className="px-2 py-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors text-sm"
+                        title={isPinned ? 'Unpin' : 'Pin'}
+                      >
+                        {isPinned ? '★' : '☆'}
+                      </button>
+                    </div>
+                  )
+                })}
+                {workspaces.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-[var(--muted)]">No workspaces</div>
+                )}
+              </div>
+            )
+          })(),
+          document.body
         )}
       </div>
 
