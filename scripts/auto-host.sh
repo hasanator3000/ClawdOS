@@ -213,11 +213,55 @@ volumes:
 EOF
 ok "docker-compose.override.yml created (container: ${CONTAINER_NAME}, port: ${DB_PORT})"
 
-# ── Generate .env.local ─────────────────────────────────────────────────────
-# Resolve tokens: use provided or generate random
+# ── Auto-detect Clawdbot config ────────────────────────────────────────────
+# Priority: CLI arg > auto-detect from Clawdbot config > generate random
+CLAWDBOT_CONFIG=""
+for cfg in "$HOME/.clawdbot/clawdbot.json" "/root/.clawdbot/clawdbot.json"; do
+  if [[ -f "$cfg" ]]; then
+    CLAWDBOT_CONFIG="$cfg"
+    break
+  fi
+done
+
+if [[ -n "$CLAWDBOT_CONFIG" ]]; then
+  log "Found Clawdbot config: $CLAWDBOT_CONFIG"
+
+  # Auto-detect gateway token
+  if [[ -z "$CLAWDBOT_TOKEN_ARG" ]]; then
+    CLAWDBOT_TOKEN_ARG=$(python3 -c "import json; c=json.load(open('$CLAWDBOT_CONFIG')); print(c['gateway']['auth']['token'])" 2>/dev/null || echo "")
+    if [[ -n "$CLAWDBOT_TOKEN_ARG" ]]; then
+      ok "Auto-detected Clawdbot gateway token"
+    fi
+  fi
+
+  # Auto-detect gateway URL (port)
+  if [[ -z "$CLAWDBOT_URL_ARG" ]]; then
+    local_port=$(python3 -c "import json; c=json.load(open('$CLAWDBOT_CONFIG')); print(c['gateway'].get('port', 18789))" 2>/dev/null || echo "18789")
+    CLAWDBOT_URL_ARG="http://127.0.0.1:${local_port}"
+    ok "Auto-detected Clawdbot URL: $CLAWDBOT_URL_ARG"
+  fi
+
+  # Auto-detect Telegram bot token
+  if [[ -z "$TELEGRAM_TOKEN_ARG" ]]; then
+    TELEGRAM_TOKEN_ARG=$(python3 -c "import json; c=json.load(open('$CLAWDBOT_CONFIG')); print(c.get('channels',{}).get('telegram',{}).get('botToken',''))" 2>/dev/null || echo "")
+    if [[ -n "$TELEGRAM_TOKEN_ARG" ]]; then
+      ok "Auto-detected Telegram bot token"
+    fi
+  fi
+else
+  warn "No Clawdbot config found (checked ~/.clawdbot/clawdbot.json)"
+fi
+
+# Final resolution: arg/auto-detect or generate random
 CLAWDBOT_TOKEN="${CLAWDBOT_TOKEN_ARG:-$(openssl rand -hex 24)}"
 CLAWDBOT_URL="${CLAWDBOT_URL_ARG:-http://127.0.0.1:18789}"
 CONSULT_TOKEN=$(openssl rand -hex 24)
+
+if [[ -z "$CLAWDBOT_TOKEN_ARG" ]]; then
+  warn "No Clawdbot token found — generated random. AI chat will NOT work until you configure the token."
+fi
+
+# ── Generate .env.local ─────────────────────────────────────────────────────
 
 if [[ ! -f ".env.local" ]]; then
   log "Generating .env.local..."
@@ -392,6 +436,17 @@ EOF
     fi
     sleep 2
   done
+fi
+
+# ── Verify Clawdbot connectivity ──────────────────────────────────────────
+if [[ -n "$CLAWDBOT_TOKEN_ARG" ]]; then
+  log "Checking Clawdbot connectivity..."
+  CB_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${CLAWDBOT_URL}/" 2>/dev/null || echo "000")
+  if [[ "$CB_STATUS" == "200" || "$CB_STATUS" == "401" ]]; then
+    ok "Clawdbot is reachable at ${CLAWDBOT_URL}"
+  else
+    warn "Clawdbot not reachable at ${CLAWDBOT_URL} (HTTP ${CB_STATUS}) — AI chat will fail"
+  fi
 fi
 
 # ── Summary ─────────────────────────────────────────────────────────────────
