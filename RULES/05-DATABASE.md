@@ -114,8 +114,8 @@ Create `src/lib/db/repositories/<section>.repository.ts`. See [Repository Patter
 After adding a migration, regenerate the baseline for fresh installs:
 
 ```bash
-PGPASSWORD=lifeos_change_me pg_dump --schema-only --no-owner --no-privileges \
-  -h 127.0.0.1 -U lifeos -d lifeos -n core -n content > db/schema.sql
+PGPASSWORD=clawdos_change_me pg_dump --schema-only --no-owner --no-privileges \
+  -h 127.0.0.1 -U clawdos -d clawdos -n core -n content > db/schema.sql
 ```
 
 Then add migration marks at the end of `db/schema.sql` so `migrate.mjs` won't re-run them:

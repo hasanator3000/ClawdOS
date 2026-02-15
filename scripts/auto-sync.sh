@@ -1,10 +1,10 @@
 #!/bin/bash
-# Auto-commit and push script for lifeos
+# Auto-commit and push script for ClawdOS
 # Scans for secrets before committing
 
 set -e
 
-cd /root/clawd/apps/lifeos
+cd /root/clawd/apps/clawdos
 
 # Check for changes
 if [ -z "$(git status --porcelain)" ]; then

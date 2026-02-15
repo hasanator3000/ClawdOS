@@ -30,7 +30,7 @@ If missing: install [Docker Desktop](https://www.docker.com/products/docker-desk
 
 ```bash
 lsof -i :5432 2>/dev/null | grep LISTEN || echo "Port free"
-# Expected: "Port free" or already running lifeos-db container
+# Expected: "Port free" or already running clawdos-db container
 ```
 
 ### 4. Port 3000 is free (ClawdOS web)
@@ -52,7 +52,7 @@ lsof -i :18789 2>/dev/null | grep LISTEN || echo "Port free"
 ## Step 1: Clone and Install
 
 ```bash
-git clone <repo-url> && cd lifeos
+git clone <repo-url> && cd clawdos
 npm install
 ```
 
@@ -73,7 +73,7 @@ npm run setup
 This single command does everything:
 
 1. Creates `.env.local` from `.env.local.example`
-2. Generates secrets: `SESSION_PASSWORD`, `CLAWDBOT_TOKEN`, `LIFEOS_CONSULT_TOKEN`
+2. Generates secrets: `SESSION_PASSWORD`, `CLAWDBOT_TOKEN`, `CLAWDOS_CONSULT_TOKEN`
 3. Starts PostgreSQL via `docker compose up -d`
 4. Waits for DB readiness (up to 30 seconds)
 5. Detects fresh vs existing DB:
@@ -90,7 +90,7 @@ grep SESSION_PASSWORD .env.local | grep -v "^#" && echo "OK"
 docker compose ps --status=running -q db && echo "DB running"
 
 # Database has tables
-docker compose exec -T db psql -U lifeos -d lifeos -c "SELECT count(*) FROM core.\"user\"" 2>/dev/null && echo "Schema OK"
+docker compose exec -T db psql -U clawdos -d clawdos -c "SELECT count(*) FROM core.\"user\"" 2>/dev/null && echo "Schema OK"
 ```
 
 ---
@@ -124,7 +124,7 @@ x-clawdbot-agent-id: main
 {
   "model": "clawdbot",
   "stream": true,
-  "user": "lifeos:<userId>:ws:<workspaceId>",
+  "user": "clawdos:<userId>:ws:<workspaceId>",
   "messages": [
     { "role": "system", "content": "You are Clawdbot running inside ClawdOS WebUI..." },
     { "role": "user", "content": "User's message here" }
@@ -162,11 +162,11 @@ grep CLAWDBOT_TOKEN .env.local | cut -d= -f2
 
 ClawdOS also has a meta-query endpoint at `POST /api/consult`. This lets Clawdbot (or other agents) ask questions about ClawdOS architecture and capabilities.
 
-**Auth:** Session cookie OR `x-lifeos-consult-token` header
+**Auth:** Session cookie OR `x-clawdos-consult-token` header
 
 ```bash
 # Token was auto-generated during setup:
-grep LIFEOS_CONSULT_TOKEN .env.local | cut -d= -f2
+grep CLAWDOS_CONSULT_TOKEN .env.local | cut -d= -f2
 ```
 
 ### Environment Variables for Clawdbot Connection
@@ -177,7 +177,7 @@ These are already set in `.env.local` after setup:
 |----------|-------|---------|
 | `CLAWDBOT_URL` | `http://127.0.0.1:18789` | Where ClawdOS sends AI requests |
 | `CLAWDBOT_TOKEN` | *(auto-generated hex)* | Shared auth token |
-| `LIFEOS_CONSULT_TOKEN` | *(auto-generated hex)* | Auth for `/api/consult` endpoint |
+| `CLAWDOS_CONSULT_TOKEN` | *(auto-generated hex)* | Auth for `/api/consult` endpoint |
 
 If Clawdbot runs on a different host/port, update `CLAWDBOT_URL` in `.env.local`.
 

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 
-const TOKEN_COOKIE = 'lifeos.access_token'
+const TOKEN_COOKIE = 'clawdos.access_token'
 
 export const dynamic = 'force-dynamic'
 

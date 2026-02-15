@@ -11,7 +11,7 @@
 | `DATABASE_URL` | **Required** | Postgres URI | Manual | `postgres://user:pass@host:5432/db` |
 | `CLAWDBOT_URL` | **Required** | URL | Default: `http://127.0.0.1:18789` | Clawdbot gateway address |
 | `CLAWDBOT_TOKEN` | **Required** | Hex string (24 bytes) | `openssl rand -hex 24` | Gateway auth token |
-| `LIFEOS_CONSULT_TOKEN` | Optional | Hex string (24 bytes) | `openssl rand -hex 24` | Meta-query auth token |
+| `CLAWDOS_CONSULT_TOKEN` | Optional | Hex string (24 bytes) | `openssl rand -hex 24` | Meta-query auth token |
 | `TELEGRAM_BOT_TOKEN` | Optional | String | From @BotFather | For 2FA codes |
 | `ACCESS_TOKEN` | Optional | Base64 string | `openssl rand -base64 32` | IP-access gate token |
 | `SESSION_COOKIE_SECURE` | Optional | `"true"` | Set if HTTPS | Secure cookie flag |
@@ -109,7 +109,7 @@ export async function GET() {
 
 ```bash
 # 1. Clone and install
-git clone <repo> && cd lifeos
+git clone <repo> && cd clawdos
 npm install
 
 # 2. One-command setup (does everything)
@@ -122,7 +122,7 @@ npm run build && npm start  # production
 ```
 
 `npm run setup` is idempotent — safe to re-run. It:
-- Creates `.env.local` with auto-generated `SESSION_PASSWORD`, `CLAWDBOT_TOKEN`, `LIFEOS_CONSULT_TOKEN`
+- Creates `.env.local` with auto-generated `SESSION_PASSWORD`, `CLAWDBOT_TOKEN`, `CLAWDOS_CONSULT_TOKEN`
 - Starts PostgreSQL via `docker compose up -d`
 - Detects fresh vs existing DB (`db/schema.sql` baseline vs incremental migrations)
 - Prompts for first user credentials interactively

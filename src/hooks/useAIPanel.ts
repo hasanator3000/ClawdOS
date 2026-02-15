@@ -9,7 +9,7 @@ function isTypingTarget(el: EventTarget | null) {
   return tag === 'input' || tag === 'textarea' || (node as any).isContentEditable
 }
 
-const STORAGE_KEY = 'lifeos.ai-panel'
+const STORAGE_KEY = 'clawdos.ai-panel'
 const DEFAULT_WIDTH = 400
 const MIN_WIDTH = 300
 const MAX_WIDTH = 600

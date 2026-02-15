@@ -230,9 +230,9 @@ async function executeActions(
   return { navigation: navigationTarget, results }
 }
 
-// Process stream: filter <lifeos> blocks, execute actions, stream clean text
+// Process stream: filter <clawdos> blocks, execute actions, stream clean text
 // Max buffer size to prevent memory exhaustion on large responses
-const MAX_ASSISTANT_TEXT_BUFFER = 50_000 // 50KB should be enough for <lifeos> blocks
+const MAX_ASSISTANT_TEXT_BUFFER = 50_000 // 50KB should be enough for <clawdos> blocks
 
 async function processStreamWithActions(
   upstreamResponse: Response,
@@ -247,7 +247,7 @@ async function processStreamWithActions(
   const encoder = new TextEncoder()
 
   let fullAssistantText = '' // Accumulate text for action parsing (bounded)
-  let fullVisibleText = '' // Accumulate visible text (without <lifeos> blocks) for DB persistence
+  let fullVisibleText = '' // Accumulate visible text (without <clawdos> blocks) for DB persistence
   let buffer = ''
 
   return new ReadableStream({
@@ -282,7 +282,7 @@ async function processStreamWithActions(
                 controller.enqueue(encoder.encode('data: [DONE]\n\n'))
 
                 // Extract and execute actions from full text
-                const matches = Array.from(fullAssistantText.matchAll(/<lifeos>([\s\S]*?)<\/lifeos>/g))
+                const matches = Array.from(fullAssistantText.matchAll(/<clawdos>([\s\S]*?)<\/clawdos>/g))
                 if (matches.length > 0) {
                   const blocks = matches
                     .map((m) => m[1].trim())
@@ -363,8 +363,8 @@ async function processStreamWithActions(
                   }
                 }
 
-                // Filter out <lifeos> blocks from displayed content
-                const filtered = filterLifeosBlocks(delta.content)
+                // Filter out <clawdos> blocks from displayed content
+                const filtered = filterClawdosBlocks(delta.content)
 
                 // Send filtered delta to client
                 if (filtered) {
@@ -410,10 +410,10 @@ async function processStreamWithActions(
   })
 }
 
-// Simple filter: remove <lifeos>...</lifeos> blocks (handles complete blocks only)
+// Simple filter: remove <clawdos>...</clawdos> blocks (handles complete blocks only)
 // For cross-chunk split handling, client-side filtering remains as fallback
-function filterLifeosBlocks(text: string): string {
-  return text.replace(/<lifeos>[\s\S]*?<\/lifeos>/g, '')
+function filterClawdosBlocks(text: string): string {
+  return text.replace(/<clawdos>[\s\S]*?<\/clawdos>/g, '')
 }
 
 // ---------------------------------------------------------------------------
@@ -480,7 +480,7 @@ async function buildTaskCreateResponse(
 
         const content = `Создал задачу: ${task.title}.`
         const evt = {
-          id: 'lifeos-task-create',
+          id: 'clawdos-task-create',
           object: 'chat.completion.chunk',
           choices: [{ index: 0, delta: { role: 'assistant', content } }],
         }
@@ -496,7 +496,7 @@ async function buildTaskCreateResponse(
         controller.close()
       } catch {
         const evt = {
-          id: 'lifeos-task-create-error',
+          id: 'clawdos-task-create-error',
           object: 'chat.completion.chunk',
           choices: [{ index: 0, delta: { role: 'assistant', content: 'Не смог создать задачу.' } }],
         }
@@ -519,7 +519,7 @@ function buildNavigationResponse(
     start(controller) {
       const content = `Открыл раздел: ${label}.`
       const evt = {
-        id: 'lifeos-nav',
+        id: 'clawdos-nav',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { role: 'assistant', content } }],
       }
@@ -549,7 +549,7 @@ function buildTasksFilterResponse(
     start(controller) {
       const content = `Показываю ${filterLabels[filter] ?? filter} задачи.`
       const evt = {
-        id: 'lifeos-filter',
+        id: 'clawdos-filter',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { role: 'assistant', content } }],
       }
@@ -578,7 +578,7 @@ async function buildWorkspaceSwitchResponse(
         const label = targetType === 'personal' ? 'личный' : 'общий'
         const content = `Не нашёл ${label} workspace.`
         const evt = {
-          id: 'lifeos-ws-switch-error',
+          id: 'clawdos-ws-switch-error',
           object: 'chat.completion.chunk',
           choices: [{ index: 0, delta: { role: 'assistant', content } }],
         }
@@ -605,7 +605,7 @@ async function buildWorkspaceSwitchResponse(
     start(controller) {
       const content = `Переключил на ${label} задачи (${target.name}).`
       const evt = {
-        id: 'lifeos-ws-switch',
+        id: 'clawdos-ws-switch',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { role: 'assistant', content } }],
       }
@@ -636,7 +636,7 @@ function buildNewsSourcesOpenResponse(encoder: TextEncoder): Response {
     start(controller) {
       const content = 'Открываю панель источников новостей.'
       const evt = {
-        id: 'lifeos-news-sources',
+        id: 'clawdos-news-sources',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { role: 'assistant', content } }],
       }
@@ -659,7 +659,7 @@ function buildNewsSearchResponse(query: string, encoder: TextEncoder): Response 
     start(controller) {
       const content = `Ищу новости: "${query}".`
       const evt = {
-        id: 'lifeos-news-search',
+        id: 'clawdos-news-search',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { role: 'assistant', content } }],
       }
@@ -734,7 +734,7 @@ async function buildNewsTabSwitchResponse(
     start(controller) {
       const content = `Переключаю на вкладку: ${resolvedTabName}.`
       const evt = {
-        id: 'lifeos-news-tab-switch',
+        id: 'clawdos-news-tab-switch',
         object: 'chat.completion.chunk',
         choices: [{ index: 0, delta: { role: 'assistant', content } }],
       }
@@ -867,7 +867,7 @@ export async function POST(request: Request) {
       : 'No Telegram user id is linked. If asked to send to Telegram, ask the user to link Telegram in Settings first.',
     '',
     'You can control ClawdOS by embedding action commands in your response.',
-    'Format: <lifeos>{"actions":[...]}</lifeos>',
+    'Format: <clawdos>{"actions":[...]}</clawdos>',
     '',
     'Available actions:',
     '1. Navigate: {"k":"navigate","to":"/tasks"}  (allowed: /today, /news, /tasks, /settings, /settings/telegram, /settings/password)',
@@ -915,15 +915,15 @@ export async function POST(request: Request) {
     'WSJ Markets: https://feeds.a.dj.com/rss/RSSMarketsMain.xml',
     'Investopedia: https://www.investopedia.com/feedbuilder/feed/getfeed?feedName=rss_headline',
     '',
-    'When user asks to set up news, create tabs first, then add sources. Emit ALL actions in ONE <lifeos> block.',
+    'When user asks to set up news, create tabs first, then add sources. Emit ALL actions in ONE <clawdos> block.',
     'Example: user says "настрой новости по AI и крипте" →',
     'Создал вкладки AI и Crypto, добавил источники. Фиды загрузятся в течение минуты.',
-    '<lifeos>{"actions":[{"k":"news.tab.create","name":"AI"},{"k":"news.tab.create","name":"Crypto"},{"k":"news.source.add","url":"https://openai.com/blog/rss.xml","title":"OpenAI Blog","tabs":["AI"]},{"k":"news.source.add","url":"https://www.coindesk.com/arc/outboundfeeds/rss/","title":"CoinDesk","tabs":["Crypto"]},{"k":"navigate","to":"/news"}]}</lifeos>',
+    '<clawdos>{"actions":[{"k":"news.tab.create","name":"AI"},{"k":"news.tab.create","name":"Crypto"},{"k":"news.source.add","url":"https://openai.com/blog/rss.xml","title":"OpenAI Blog","tabs":["AI"]},{"k":"news.source.add","url":"https://www.coindesk.com/arc/outboundfeeds/rss/","title":"CoinDesk","tabs":["Crypto"]},{"k":"navigate","to":"/news"}]}</clawdos>',
     'IMPORTANT: Always create tabs BEFORE sources in the actions array. Always include "tabs" in each source with the tab names to assign.',
     '',
     'Important:',
-    '- When you execute any action, ALWAYS say what you did in plain text BEFORE the <lifeos> block.',
-    '- Put <lifeos> blocks AFTER your human-readable response',
+    '- When you execute any action, ALWAYS say what you did in plain text BEFORE the <clawdos> block.',
+    '- Put <clawdos> blocks AFTER your human-readable response',
     '- Multiple actions: {"actions":[{...},{...}]}',
     '- You can add many sources at once — they are created instantly, feeds load in background',
     '- Never invent taskIds - if unknown, ask user',
@@ -942,7 +942,7 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       model: 'clawdbot',
       stream,
-      user: `lifeos:${session.userId}${workspaceId ? `:ws:${workspaceId}` : ''}`,
+      user: `clawdos:${session.userId}${workspaceId ? `:ws:${workspaceId}` : ''}`,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: message },
@@ -961,7 +961,7 @@ export async function POST(request: Request) {
   }
 
   if (stream) {
-    // Process stream: filter <lifeos> blocks and execute actions server-side
+    // Process stream: filter <clawdos> blocks and execute actions server-side
     const processedStream = await processStreamWithActions(upstream, session.userId, workspaceId, conversationId)
 
     return new Response(processedStream, {

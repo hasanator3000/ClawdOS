@@ -31,7 +31,7 @@ Browser  ──POST /api/ai/chat──>  Next.js API  ──POST /v1/chat/comple
    - Available actions with syntax
    - RSS feed catalog (for news setup)
    - User's Telegram link status
-6. Stream response back, parsing `<lifeos>{...}</lifeos>` action blocks
+6. Stream response back, parsing `<clawdos>{...}</clawdos>` action blocks
 7. Execute actions server-side under RLS
 8. Send refresh events to client
 
@@ -41,7 +41,7 @@ Browser  ──POST /api/ai/chat──>  Next.js API  ──POST /v1/chat/comple
 
 **Purpose:** Meta-queries about ClawdOS architecture (used by coding agents before making changes).
 
-**Auth:** Session OR `x-lifeos-consult-token` header
+**Auth:** Session OR `x-clawdos-consult-token` header
 
 ### 3. Simple passthrough — `POST /api/assistant`
 
@@ -57,7 +57,7 @@ Clawdbot embeds actions in its response text using XML-like tags:
 
 ```
 Here's what I did:
-<lifeos>{"actions":[{"k":"task.create","title":"Buy groceries","priority":2}]}</lifeos>
+<clawdos>{"actions":[{"k":"task.create","title":"Buy groceries","priority":2}]}</clawdos>
 I've created the task for you.
 ```
 
@@ -96,7 +96,7 @@ Actions executed on the server send SSE events back to the client:
 { type: 'task.refresh', actions: [{ action: 'task.create', taskId: '...', task: {...} }] }
 
 // Client listens:
-window.addEventListener('lifeos:task-refresh', (e: CustomEvent) => {
+window.addEventListener('clawdos:task-refresh', (e: CustomEvent) => {
   // Update local state with e.detail.actions
 })
 ```
@@ -115,8 +115,8 @@ useEffect(() => {
     const detail = (e as CustomEvent).detail
     // Update state from detail.actions
   }
-  window.addEventListener('lifeos:<section>-refresh', handler)
-  return () => window.removeEventListener('lifeos:<section>-refresh', handler)
+  window.addEventListener('clawdos:<section>-refresh', handler)
+  return () => window.removeEventListener('clawdos:<section>-refresh', handler)
 }, [])
 ```
 
@@ -130,7 +130,7 @@ ClawdOS page: <current page>
 ClawdOS workspace: <workspace name>
 
 You can control ClawdOS by embedding action commands in your response.
-Action format: <lifeos>{"actions":[...]}</lifeos>
+Action format: <clawdos>{"actions":[...]}</clawdos>
 
 Available actions:
 1. Navigate: {"k":"navigate","to":"/tasks"}
@@ -152,7 +152,7 @@ const token = process.env.CLAWDBOT_TOKEN  // Required, throws if missing
 {
   "model": "clawdbot",
   "stream": true,
-  "user": "lifeos:<userId>:ws:<workspaceId>",
+  "user": "clawdos:<userId>:ws:<workspaceId>",
   "messages": [
     { "role": "system", "content": "..." },
     { "role": "user", "content": "..." }

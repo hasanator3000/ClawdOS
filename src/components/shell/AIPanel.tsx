@@ -54,8 +54,8 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
         return () => clearTimeout(timerId)
       }
     }
-    window.addEventListener('lifeos:ai-prefill', handlePrefill)
-    return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
+    window.addEventListener('clawdos:ai-prefill', handlePrefill)
+    return () => window.removeEventListener('clawdos:ai-prefill', handlePrefill)
   }, [])
 
   // Handle resize
@@ -362,7 +362,7 @@ function HintChip({ label }: { label: string }) {
       className="px-3 py-1.5 rounded-full text-xs transition-colors bg-[var(--card)] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--neon-dim)] hover:text-[var(--neon)] hover:bg-[var(--neon-dim)]"
       onClick={() => {
         window.dispatchEvent(
-          new CustomEvent('lifeos:ai-prefill', { detail: { message: label } })
+          new CustomEvent('clawdos:ai-prefill', { detail: { message: label } })
         )
       }}
     >

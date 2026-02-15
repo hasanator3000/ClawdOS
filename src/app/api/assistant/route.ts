@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       model: 'clawdbot',
       stream,
       // Stable session key derivation inside the gateway.
-      user: `lifeos:${session.userId}${workspaceId ? `:ws:${workspaceId}` : ''}`,
+      user: `clawdos:${session.userId}${workspaceId ? `:ws:${workspaceId}` : ''}`,
       messages: [{ role: 'user', content: message }],
     }),
   })

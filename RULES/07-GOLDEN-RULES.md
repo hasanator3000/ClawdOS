@@ -24,7 +24,7 @@ Telegram is a Clawdbot channel, configured in the Clawdbot repo — NOT in Clawd
 
 ### 3. No DOM selectors from model output
 
-When Clawdbot wants to trigger UI actions, it uses the `<lifeos>{...}</lifeos>` structured protocol — NOT arbitrary DOM selectors.
+When Clawdbot wants to trigger UI actions, it uses the `<clawdos>{...}</clawdos>` structured protocol — NOT arbitrary DOM selectors.
 
 - DO NOT execute `document.querySelector(modelProvided)` or similar
 - DO NOT allow the model to specify CSS selectors, XPath, or element IDs to click
@@ -33,7 +33,7 @@ When Clawdbot wants to trigger UI actions, it uses the `<lifeos>{...}</lifeos>` 
 
 ### 4. No tokens to browser
 
-`CLAWDBOT_TOKEN`, `LIFEOS_CONSULT_TOKEN`, and any other service tokens stay **server-side only**.
+`CLAWDBOT_TOKEN`, `CLAWDOS_CONSULT_TOKEN`, and any other service tokens stay **server-side only**.
 
 - DO NOT pass tokens via `NEXT_PUBLIC_*` env vars
 - DO NOT include tokens in client-side fetches

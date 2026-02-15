@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { SIDEBAR_SECTIONS } from '@/lib/nav/sections'
 
-const PINS_STORAGE_KEY = 'lifeos.pinned-workspaces'
+const PINS_STORAGE_KEY = 'clawdos.pinned-workspaces'
 const RAIL_STORAGE_KEY = 'clawd-rail-open'
 
 function getPinnedIds(): string[] {

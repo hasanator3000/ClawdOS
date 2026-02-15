@@ -4,7 +4,7 @@ import { getIronSession, type IronSession } from 'iron-session'
 import type { SessionData } from '@/types/session'
 
 const sessionOptions = {
-  cookieName: 'lifeos.session',
+  cookieName: 'clawdos.session',
   password: process.env.SESSION_PASSWORD!,
   cookieOptions: {
     httpOnly: true,

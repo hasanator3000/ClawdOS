@@ -128,9 +128,9 @@ Some endpoints support both session and token auth (for cron/external callers):
 
 ```typescript
 const session = await getSession()
-const token = req.headers.get('x-lifeos-consult-token')
+const token = req.headers.get('x-clawdos-consult-token')
 
-if (!session.userId && token !== process.env.LIFEOS_CONSULT_TOKEN) {
+if (!session.userId && token !== process.env.CLAWDOS_CONSULT_TOKEN) {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 }
 ```

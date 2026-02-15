@@ -54,14 +54,14 @@ export function Shell({ children }: ShellProps) {
     })
   }, [])
 
-  // Open AI panel when any component dispatches lifeos:ai-prefill
+  // Open AI panel when any component dispatches clawdos:ai-prefill
   const openRef = useRef(aiPanel.open)
   openRef.current = aiPanel.open
 
   useEffect(() => {
     const handlePrefill = () => openRef.current()
-    window.addEventListener('lifeos:ai-prefill', handlePrefill)
-    return () => window.removeEventListener('lifeos:ai-prefill', handlePrefill)
+    window.addEventListener('clawdos:ai-prefill', handlePrefill)
+    return () => window.removeEventListener('clawdos:ai-prefill', handlePrefill)
   }, [])
 
   const gridColumns = useMemo(() => {

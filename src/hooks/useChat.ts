@@ -152,7 +152,7 @@ export function useChat(options: UseChatOptions) {
         }
 
         let displayBuffer = '' // Buffer for incomplete tags during streaming
-        let inLifeosBlock = false
+        let inClawdosBlock = false
 
         const appendAssistant = (delta: string) => {
           if (requestSeq !== requestSeqRef.current) return
@@ -164,16 +164,16 @@ export function useChat(options: UseChatOptions) {
 
           // Process buffer with tag detection (handles split tags across chunks)
           while (displayBuffer.length > 0) {
-            if (!inLifeosBlock) {
+            if (!inClawdosBlock) {
               // Look for opening tag
-              const openIdx = displayBuffer.indexOf('<lifeos>')
+              const openIdx = displayBuffer.indexOf('<clawdos>')
 
               if (openIdx === -1) {
                 // No complete opening tag found
                 // Check if buffer ends with partial tag start to avoid displaying incomplete tags
                 let keepLen = 0
                 for (let len = Math.min(7, displayBuffer.length); len > 0; len--) {
-                  if ('<lifeos>'.startsWith(displayBuffer.slice(-len))) {
+                  if ('<clawdos>'.startsWith(displayBuffer.slice(-len))) {
                     keepLen = len
                     break
                   }
@@ -193,19 +193,19 @@ export function useChat(options: UseChatOptions) {
               } else {
                 // Found opening tag
                 visibleDelta += displayBuffer.slice(0, openIdx)
-                displayBuffer = displayBuffer.slice(openIdx + 8) // Skip '<lifeos>'
-                inLifeosBlock = true
+                displayBuffer = displayBuffer.slice(openIdx + 8) // Skip '<clawdos>'
+                inClawdosBlock = true
               }
             } else {
               // Inside block, look for closing tag
-              const closeIdx = displayBuffer.indexOf('</lifeos>')
+              const closeIdx = displayBuffer.indexOf('</clawdos>')
 
               if (closeIdx === -1) {
                 // No complete closing tag found
                 // Check if buffer ends with partial closing tag start
                 let keepLen = 0
                 for (let len = Math.min(8, displayBuffer.length); len > 0; len--) {
-                  if ('</lifeos>'.startsWith(displayBuffer.slice(-len))) {
+                  if ('</clawdos>'.startsWith(displayBuffer.slice(-len))) {
                     keepLen = len
                     break
                   }
@@ -222,13 +222,13 @@ export function useChat(options: UseChatOptions) {
                 }
               } else {
                 // Found closing tag
-                displayBuffer = displayBuffer.slice(closeIdx + 9) // Skip '</lifeos>'
-                inLifeosBlock = false
+                displayBuffer = displayBuffer.slice(closeIdx + 9) // Skip '</clawdos>'
+                inClawdosBlock = false
               }
             }
           }
 
-          // Update visible message content (only non-<lifeos> text)
+          // Update visible message content (only non-<clawdos> text)
           if (visibleDelta) {
             setMessages((prev) =>
               prev.map((msg) =>
@@ -241,7 +241,7 @@ export function useChat(options: UseChatOptions) {
         const finalizeAssistant = () => {
           if (requestSeq !== requestSeqRef.current) return
           // Flush any remaining displayBuffer (if stream ended mid-tag, show what we have)
-          if (!inLifeosBlock && displayBuffer) {
+          if (!inClawdosBlock && displayBuffer) {
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === assistantMessageId
@@ -303,7 +303,7 @@ export function useChat(options: UseChatOptions) {
               // Handle tasks filter events
               if (evt?.type === 'tasks.filter' && evt?.value) {
                 const value = String(evt.value)
-                window.dispatchEvent(new CustomEvent('lifeos:tasks-filter', { detail: { value } }))
+                window.dispatchEvent(new CustomEvent('clawdos:tasks-filter', { detail: { value } }))
                 // If we're not on /tasks, navigate there.
                 if (optionsRef.current.currentPage !== '/tasks') {
                   pendingNavigation = '/tasks'
@@ -315,7 +315,7 @@ export function useChat(options: UseChatOptions) {
               if (evt?.type === 'task.refresh') {
                 // Dispatch custom event for client lists (TaskList) to patch state instantly
                 window.dispatchEvent(
-                  new CustomEvent('lifeos:task-refresh', {
+                  new CustomEvent('clawdos:task-refresh', {
                     detail: { actions: evt.actions },
                   })
                 )
@@ -329,7 +329,7 @@ export function useChat(options: UseChatOptions) {
               // Handle news refresh events
               if (evt?.type === 'news.refresh') {
                 window.dispatchEvent(
-                  new CustomEvent('lifeos:news-refresh', {
+                  new CustomEvent('clawdos:news-refresh', {
                     detail: { actions: evt.actions },
                   })
                 )
@@ -339,7 +339,7 @@ export function useChat(options: UseChatOptions) {
 
               // Handle news sources panel open
               if (evt?.type === 'news.sources.open') {
-                window.dispatchEvent(new CustomEvent('lifeos:news-sources-open'))
+                window.dispatchEvent(new CustomEvent('clawdos:news-sources-open'))
                 if (optionsRef.current.currentPage !== '/news') {
                   pendingNavigation = '/news'
                 }
@@ -349,7 +349,7 @@ export function useChat(options: UseChatOptions) {
               // Handle news tab switch events
               if (evt?.type === 'news.tab.switch') {
                 window.dispatchEvent(
-                  new CustomEvent('lifeos:news-tab-switch', {
+                  new CustomEvent('clawdos:news-tab-switch', {
                     detail: {
                       tabId: evt.tabId ?? undefined,
                       tabName: evt.tabName ? String(evt.tabName) : undefined,
@@ -362,7 +362,7 @@ export function useChat(options: UseChatOptions) {
               // Handle workspace switch events
               if (evt?.type === 'workspace.switch' && evt?.workspaceId) {
                 window.dispatchEvent(
-                  new CustomEvent('lifeos:workspace-switch', {
+                  new CustomEvent('clawdos:workspace-switch', {
                     detail: { workspaceId: String(evt.workspaceId) },
                   })
                 )

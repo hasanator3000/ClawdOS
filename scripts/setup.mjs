@@ -69,9 +69,9 @@ async function ensureEnv() {
     const token = crypto.randomBytes(24).toString('hex')
     content = content.replace(/CLAWDBOT_TOKEN=.*/, `CLAWDBOT_TOKEN=${token}`)
   }
-  if (!content.includes('LIFEOS_CONSULT_TOKEN=') || content.match(/LIFEOS_CONSULT_TOKEN=\s*$/m)) {
+  if (!content.includes('CLAWDOS_CONSULT_TOKEN=') || content.match(/CLAWDOS_CONSULT_TOKEN=\s*$/m)) {
     const token = crypto.randomBytes(24).toString('hex')
-    content = content.replace(/LIFEOS_CONSULT_TOKEN=.*/, `LIFEOS_CONSULT_TOKEN=${token}`)
+    content = content.replace(/CLAWDOS_CONSULT_TOKEN=.*/, `CLAWDOS_CONSULT_TOKEN=${token}`)
   }
   writeFileSync(ENV_FILE, content)
   ok('.env.local created with generated secrets')
@@ -105,7 +105,7 @@ async function ensurePostgres() {
 async function waitForDb() {
   log('Waiting for database...')
   for (let i = 0; i < 30; i++) {
-    const result = spawnSync('docker', ['compose', 'exec', '-T', 'db', 'pg_isready', '-U', 'lifeos', '-d', 'lifeos'], {
+    const result = spawnSync('docker', ['compose', 'exec', '-T', 'db', 'pg_isready', '-U', 'clawdos', '-d', 'clawdos'], {
       cwd: ROOT, stdio: 'pipe',
     })
     if (result.status === 0) {

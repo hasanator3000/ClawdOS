@@ -14,11 +14,11 @@ export const dynamic = 'force-dynamic'
  * 2. Token-based (from cron/Clawdbot) — refreshes all workspaces
  */
 export async function POST(request: Request) {
-  const consultToken = request.headers.get('x-lifeos-consult-token')
+  const consultToken = request.headers.get('x-clawdos-consult-token')
   const session = await getSession()
 
   // Auth: session OR consult token
-  if (!session.userId && consultToken !== process.env.LIFEOS_CONSULT_TOKEN) {
+  if (!session.userId && consultToken !== process.env.CLAWDOS_CONSULT_TOKEN) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

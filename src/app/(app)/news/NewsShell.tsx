@@ -118,13 +118,13 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
       setShowSources(true)
     }
 
-    window.addEventListener('lifeos:news-refresh', handleRefresh)
-    window.addEventListener('lifeos:news-tab-switch', handleTabSwitch)
-    window.addEventListener('lifeos:news-sources-open', handleSourcesOpen)
+    window.addEventListener('clawdos:news-refresh', handleRefresh)
+    window.addEventListener('clawdos:news-tab-switch', handleTabSwitch)
+    window.addEventListener('clawdos:news-sources-open', handleSourcesOpen)
     return () => {
-      window.removeEventListener('lifeos:news-refresh', handleRefresh)
-      window.removeEventListener('lifeos:news-tab-switch', handleTabSwitch)
-      window.removeEventListener('lifeos:news-sources-open', handleSourcesOpen)
+      window.removeEventListener('clawdos:news-refresh', handleRefresh)
+      window.removeEventListener('clawdos:news-tab-switch', handleTabSwitch)
+      window.removeEventListener('clawdos:news-sources-open', handleSourcesOpen)
     }
   }, [])
 

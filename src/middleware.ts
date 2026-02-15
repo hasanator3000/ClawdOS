@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-const TOKEN_COOKIE = 'lifeos.access_token'
+const TOKEN_COOKIE = 'clawdos.access_token'
 
 function isPublicPath(pathname: string) {
   return (

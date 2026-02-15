@@ -25,8 +25,8 @@ function readOptional(rel: string) {
 export async function POST(req: Request) {
   const session = await getSession()
 
-  const consultToken = process.env.LIFEOS_CONSULT_TOKEN
-  const headerToken = req.headers.get('x-lifeos-consult-token')
+  const consultToken = process.env.CLAWDOS_CONSULT_TOKEN
+  const headerToken = req.headers.get('x-clawdos-consult-token')
 
   const authed = Boolean(session.userId) || (consultToken && headerToken === consultToken)
   if (!authed) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       model: 'clawdbot',
       stream: false,
-      user: `lifeos-consult:${session.userId || 'token'}`,
+      user: `clawdos-consult:${session.userId || 'token'}`,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: question },

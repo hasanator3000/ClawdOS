@@ -114,7 +114,7 @@ Follow the complete cookbook in [05-DATABASE.md § Cookbook](05-DATABASE.md#cook
 
 ### Step 9 — Update event protocol (if needed)
 
-- [ ] Add custom event type if the section needs live updates from AI (like `lifeos:task-refresh`)
+- [ ] Add custom event type if the section needs live updates from AI (like `clawdos:task-refresh`)
 - [ ] Listen for events in the client component
 
 ## Phase 5: Deployment contract

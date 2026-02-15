@@ -62,11 +62,11 @@ export function TaskList({ initialTasks }: TaskListProps) {
       }
     }
 
-    window.addEventListener('lifeos:task-refresh', handleTaskRefresh as EventListener)
-    window.addEventListener('lifeos:tasks-filter', handleFilter as EventListener)
+    window.addEventListener('clawdos:task-refresh', handleTaskRefresh as EventListener)
+    window.addEventListener('clawdos:tasks-filter', handleFilter as EventListener)
     return () => {
-      window.removeEventListener('lifeos:task-refresh', handleTaskRefresh as EventListener)
-      window.removeEventListener('lifeos:tasks-filter', handleFilter as EventListener)
+      window.removeEventListener('clawdos:task-refresh', handleTaskRefresh as EventListener)
+      window.removeEventListener('clawdos:tasks-filter', handleFilter as EventListener)
     }
   }, [])
 
