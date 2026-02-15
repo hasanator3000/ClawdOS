@@ -333,13 +333,13 @@ fi
 
 # ── Start PostgreSQL ────────────────────────────────────────────────────────
 log "Starting PostgreSQL..."
-docker compose up -d db
+docker-compose up -d db
 ok "PostgreSQL container started"
 
 # ── Wait for DB ─────────────────────────────────────────────────────────────
 log "Waiting for database..."
 for i in $(seq 1 30); do
-  if docker compose exec -T db pg_isready -U "$DB_USER" -d "$DB_NAME" &>/dev/null; then
+  if docker-compose exec -T db pg_isready -U "$DB_USER" -d "$DB_NAME" &>/dev/null; then
     ok "Database is ready"
     break
   fi
@@ -495,7 +495,7 @@ else
     echo -e "${G}│${N}  Service:   ${SERVICE_NAME}"
   fi
   echo -e "${G}├────────────────────────────────────────────┤${N}"
-  echo -e "${G}│${N}  Stop:  ${Y}docker compose down${N} (DB)"
+  echo -e "${G}│${N}  Stop:  ${Y}docker-compose down${N} (DB)"
   if [[ "$USE_SYSTEMD" == true ]]; then
     echo -e "${G}│${N}         ${Y}systemctl stop ${SERVICE_NAME}${N}"
   else
