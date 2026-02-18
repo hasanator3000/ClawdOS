@@ -1,0 +1,3 @@
+-- RLS helper functions live here.
+-- NOTE: We'll implement core.is_workspace_member / core.is_workspace_admin later
+-- when we migrate to schema namespaces.

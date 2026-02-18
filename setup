@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# ClawdOS one-command setup for AI agents
+# Just run: ./setup
+set -euo pipefail
+
+cd "$(dirname "$0")"
+exec bash scripts/auto-host.sh --systemd --json

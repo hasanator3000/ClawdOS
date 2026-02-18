@@ -1,0 +1,12 @@
+# Gitleaks ignore file
+# Add file paths or patterns to ignore false positives
+
+# Example files with placeholder secrets are OK
+.env.example
+.env.*.example
+OPS.md
+AI.md
+
+# False positive: example password in deployment docs
+73c521fbc2e85e4a32a6c6191610ddfff236f672:AI.md:generic-api-key:55
+73c521fbc2e85e4a32a6c6191610ddfff236f672:AI.md:generic-api-key:70

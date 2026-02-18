@@ -1,0 +1,86 @@
+schema: core
+description: "Ядро системы — пользователи, воркспейсы, роли и доступ"
+version: 1
+last_updated: 2026-02-03
+
+# NOTE: Пока живём локально и «как есть»: текущие таблицы находятся в public.
+# Следующий этап — миграция в schema namespaces (core.*, content.*) согласно конституции.
+
+tables:
+  app_user:
+    schema: public
+    description: "Пользователи (локальная auth: username/password_hash)"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      username:
+        type: text
+        nullable: false
+        unique: true
+        check: "char_length(username) BETWEEN 3 AND 32"
+      password_hash: { type: text, nullable: false }
+      created_at: { type: timestamptz, nullable: false, default: now() }
+    indexes:
+      - { name: app_user_pkey, columns: [id], unique: true }
+      - { name: app_user_username_key, columns: [username], unique: true }
+    rls:
+      enabled: false # таблица auth, доступ только через сервер
+
+  workspace:
+    schema: public
+    description: "Воркспейсы (AG/German/Shared)"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      slug: { type: text, nullable: false, unique: true }
+      name: { type: text, nullable: false }
+      kind:
+        type: text
+        nullable: false
+        check: "kind IN ('personal','shared')"
+      owner_user_id:
+        type: uuid
+        nullable: true
+        references: public.app_user(id)
+        on_delete: SET NULL
+      created_at: { type: timestamptz, nullable: false, default: now() }
+    indexes:
+      - { name: workspace_pkey, columns: [id], unique: true }
+      - { name: workspace_slug_key, columns: [slug], unique: true }
+    rls:
+      enabled: true
+      policies:
+        - { name: workspace_select, for: SELECT, using: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = id AND m.user_id = app_current_user_id())" }
+
+  workspace_member:
+    schema: public
+    description: "Связь пользователей и воркспейсов"
+    columns:
+      workspace_id:
+        type: uuid
+        nullable: false
+        references: public.workspace(id)
+        on_delete: CASCADE
+      user_id:
+        type: uuid
+        nullable: false
+        references: public.app_user(id)
+        on_delete: CASCADE
+      role:
+        type: text
+        nullable: false
+        check: "role IN ('owner','member')"
+      created_at: { type: timestamptz, nullable: false, default: now() }
+    primary_key: [workspace_id, user_id]
+    indexes:
+      - { name: workspace_member_pkey, columns: [workspace_id, user_id], unique: true }
+    rls:
+      enabled: true
+      policies:
+        - { name: workspace_member_select, for: SELECT, using: "EXISTS (SELECT 1 FROM public.workspace_member m WHERE m.workspace_id = workspace_id AND m.user_id = app_current_user_id())" }
+
+functions:
+  app_current_user_id:
+    schema: public
+    description: "Возвращает UUID текущего пользователя из session variable app.user_id"
+    returns: uuid
+    parameters: []
+
