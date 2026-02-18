@@ -451,6 +451,49 @@ EOF
   done
 fi
 
+# ── Setup auto-update timer ─────────────────────────────────────────────────
+if [[ "$USE_SYSTEMD" == true ]]; then
+  SERVICE_NAME="clawdos-${INSTANCE_ID}"
+  UPDATE_SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}-update.service"
+  UPDATE_TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}-update.timer"
+
+  log "Creating auto-update timer..."
+
+  cat > "$UPDATE_SERVICE_FILE" <<EOF
+[Unit]
+Description=ClawdOS Auto-Update (${INSTALL_DIR})
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=${INSTALL_DIR}
+EnvironmentFile=${INSTALL_DIR}/.env.local
+ExecStart=/bin/bash ${INSTALL_DIR}/scripts/update.sh
+EOF
+
+  cat > "$UPDATE_TIMER_FILE" <<EOF
+[Unit]
+Description=ClawdOS Auto-Update Timer (${INSTALL_DIR})
+
+[Timer]
+OnCalendar=*-*-* 00/6:00:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+  systemctl daemon-reload
+  systemctl enable "${SERVICE_NAME}-update.timer" --now 2>/dev/null || true
+  ok "Auto-update timer created (every 6 hours)"
+fi
+
+# ── Create .update directory ───────────────────────────────────────────────
+mkdir -p "${INSTALL_DIR}/.update/backups"
+ok "Update directory initialized"
+
 # ── Reload service if tokens were updated ──────────────────────────────────
 if [[ "$USE_SYSTEMD" == true ]] && [[ -n "$CLAWDBOT_TOKEN_ARG" ]]; then
   # Service exists from earlier creation; reload to pick up updated .env.local
@@ -493,6 +536,7 @@ else
   echo -e "${G}│${N}  Directory: ${INSTALL_DIR}"
   if [[ "$USE_SYSTEMD" == true ]]; then
     echo -e "${G}│${N}  Service:   ${SERVICE_NAME}"
+    echo -e "${G}│${N}  Updates:   auto (every 6h)"
   fi
   echo -e "${G}├────────────────────────────────────────────┤${N}"
   echo -e "${G}│${N}  Stop:  ${Y}docker-compose down${N} (DB)"

@@ -1,6 +1,6 @@
 {
   "name": "clawdos",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "private": true,
   "scripts": {
     "deploy": "bash ./setup",
@@ -13,7 +13,11 @@
     "db:down": "./scripts/db-down.sh",
     "db:migrate": "node scripts/migrate.mjs",
     "db:reset": "./scripts/db-down.sh && ./scripts/db-up.sh && sleep 3 && node scripts/migrate.mjs",
-    "user:create": "node scripts/create-user.mjs"
+    "user:create": "node scripts/create-user.mjs",
+    "update": "bash scripts/update.sh",
+    "update:check": "bash scripts/update.sh --check",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@xenova/transformers": "^2.17.2",
@@ -28,13 +32,17 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "jsdom": "^28.1.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

@@ -87,3 +87,6 @@ db/backups/
 # Logs with potential sensitive data
 *.log
 logs/
+
+# Update system working directory
+/.update/
