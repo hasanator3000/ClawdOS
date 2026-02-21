@@ -10,6 +10,9 @@
 
 import { resolveCommand, type CommandResult, type CommandContext } from '@/lib/commands/chat-handlers'
 import { matchIntent } from './embeddings'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('intent-router')
 
 /** Minimum gap between top-1 and top-2 to trust embedding match */
 const MIN_GAP = 0.015
@@ -52,17 +55,15 @@ export async function routeCommand(
     const result = match.card.resolve(input)
 
     if (result) {
-      console.log(
-        `[IntentRouter] Layer 1 match: "${input}" → ${match.card.id} ` +
-        `(score=${match.score.toFixed(3)}, gap=${match.gap.toFixed(4)})`
-      )
+      log.info(`Layer 1 match: "${input}" → ${match.card.id}`, {
+        score: match.score.toFixed(3),
+        gap: match.gap.toFixed(4),
+      })
       return { result, layer: 1, intentId: match.card.id }
     }
 
     // Card matched but can't resolve (e.g. task.complete needs LLM for task lookup)
-    console.log(
-      `[IntentRouter] Layer 1 detected ${match.card.id} but needs LLM for resolution`
-    )
+    log.debug(`Layer 1 detected ${match.card.id} but needs LLM for resolution`)
   }
 
   // -----------------------------------------------------------------------

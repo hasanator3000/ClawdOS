@@ -6,6 +6,10 @@ import type { CommandResult } from '@/lib/commands/chat-handlers'
 import { routeCommand } from '@/lib/intents/router'
 import { getWorkspacesForUser } from '@/lib/workspace'
 import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/constants'
+import { withCircuitBreaker } from '@/lib/circuit-breaker'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('ai-chat')
 import {
   createTask as createTaskRepo,
   completeTask as completeTaskRepo,
@@ -301,9 +305,9 @@ async function processStreamWithActions(
 
                     const actions: any[] = Array.isArray(payload?.actions) ? payload.actions : []
                     if (actions.length > 0) {
-                      console.log('[ClawdOS] Executing actions:', actions)
+                      log.info('Executing actions', { count: actions.length })
                       const result = await executeActions(actions, userId, workspaceId)
-                      console.log('[ClawdOS] Actions result:', result)
+                      log.info('Actions result', { navigation: result.navigation, results: result.results.length })
 
                       // Send navigation instruction to client if present
                       if (result.navigation) {
@@ -388,7 +392,7 @@ async function processStreamWithActions(
           }
         }
       } catch (err) {
-        console.error('Stream processing error:', err)
+        log.error('Stream processing error', { error: err instanceof Error ? err.message : String(err) })
         // Notify client about the error before closing
         try {
           const errorEvent = {
@@ -780,7 +784,7 @@ async function ensureConversation(
     })
     return convId
   } catch (err) {
-    console.error('[chat] Failed to persist conversation:', err)
+    log.error('Failed to persist conversation', { error: err instanceof Error ? err.message : String(err) })
     return incomingConversationId
   }
 }
@@ -793,7 +797,7 @@ async function saveAssistantMessage(userId: string, conversationId: string | nul
       createMessage(client, { conversationId, role: 'assistant', content })
     )
   } catch (err) {
-    console.error('[chat] Failed to persist assistant message:', err)
+    log.error('Failed to persist assistant message', { error: err instanceof Error ? err.message : String(err) })
   }
 }
 
@@ -846,11 +850,11 @@ export async function POST(request: Request) {
   const routed = await routeCommand(message, { workspaceId, workspaceName, currentPage })
 
   if (routed) {
-    console.log('[AI Chat] Fast-path triggered:', {
+    log.info('Fast-path triggered', {
       message,
       layer: routed.layer,
       intentId: routed.intentId,
-      resultType: routed.result.type
+      resultType: routed.result.type,
     })
     // Fast-path: persist response text after building it
     const response = await buildFastPathResponse(routed.result, encoder, session.userId, workspaceId)
@@ -938,30 +942,44 @@ export async function POST(request: Request) {
 
   const { url, token } = getGateway()
 
-  const upstream = await fetch(`${url}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'x-clawdbot-agent-id': 'main',
-    },
-    body: JSON.stringify({
-      model: 'clawdbot',
-      stream,
-      user: `clawdos:${session.userId}${workspaceId ? `:ws:${workspaceId}` : ''}`,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: message },
-      ],
-    }),
-    // Prevent hanging requests if Clawdbot is unresponsive (60 second timeout)
-    signal: AbortSignal.timeout(60_000),
-  })
-
-  if (!upstream.ok) {
-    const text = await upstream.text().catch(() => '')
+  let upstream: Response
+  try {
+    upstream = await withCircuitBreaker(
+      { name: 'clawdbot', failureThreshold: 5, resetTimeout: 30_000 },
+      async () => {
+        const res = await fetch(`${url}/v1/chat/completions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'x-clawdbot-agent-id': 'main',
+          },
+          body: JSON.stringify({
+            model: 'clawdbot',
+            stream,
+            user: `clawdos:${session.userId}${workspaceId ? `:ws:${workspaceId}` : ''}`,
+            messages: [
+              { role: 'system', content: system },
+              { role: 'user', content: message },
+            ],
+          }),
+          signal: AbortSignal.timeout(60_000),
+        })
+        if (!res.ok) throw new Error(`Upstream HTTP ${res.status}`)
+        return res
+      }
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    log.error('Clawdbot upstream failed', { error: msg })
+    if (msg.startsWith('Circuit open:')) {
+      return NextResponse.json(
+        { error: 'AI service temporarily unavailable. Please try again shortly.' },
+        { status: 503 }
+      )
+    }
     return NextResponse.json(
-      { error: 'Upstream error', status: upstream.status, detail: text.slice(0, 2000) },
+      { error: 'Upstream error', detail: msg.slice(0, 2000) },
       { status: 502 }
     )
   }

@@ -10,6 +10,13 @@
  */
 
 import { INTENT_CARDS, type IntentCard } from './cards'
+import { MemoryCache } from '@/lib/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('intent-router')
+
+// Query embedding cache: avoid re-computing identical queries within 10 minutes
+const queryCache = new MemoryCache<Float64Array>({ ttl: 10 * 60 * 1000, maxEntries: 200 })
 
 // Lazy-loaded pipeline function from @xenova/transformers
 let pipelinePromise: Promise<any> | null = null
@@ -52,10 +59,19 @@ async function loadModel() {
 // ---------------------------------------------------------------------------
 
 async function embed(text: string, isQuery: boolean): Promise<Float64Array> {
+  // Cache query embeddings (passage embeddings are only computed once during init)
+  if (isQuery) {
+    const cached = queryCache.get(text)
+    if (cached) return cached
+  }
+
   const fn = await loadModel()
   const prefixed = isQuery ? `query: ${text}` : `passage: ${text}`
   const result = await fn(prefixed, { pooling: 'mean', normalize: true })
-  return new Float64Array(result.data)
+  const vec = new Float64Array(result.data)
+
+  if (isQuery) queryCache.set(text, vec)
+  return vec
 }
 
 function cosine(a: Float64Array, b: Float64Array): number {
@@ -94,12 +110,12 @@ function computeCentroid(vectors: Float64Array[]): Float64Array {
 async function buildCentroids(): Promise<IntentCentroid[]> {
   const results: IntentCentroid[] = []
 
-  console.log(`[IntentRouter] Loading ${INTENT_CARDS.length} intent cards:`, INTENT_CARDS.map(c => c.id).join(', '))
+  log.info(`Loading ${INTENT_CARDS.length} intent cards`, { cards: INTENT_CARDS.map(c => c.id) })
 
   for (const card of INTENT_CARDS) {
     const vecs = await Promise.all(card.examples.map((ex) => embed(ex, false)))
     results.push({ card, centroid: computeCentroid(vecs) })
-    console.log(`[IntentRouter] Centroid for "${card.id}": ${card.examples.length} examples`)
+    log.debug(`Centroid computed for "${card.id}"`, { examples: card.examples.length })
   }
 
   return results
@@ -111,9 +127,9 @@ async function ensureInitialized(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
       const t0 = Date.now()
-      console.log('[IntentRouter] Initializing embedding service...')
+      log.info('Initializing embedding service...')
       centroids = await buildCentroids()
-      console.log(`[IntentRouter] Ready in ${Date.now() - t0}ms (${centroids.length} intents)`)
+      log.info(`Ready in ${Date.now() - t0}ms`, { intents: centroids.length })
     })()
   }
 
@@ -138,7 +154,7 @@ export async function matchIntent(input: string): Promise<SemanticMatch | null> 
   try {
     await ensureInitialized()
   } catch (err) {
-    console.error('[IntentRouter] Init failed, skipping Layer 1:', err)
+    log.error('Init failed, skipping Layer 1', { error: err instanceof Error ? err.message : String(err) })
     return null
   }
 
@@ -154,7 +170,7 @@ export async function matchIntent(input: string): Promise<SemanticMatch | null> 
   const second = scored[1]
   const gap = second ? top.score - second.score : 1
 
-  console.log(`[IntentRouter] matchIntent("${input}")`, {
+  log.debug(`matchIntent("${input}")`, {
     top: { id: top.card.id, score: top.score.toFixed(4) },
     second: second ? { id: second.card.id, score: second.score.toFixed(4) } : null,
     gap: gap.toFixed(4),

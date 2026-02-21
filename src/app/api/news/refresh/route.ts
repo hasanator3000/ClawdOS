@@ -3,6 +3,9 @@ import { getSession } from '@/lib/auth/session'
 import { getPool, withUser } from '@/lib/db'
 import { refreshStaleSources } from '@/lib/rss/fetcher'
 import { getWorkspacesForUser } from '@/lib/workspace'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('news-refresh')
 
 export const dynamic = 'force-dynamic'
 
@@ -76,7 +79,7 @@ export async function POST(request: Request) {
       client.release()
     }
   } catch (error) {
-    console.error('[News Refresh] Error:', error)
+    log.error('Refresh failed', { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

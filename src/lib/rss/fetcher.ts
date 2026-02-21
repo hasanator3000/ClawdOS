@@ -6,6 +6,14 @@ import {
   markSourceFetched,
   incrementSourceError,
 } from '@/lib/db/repositories/news-source.repository'
+import { MemoryCache } from '@/lib/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('rss')
+
+// Cache parsed feed results for 5 minutes to avoid re-fetching the same URL
+// when multiple workspaces share the same source or rapid refresh is triggered.
+const feedCache = new MemoryCache<ParsedFeed>({ ttl: 5 * 60 * 1000, maxEntries: 200 })
 
 export interface FetchResult {
   sourceId: string
@@ -98,7 +106,9 @@ export async function refreshStaleSources(
 
   if (sources.length === 0) return []
 
-  // Phase 1: Parallel HTTP fetches with concurrency limit
+  log.info('Refreshing stale sources', { workspace: workspaceId, count: sources.length })
+
+  // Phase 1: Parallel HTTP fetches with concurrency limit (uses feed cache)
   type FeedData = { source: NewsSource; feed: ParsedFeed }
   type FeedError = { source: NewsSource; error: string }
   const feedResults: Array<FeedData | FeedError> = []
@@ -107,13 +117,25 @@ export async function refreshStaleSources(
     const batch = sources.slice(i, i + HTTP_CONCURRENCY)
     const settled = await Promise.allSettled(
       batch.map(async (source): Promise<FeedData> => {
+        // Check cache first — avoids re-fetching same URL across workspaces
+        const cached = feedCache.get(source.url)
+        if (cached) {
+          log.debug('Feed cache hit', { url: source.url })
+          return { source, feed: cached }
+        }
+
         const response = await fetch(source.url, {
           headers: { 'User-Agent': 'ClawdOS/1.0 (RSS Reader)' },
           signal: AbortSignal.timeout(10_000),
         })
         if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`)
         const text = await response.text()
-        return { source, feed: parseFeed(text, source.url) }
+        const feed = parseFeed(text, source.url)
+
+        // Cache the parsed feed
+        feedCache.set(source.url, feed)
+
+        return { source, feed }
       })
     )
 
