@@ -1,4 +1,5 @@
-export { GreetingWidget } from './GreetingWidget'
+export { AgentMetricsWidget } from './AgentMetricsWidget'
 export { CurrencyWidget } from './CurrencyWidget'
+export { GreetingWidget } from './GreetingWidget'
 export { QuickLinksWidget } from './QuickLinksWidget'
 export { RecentTasksWidget } from './RecentTasksWidget'
