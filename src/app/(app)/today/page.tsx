@@ -2,10 +2,12 @@ import { withUser } from '@/lib/db'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { getTasksByWorkspace } from '@/lib/db/repositories/task.repository'
+import { findProcessesByWorkspace } from '@/lib/db/repositories/process.repository'
 import {
   GreetingWidget,
   CurrencyWidget,
   AgentMetricsWidget,
+  ProcessesWidget,
   QuickLinksWidget,
   RecentTasksWidget,
 } from '@/components/dashboard'
@@ -26,10 +28,15 @@ export default async function DashboardPage() {
     )
   }
 
-  // Fetch tasks for the widget
-  const tasks = await withUser(session.userId, (client) =>
-    getTasksByWorkspace(client, workspace.id, { limit: 10 })
-  )
+  // Fetch tasks and processes in parallel
+  const [tasks, processes] = await Promise.all([
+    withUser(session.userId, (client) =>
+      getTasksByWorkspace(client, workspace.id, { limit: 10 })
+    ),
+    withUser(session.userId, (client) =>
+      findProcessesByWorkspace(client, workspace.id)
+    ),
+  ])
 
   return (
     <div className="space-y-5">
@@ -43,6 +50,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1">
         <AgentMetricsWidget />
       </div>
+
+      {/* Processes */}
+      <ProcessesWidget initialProcesses={processes} workspaceId={workspace.id} />
 
       {/* Quick links */}
       <QuickLinksWidget />
