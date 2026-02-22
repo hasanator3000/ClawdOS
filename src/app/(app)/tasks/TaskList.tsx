@@ -3,12 +3,11 @@
 import { useState, useTransition, useEffect, memo } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { createTask, completeTask, reopenTask, deleteTask } from './actions'
+import { TaskFilters, type TaskFilterState, type FilterStatus } from './TaskFilters'
 
 interface TaskListProps {
   initialTasks: Task[]
 }
-
-type FilterStatus = 'all' | 'active' | 'completed'
 
 const PRIORITY_LABELS: Record<number, string> = {
   0: '',
@@ -29,7 +28,11 @@ const PRIORITY_COLORS: Record<number, string> = {
 export function TaskList({ initialTasks }: TaskListProps) {
   const [tasks, setTasks] = useState(initialTasks)
   const [newTaskTitle, setNewTaskTitle] = useState('')
-  const [filter, setFilter] = useState<FilterStatus>('all')
+  const [filterState, setFilterState] = useState<TaskFilterState>({
+    status: 'all',
+    priority: 'all',
+  })
+  const [searchQuery, setSearchQuery] = useState('')
   const [isPending, startTransition] = useTransition()
 
   // Sync tasks when initialTasks change (e.g., workspace switch)
@@ -58,7 +61,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
     const handleFilter = (event: CustomEvent) => {
       const value = event.detail?.value
       if (value === 'active' || value === 'completed' || value === 'all') {
-        setFilter(value)
+        setFilterState((prev) => ({ ...prev, status: value }))
       }
     }
 
@@ -70,13 +73,37 @@ export function TaskList({ initialTasks }: TaskListProps) {
     }
   }, [])
 
+  // Multi-dimensional filter logic
   const filteredTasks = tasks.filter((task) => {
-    if (filter === 'active') return task.status !== 'done' && task.status !== 'cancelled'
-    if (filter === 'completed') return task.status === 'done'
+    // Status filter
+    if (filterState.status === 'active') {
+      if (task.status === 'done' || task.status === 'cancelled') return false
+    } else if (filterState.status === 'completed') {
+      if (task.status !== 'done') return false
+    }
+
+    // Priority filter
+    if (filterState.priority !== 'all') {
+      if (task.priority !== filterState.priority) return false
+    }
+
+    // Search filter
+    if (searchQuery) {
+      if (!task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    }
+
     return true
   })
 
-  const handleCreateTask = async (e: React.FormEvent) => {
+  const handleFilterChange = (filters: TaskFilterState) => {
+    setFilterState(filters)
+  }
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query)
+  }
+
+  const handleCreateTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!newTaskTitle.trim()) return
 
@@ -144,48 +171,24 @@ export function TaskList({ initialTasks }: TaskListProps) {
         </button>
       </form>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 border-b border-[var(--border)]">
-        <button
-          type="button"
-          onClick={() => setFilter('active')}
-          className={`px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
-            filter === 'active'
-              ? 'border-[var(--neon)] text-[var(--neon)]'
-              : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
-          }`}
-        >
-          Active ({activeTasks.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('completed')}
-          className={`px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
-            filter === 'completed'
-              ? 'border-[var(--neon)] text-[var(--neon)]'
-              : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
-          }`}
-        >
-          Completed ({completedTasks.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
-            filter === 'all'
-              ? 'border-[var(--neon)] text-[var(--neon)]'
-              : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
-          }`}
-        >
-          All ({tasks.length})
-        </button>
-      </div>
+      {/* Filters */}
+      <TaskFilters
+        onFilterChange={handleFilterChange}
+        onSearchChange={handleSearchChange}
+        activeTasks={activeTasks.length}
+        completedTasks={completedTasks.length}
+        totalTasks={tasks.length}
+      />
 
       {/* Task list */}
       <div className="space-y-2">
         {filteredTasks.length === 0 ? (
           <div className="text-center py-8 text-[var(--muted)]">
-            {filter === 'active' ? 'No active tasks' : filter === 'completed' ? 'No completed tasks' : 'No tasks yet'}
+            {filterState.status === 'active'
+              ? 'No active tasks'
+              : filterState.status === 'completed'
+                ? 'No completed tasks'
+                : 'No tasks yet'}
           </div>
         ) : (
           filteredTasks.map((task) => (
@@ -231,7 +234,9 @@ export function TaskList({ initialTasks }: TaskListProps) {
               )}
 
               {/* Due date */}
-              {task.dueDate && <DueDate dueDate={task.dueDate} isDone={task.status === 'done'} />}
+              {task.dueDate && (
+                <DueDate dueDate={task.dueDate} dueTime={task.dueTime} isDone={task.status === 'done'} />
+              )}
 
               {/* Delete button */}
               <button
@@ -258,13 +263,49 @@ export function TaskList({ initialTasks }: TaskListProps) {
   )
 }
 
+// Helper functions for deadline formatting and color coding
+function formatTaskDate(dueDate: string | null, dueTime: string | null): string {
+  if (!dueDate) return ''
+  const date = new Date(dueDate + (dueTime ? 'T' + dueTime : ''))
+  const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  if (dueTime) {
+    const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    return `${formatted} ${time}`
+  }
+  return formatted
+}
+
+function getDateColor(dueDate: string | null, isDone: boolean): string {
+  if (!dueDate || isDone) return 'var(--muted)'
+  const date = new Date(dueDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  date.setHours(0, 0, 0, 0)
+
+  const daysDiff = Math.floor((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (daysDiff < 0) return 'var(--red)' // overdue
+  if (daysDiff === 0) return 'var(--red)' // today
+  if (daysDiff <= 7) return 'var(--warm)' // this week
+  if (daysDiff <= 30) return 'var(--cyan)' // this month
+  return 'var(--muted)' // later
+}
+
 // Memoized to avoid creating Date objects for every task on every render
-const DueDate = memo(function DueDate({ dueDate, isDone }: { dueDate: string; isDone: boolean }) {
-  const d = new Date(dueDate)
-  const overdue = d < new Date() && !isDone
+const DueDate = memo(function DueDate({
+  dueDate,
+  dueTime,
+  isDone,
+}: {
+  dueDate: string
+  dueTime: string | null
+  isDone: boolean
+}) {
+  const formatted = formatTaskDate(dueDate, dueTime)
+  const color = getDateColor(dueDate, isDone)
   return (
-    <span className={`text-xs ${overdue ? 'text-[var(--red)]' : 'text-[var(--muted)]'}`}>
-      {d.toLocaleDateString()}
+    <span className="text-xs" style={{ color }}>
+      {formatted}
     </span>
   )
 })
