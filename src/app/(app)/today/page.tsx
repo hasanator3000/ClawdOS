@@ -5,6 +5,7 @@ import { getTasksByWorkspace } from '@/lib/db/repositories/task.repository'
 import {
   GreetingWidget,
   CurrencyWidget,
+  AgentMetricsWidget,
   QuickLinksWidget,
   RecentTasksWidget,
 } from '@/components/dashboard'
@@ -36,6 +37,11 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <GreetingWidget username={session.username} />
         <CurrencyWidget />
+      </div>
+
+      {/* Agent metrics */}
+      <div className="grid grid-cols-1">
+        <AgentMetricsWidget />
       </div>
 
       {/* Quick links */}
