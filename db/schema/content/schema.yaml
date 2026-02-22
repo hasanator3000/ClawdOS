@@ -1,7 +1,7 @@
 schema: content
 description: "Контент — дайджесты, новости, RSS-источники"
-version: 2
-last_updated: 2026-02-10
+version: 3
+last_updated: 2026-02-22
 
 # NOTE: Пока таблицы в public.* (локальный этап). Позже переедем в content.*.
 
@@ -130,3 +130,42 @@ tables:
         - { name: news_source_tab_select, for: SELECT, using: "EXISTS (SELECT 1 FROM content.news_source s WHERE s.id = source_id AND core.is_workspace_member(s.workspace_id))" }
         - { name: news_source_tab_insert, for: INSERT, with_check: "EXISTS (SELECT 1 FROM content.news_source s WHERE s.id = source_id AND core.is_workspace_member(s.workspace_id))" }
         - { name: news_source_tab_delete, for: DELETE, using: "EXISTS (SELECT 1 FROM content.news_source s WHERE s.id = source_id AND core.is_workspace_member(s.workspace_id))" }
+
+  processes:
+    schema: content
+    description: "Scheduled cron processes for automated tasks"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      workspace_id:
+        type: uuid
+        nullable: false
+        references: core.workspace(id)
+        on_delete: CASCADE
+      title: { type: text, nullable: false }
+      description: { type: text, nullable: true }
+      schedule:
+        type: text
+        nullable: false
+        description: "Cron format: 0 9 * * *"
+      action_type:
+        type: text
+        nullable: false
+        check: "action_type IN ('send_digest','send_reminder','run_backup')"
+      action_config: { type: jsonb, nullable: false, default: "'{}'" }
+      enabled: { type: boolean, nullable: false, default: true }
+      last_run_at: { type: timestamptz, nullable: true }
+      next_run_at: { type: timestamptz, nullable: true }
+      created_by: { type: uuid, nullable: true, references: "core.user(id)", on_delete: SET NULL }
+      created_at: { type: timestamptz, nullable: false, default: now() }
+      updated_at: { type: timestamptz, nullable: false, default: now() }
+    indexes:
+      - { name: processes_workspace_idx, columns: [workspace_id], unique: false }
+      - { name: processes_enabled_idx, columns: [enabled], unique: false, where: "enabled = true" }
+      - { name: processes_next_run_idx, columns: [workspace_id, next_run_at], unique: false, where: "enabled = true" }
+    rls:
+      enabled: true
+      policies:
+        - { name: processes_select, for: SELECT, using: "core.is_workspace_member(workspace_id)" }
+        - { name: processes_insert, for: INSERT, with_check: "core.is_workspace_member(workspace_id) AND created_by = core.current_user_id()" }
+        - { name: processes_update, for: UPDATE, using: "core.is_workspace_member(workspace_id)", with_check: "core.is_workspace_member(workspace_id)" }
+        - { name: processes_delete, for: DELETE, using: "core.is_workspace_member(workspace_id)" }
