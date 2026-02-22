@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, memo } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
-import { createTask, completeTask, reopenTask, deleteTask } from './actions'
+import { createTask, completeTask, reopenTask, deleteTask, updateTaskPriority } from './actions'
 import { TaskFilters, type TaskFilterState, type FilterStatus } from './TaskFilters'
 
 interface TaskListProps {
@@ -33,6 +33,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
     priority: 'all',
   })
   const [searchQuery, setSearchQuery] = useState('')
+  const [priorityMode, setPriorityMode] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   // Sync tasks when initialTasks change (e.g., workspace switch)
@@ -72,6 +73,28 @@ export function TaskList({ initialTasks }: TaskListProps) {
       window.removeEventListener('clawdos:tasks-filter', handleFilter as EventListener)
     }
   }, [])
+
+  // Close priority dropdown on click outside
+  useEffect(() => {
+    if (!priorityMode) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      // Don't close if clicking inside the dropdown
+      if (target.closest('.priority-dropdown')) return
+      setPriorityMode(null)
+    }
+
+    // Small delay to avoid closing immediately after opening
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [priorityMode])
 
   // Multi-dimensional filter logic
   const filteredTasks = tasks.filter((task) => {
@@ -141,6 +164,30 @@ export function TaskList({ initialTasks }: TaskListProps) {
         setTasks((prev) => prev.filter((t) => t.id !== taskId))
       }
     })
+  }
+
+  const handleUpdatePriority = (taskId: string, newPriority: number) => {
+    const taskIndex = tasks.findIndex((t) => t.id === taskId)
+    if (taskIndex === -1) return
+
+    const oldTask = tasks[taskIndex]
+
+    // Optimistic update
+    const updatedTask = { ...oldTask, priority: newPriority }
+    setTasks((prev) => [...prev.slice(0, taskIndex), updatedTask, ...prev.slice(taskIndex + 1)])
+
+    // Server action
+    startTransition(async () => {
+      const result = await updateTaskPriority(taskId, newPriority)
+      if (!result.success) {
+        // Rollback optimistic update
+        setTasks((prev) => [...prev.slice(0, taskIndex), oldTask, ...prev.slice(taskIndex + 1)])
+      }
+      // If success, server task is already reflected in UI
+    })
+
+    // Close dropdown
+    setPriorityMode(null)
   }
 
   const activeTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled')
@@ -226,12 +273,40 @@ export function TaskList({ initialTasks }: TaskListProps) {
                 )}
               </div>
 
-              {/* Priority badge */}
-              {task.priority > 0 && (
-                <span className={`text-xs font-medium ${PRIORITY_COLORS[task.priority]}`}>
-                  {PRIORITY_LABELS[task.priority]}
-                </span>
-              )}
+              {/* Priority badge + editor */}
+              <div className="flex items-center gap-2">
+                {task.priority > 0 && (
+                  <span className={`text-xs font-medium ${PRIORITY_COLORS[task.priority]}`}>
+                    {PRIORITY_LABELS[task.priority]}
+                  </span>
+                )}
+                {priorityMode === task.id ? (
+                  <div className="priority-dropdown flex gap-1 bg-[var(--card)] border border-[var(--border)] rounded p-1 shadow-lg">
+                    {[0, 1, 2, 3, 4].map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => handleUpdatePriority(task.id, p)}
+                        className={`px-2 py-1 rounded text-xs transition-colors ${
+                          task.priority === p
+                            ? 'bg-[var(--neon-dim)] text-[var(--neon)]'
+                            : 'hover:bg-[var(--border)]'
+                        }`}
+                        title={PRIORITY_LABELS[p] || 'None'}
+                      >
+                        {p === 0 ? '—' : p}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setPriorityMode(task.id)}
+                    className="text-xs px-1 text-[var(--muted)] hover:text-[var(--neon)] transition-colors opacity-0 group-hover:opacity-100"
+                    title="Edit priority"
+                  >
+                    ✏️
+                  </button>
+                )}
+              </div>
 
               {/* Due date */}
               {task.dueDate && (
