@@ -17,13 +17,13 @@ interface TaskFiltersProps {
   totalTasks: number
 }
 
-const PRIORITY_OPTIONS = [
-  { value: 'all', label: 'All priorities' },
-  { value: 4, label: 'Urgent', color: 'var(--red)' },
-  { value: 3, label: 'High', color: 'var(--pink)' },
-  { value: 2, label: 'Medium', color: 'var(--warm)' },
-  { value: 1, label: 'Low', color: 'var(--cyan)' },
-  { value: 0, label: 'None', color: 'var(--muted)' },
+const PRIORITY_OPTIONS: Array<{ value: number | 'all'; label: string; color?: string }> = [
+  { value: 'all' as const, label: 'All priorities' },
+  { value: 4 as const, label: 'Urgent', color: 'var(--red)' },
+  { value: 3 as const, label: 'High', color: 'var(--pink)' },
+  { value: 2 as const, label: 'Medium', color: 'var(--warm)' },
+  { value: 1 as const, label: 'Low', color: 'var(--cyan)' },
+  { value: 0 as const, label: 'None', color: 'var(--muted)' },
 ]
 
 export function TaskFilters({
