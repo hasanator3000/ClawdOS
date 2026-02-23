@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { checkRateLimit, type RateLimitResult } from '@/lib/security/rate-limiter'
 
 const TOKEN_COOKIE = 'clawdos.access_token'
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 const CSRF_EXEMPT_PATHS = new Set(['/api/health', '/api/version', '/access'])
+
+const RATE_LIMIT_EXEMPT_PATHS = new Set(['/api/health'])
 
 function isPublicPath(pathname: string) {
   return (
@@ -20,6 +23,31 @@ function isCsrfExempt(pathname: string): boolean {
   if (CSRF_EXEMPT_PATHS.has(pathname)) return true
   if (pathname.startsWith('/_next')) return true
   return false
+}
+
+function getClientIp(req: NextRequest): string {
+  const forwarded = req.headers.get('x-forwarded-for')
+  if (forwarded) return forwarded.split(',')[0].trim()
+  return req.headers.get('x-real-ip') ?? 'unknown'
+}
+
+function rateLimitHeaders(result: RateLimitResult): Record<string, string> {
+  return {
+    'X-RateLimit-Limit': String(result.limit),
+    'X-RateLimit-Remaining': String(result.remaining),
+    'X-RateLimit-Reset': String(Math.ceil(result.resetMs / 1000)),
+  }
+}
+
+function addRateLimitHeaders(
+  response: NextResponse,
+  result: RateLimitResult
+): NextResponse {
+  const headers = rateLimitHeaders(result)
+  Object.entries(headers).forEach(([key, value]) => {
+    response.headers.set(key, value)
+  })
+  return response
 }
 
 export function middleware(req: NextRequest) {
@@ -52,11 +80,39 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  // Rate limiting for API routes (after CSRF, before auth)
+  let rateLimitResult: RateLimitResult | null = null
+  if (pathname.startsWith('/api/') && !RATE_LIMIT_EXEMPT_PATHS.has(pathname)) {
+    const ip = getClientIp(req)
+    rateLimitResult = checkRateLimit(ip)
+
+    if (!rateLimitResult.allowed) {
+      const headers = rateLimitHeaders(rateLimitResult)
+      return new Response(
+        JSON.stringify({ error: 'Too many requests' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(rateLimitResult.resetMs / 1000)),
+            ...headers,
+          },
+        }
+      )
+    }
+  }
+
   // Auth check (only when ACCESS_TOKEN is configured)
   const required = process.env.ACCESS_TOKEN
-  if (!required) return NextResponse.next()
+  if (!required) {
+    const res = NextResponse.next()
+    return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
+  }
 
-  if (isPublicPath(pathname)) return NextResponse.next()
+  if (isPublicPath(pathname)) {
+    const res = NextResponse.next()
+    return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
+  }
 
   const cookieToken = req.cookies.get(TOKEN_COOKIE)?.value
   const headerToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
@@ -74,9 +130,10 @@ export function middleware(req: NextRequest) {
         path: '/',
         maxAge: 60 * 60 * 24 * 30, // 30 days
       })
-      return res
+      return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
     }
-    return NextResponse.next()
+    const res = NextResponse.next()
+    return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
   }
 
   const url = req.nextUrl.clone()
