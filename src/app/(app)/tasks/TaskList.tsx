@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useMemo, useCallback } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
-import { createTask, fetchAllTags } from './actions'
+import type { Project } from '@/lib/db/repositories/project.repository'
+import { createTask, fetchAllTags, fetchProjects } from './actions'
 import { TaskFilters, type TaskFilterState } from './TaskFilters'
 import { TaskCreateForm } from './TaskCreateForm'
 import { ViewModeSlider, useViewMode, type ViewMode } from './ViewModeSlider'
@@ -23,10 +24,12 @@ export function TaskList({ initialTasks }: TaskListProps) {
     status: 'all',
     priority: 'all',
     tags: [],
+    projectId: 'all',
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [allTags, setAllTags] = useState<string[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [isPending, startTransition] = useTransition()
 
   // Sync tasks when initialTasks change (e.g., workspace switch)
@@ -34,10 +37,19 @@ export function TaskList({ initialTasks }: TaskListProps) {
     setTasks(initialTasks)
   }, [initialTasks])
 
-  // Fetch all unique tags for filter dropdown
+  // Fetch all unique tags and projects for filter dropdowns
   useEffect(() => {
     fetchAllTags().then((res) => {
       if (res.tags) setAllTags(res.tags)
+    })
+    fetchProjects().then((res) => {
+      if (res.projects) setProjects(res.projects)
+    })
+  }, [])
+
+  const reloadProjects = useCallback(() => {
+    fetchProjects().then((res) => {
+      if (res.projects) setProjects(res.projects)
     })
   }, [])
 
@@ -82,6 +94,13 @@ export function TaskList({ initialTasks }: TaskListProps) {
     }
   }
 
+  // Project lookup map
+  const projectMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const p of projects) map.set(p.id, p.name)
+    return map
+  }, [projects])
+
   // Multi-dimensional filter logic
   const filteredTasks = topLevelTasks.filter((task) => {
     if (filterState.status === 'active') {
@@ -102,10 +121,13 @@ export function TaskList({ initialTasks }: TaskListProps) {
     if (filterState.tags.length > 0) {
       if (!filterState.tags.some((tag) => task.tags.includes(tag))) return false
     }
+    if (filterState.projectId !== 'all') {
+      if (task.projectId !== filterState.projectId) return false
+    }
     return true
   })
 
-  const handleCreateTask = (data: { title: string; priority: number; dueDate?: string; dueTime?: string; startDate?: string; startTime?: string }) => {
+  const handleCreateTask = (data: { title: string; priority: number; dueDate?: string; dueTime?: string; startDate?: string; startTime?: string; tags?: string[] }) => {
     startTransition(async () => {
       const result = await createTask({
         title: data.title,
@@ -114,6 +136,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
         dueTime: data.dueTime,
         startDate: data.startDate,
         startTime: data.startTime,
+        tags: data.tags,
       })
       if (result.task) {
         setTasks((prev) => [result.task!, ...prev])
@@ -140,6 +163,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
     onDelete: handleTaskDelete,
     subtaskCounts,
     onSelectTask: (taskId: string) => setSelectedTaskId(taskId),
+    projectMap,
   }
 
   return (
@@ -158,6 +182,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
         completedTasks={completedTasks.length}
         totalTasks={topLevelTasks.length}
         allTags={allTags}
+        projects={projects}
       />
 
       {/* View */}
@@ -172,6 +197,8 @@ export function TaskList({ initialTasks }: TaskListProps) {
           onUpdate={handleTaskUpdate}
           onDelete={(id) => { handleTaskDelete(id); setSelectedTaskId(null) }}
           onClose={() => setSelectedTaskId(null)}
+          projects={projects}
+          onProjectsChange={reloadProjects}
         />
       )}
     </div>

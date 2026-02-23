@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { Project } from '@/lib/db/repositories/project.repository'
 import { getTagColor } from '@/lib/tag-colors'
 
 export type FilterStatus = 'all' | 'active' | 'completed'
@@ -9,6 +10,7 @@ export interface TaskFilterState {
   status: FilterStatus
   priority: number | 'all'
   tags: string[]
+  projectId: string | 'all'
 }
 
 interface TaskFiltersProps {
@@ -18,6 +20,7 @@ interface TaskFiltersProps {
   completedTasks: number
   totalTasks: number
   allTags?: string[]
+  projects?: Project[]
 }
 
 const PRIORITY_OPTIONS: Array<{ value: number | 'all'; label: string; color?: string }> = [
@@ -36,15 +39,18 @@ export function TaskFilters({
   completedTasks,
   totalTasks,
   allTags = [],
+  projects = [],
 }: TaskFiltersProps) {
   const [filterState, setFilterState] = useState<TaskFilterState>({
     status: 'all',
     priority: 'all',
     tags: [],
+    projectId: 'all',
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [isPriorityOpen, setIsPriorityOpen] = useState(false)
   const [isTagsOpen, setIsTagsOpen] = useState(false)
+  const [isProjectOpen, setIsProjectOpen] = useState(false)
 
   const handleStatusChange = (status: FilterStatus) => {
     const newState = { ...filterState, status }
@@ -62,6 +68,13 @@ export function TaskFilters({
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
     onSearchChange(query)
+  }
+
+  const handleProjectFilter = (projectId: string | 'all') => {
+    const newState = { ...filterState, projectId }
+    setFilterState(newState)
+    onFilterChange(newState)
+    setIsProjectOpen(false)
   }
 
   const handleTagToggle = (tag: string) => {
@@ -227,6 +240,40 @@ export function TaskFilters({
                       Clear tags
                     </button>
                   )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Project filter dropdown */}
+        {projects.length > 0 && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsProjectOpen(!isProjectOpen)}
+              className="px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--neon-dim)] transition-colors text-sm flex items-center gap-2 min-w-[130px] justify-between"
+            >
+              <span style={{ color: filterState.projectId !== 'all' ? 'var(--cyan)' : 'var(--fg)' }}>
+                {filterState.projectId !== 'all' ? projects.find((p) => p.id === filterState.projectId)?.name || 'Project' : 'Project'}
+              </span>
+              <svg className={`w-4 h-4 transition-transform ${isProjectOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isProjectOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsProjectOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 min-w-[180px] rounded-lg shadow-lg z-20 overflow-hidden backdrop-blur-xl" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  <button type="button" onClick={() => handleProjectFilter('all')} className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${filterState.projectId === 'all' ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`} style={{ color: 'var(--fg)' }}>
+                    All projects
+                  </button>
+                  {projects.map((p) => (
+                    <button key={p.id} type="button" onClick={() => handleProjectFilter(p.id)} className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${filterState.projectId === p.id ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`} style={{ color: 'var(--cyan)' }}>
+                      {p.name}
+                    </button>
+                  ))}
                 </div>
               </>
             )}

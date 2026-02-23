@@ -19,9 +19,10 @@ interface TimelineViewProps {
   onDelete: (taskId: string) => void
   subtaskCounts: Map<string, number>
   onSelectTask?: (taskId: string) => void
+  projectMap?: Map<string, string>
 }
 
-export function TimelineView({ tasks, onUpdate, onDelete, onSelectTask }: TimelineViewProps) {
+export function TimelineView({ tasks, onUpdate, onDelete, onSelectTask, projectMap }: TimelineViewProps) {
   const sensors = useDndSensors()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [zoom, setZoomState] = useState<ZoomLevel>('week')
@@ -224,7 +225,7 @@ export function TimelineView({ tasks, onUpdate, onDelete, onSelectTask }: Timeli
           <div>
             <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--muted)' }}>No date ({undatedTasks.length})</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {undatedTasks.map((task) => <TaskCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} showStatus onSelect={onSelectTask} />)}
+              {undatedTasks.map((task) => <TaskCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} showStatus onSelect={onSelectTask} projectName={task.projectId ? projectMap?.get(task.projectId) : undefined} />)}
             </div>
           </div>
         )}

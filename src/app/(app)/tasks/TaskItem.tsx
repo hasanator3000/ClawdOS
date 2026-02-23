@@ -29,9 +29,10 @@ interface TaskItemProps {
   depth?: number
   subtaskCount?: number
   onSelect?: (taskId: string) => void
+  projectName?: string
 }
 
-export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0, onSelect }: TaskItemProps) {
+export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0, onSelect, projectName }: TaskItemProps) {
   const [isPending, startTransition] = useTransition()
   const [priorityMode, setPriorityMode] = useState(false)
   const [dateMode, setDateMode] = useState(false)
@@ -157,8 +158,11 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
           <div className={`font-medium ${task.status === 'done' ? 'line-through text-[var(--muted)]' : ''}`}>
             {task.title}
           </div>
-          {task.description && (
-            <div className="text-sm text-[var(--muted)] truncate">{task.description}</div>
+          {(task.description || projectName) && (
+            <div className="flex items-center gap-2 text-sm text-[var(--muted)] truncate">
+              {projectName && <span className="text-[10px] font-medium" style={{ color: 'var(--cyan)' }}>{projectName}</span>}
+              {task.description && <span className="truncate">{task.description}</span>}
+            </div>
           )}
           {task.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-0.5">

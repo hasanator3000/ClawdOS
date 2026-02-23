@@ -17,6 +17,12 @@ import {
   type UpdateTaskParams,
   type Task,
 } from '@/lib/db/repositories/task.repository'
+import {
+  createProject as createProjectRepo,
+  getProjectsByWorkspace,
+  deleteProject as deleteProjectRepo,
+  type Project,
+} from '@/lib/db/repositories/project.repository'
 
 export async function createTask(params: Omit<CreateTaskParams, 'workspaceId'>) {
   const session = await getSession()
@@ -243,5 +249,62 @@ export async function fetchAllTags(): Promise<{ tags?: string[]; error?: string 
   } catch (error) {
     console.error('fetchAllTags error:', error)
     return { error: 'Failed to fetch tags' }
+  }
+}
+
+export async function fetchProjects(): Promise<{ projects?: Project[]; error?: string }> {
+  const session = await getSession()
+  if (!session.userId) return { error: 'Unauthorized' }
+
+  const workspace = await getActiveWorkspace()
+  if (!workspace) return { error: 'No workspace' }
+
+  try {
+    const projects = await withUser(session.userId, async (client) => {
+      return getProjectsByWorkspace(client, workspace.id)
+    })
+    return { projects }
+  } catch (error) {
+    console.error('fetchProjects error:', error)
+    return { error: 'Failed to fetch projects' }
+  }
+}
+
+export async function createProject(name: string): Promise<{ project?: Project; error?: string }> {
+  const session = await getSession()
+  if (!session.userId) return { error: 'Unauthorized' }
+
+  const workspace = await getActiveWorkspace()
+  if (!workspace) return { error: 'No workspace' }
+
+  const trimmed = name.trim()
+  if (!trimmed) return { error: 'Name required' }
+
+  try {
+    const project = await withUser(session.userId, async (client) => {
+      return createProjectRepo(client, workspace.id, trimmed)
+    })
+    revalidatePath('/tasks')
+    return { project }
+  } catch (error) {
+    console.error('createProject error:', error)
+    return { error: 'Failed to create project' }
+  }
+}
+
+export async function deleteProject(projectId: string): Promise<{ success?: boolean; error?: string }> {
+  const session = await getSession()
+  if (!session.userId) return { error: 'Unauthorized' }
+
+  try {
+    const deleted = await withUser(session.userId, async (client) => {
+      return deleteProjectRepo(client, projectId)
+    })
+    if (!deleted) return { error: 'Project not found' }
+    revalidatePath('/tasks')
+    return { success: true }
+  } catch (error) {
+    console.error('deleteProject error:', error)
+    return { error: 'Failed to delete project' }
   }
 }

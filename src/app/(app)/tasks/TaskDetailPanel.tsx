@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
+import type { Project } from '@/lib/db/repositories/project.repository'
 import { normalizeDate, formatShortDate } from '@/lib/date-utils'
 import { getTagColor } from '@/lib/tag-colors'
 import {
@@ -12,6 +13,8 @@ import {
   deleteTask,
   fetchSubtasks,
   fetchAllTags,
+  fetchProjects,
+  createProject as createProjectAction,
 } from './actions'
 import { DateTimePicker } from './DateTimePicker'
 
@@ -35,9 +38,11 @@ interface TaskDetailPanelProps {
   onUpdate: (task: Task) => void
   onDelete: (taskId: string) => void
   onClose: () => void
+  projects?: Project[]
+  onProjectsChange?: () => void
 }
 
-export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = [], onProjectsChange }: TaskDetailPanelProps) {
   const [isPending, startTransition] = useTransition()
   const [isVisible, setIsVisible] = useState(false)
   const [editingField, setEditingField] = useState<'title' | 'description' | null>(null)
@@ -50,6 +55,8 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
   const [newTag, setNewTag] = useState('')
   const [allTags, setAllTags] = useState<string[]>([])
   const [tagsLoaded, setTagsLoaded] = useState(false)
+  const [showProjectPicker, setShowProjectPicker] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
   const panelRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
@@ -206,6 +213,30 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
       const result = await updateTask(task.id, { tags: newTags })
       if (result.error) onUpdate(task)
       else if (result.task) onUpdate(result.task)
+    })
+  }
+
+  const handleProjectChange = (projectId: string | null) => {
+    const updated = { ...task, projectId }
+    onUpdate(updated)
+    setShowProjectPicker(false)
+    startTransition(async () => {
+      const result = await updateTask(task.id, { projectId })
+      if (result.error) onUpdate(task)
+      else if (result.task) onUpdate(result.task)
+    })
+  }
+
+  const handleCreateProject = () => {
+    const name = newProjectName.trim()
+    if (!name) return
+    setNewProjectName('')
+    startTransition(async () => {
+      const result = await createProjectAction(name)
+      if (result.project) {
+        onProjectsChange?.()
+        handleProjectChange(result.project.id)
+      }
     })
   }
 
@@ -418,6 +449,42 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
                       {tag}
                     </button>
                   ))}
+                </div>
+              )}
+            </div>
+          </Section>
+
+          {/* Project */}
+          <Section label="Project">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowProjectPicker(!showProjectPicker)}
+                className="px-3 py-1.5 rounded-lg text-sm transition-colors"
+                style={{
+                  color: task.projectId ? 'var(--cyan)' : 'var(--muted)',
+                  background: task.projectId ? 'rgba(0, 188, 212, 0.1)' : 'var(--surface)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                {projects.find((p) => p.id === task.projectId)?.name || 'No project'}
+              </button>
+              {showProjectPicker && (
+                <div className="absolute left-0 top-full mt-1 min-w-[200px] rounded-lg shadow-lg z-20 overflow-hidden" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  <button type="button" onClick={() => handleProjectChange(null)} className={`w-full px-3 py-2 text-left text-sm transition-colors ${!task.projectId ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`} style={{ color: 'var(--muted)' }}>
+                    No project
+                  </button>
+                  {projects.map((p) => (
+                    <button key={p.id} type="button" onClick={() => handleProjectChange(p.id)} className={`w-full px-3 py-2 text-left text-sm transition-colors ${task.projectId === p.id ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`} style={{ color: 'var(--cyan)' }}>
+                      {p.name}
+                    </button>
+                  ))}
+                  <div className="px-3 py-2" style={{ borderTop: '1px solid var(--border)' }}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleCreateProject() }} className="flex gap-1.5">
+                      <input type="text" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="New project..." className="flex-1 px-2 py-1 rounded text-xs bg-transparent outline-none focus:border-[var(--neon)]" style={{ border: '1px solid var(--border)', color: 'var(--fg)' }} />
+                      <button type="submit" disabled={!newProjectName.trim()} className="px-2 py-1 rounded text-xs font-medium disabled:opacity-30" style={{ color: 'var(--neon)' }}>+</button>
+                    </form>
+                  </div>
                 </div>
               )}
             </div>

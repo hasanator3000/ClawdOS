@@ -19,11 +19,12 @@ interface CalendarViewProps {
   onDelete: (taskId: string) => void
   subtaskCounts: Map<string, number>
   onSelectTask?: (taskId: string) => void
+  projectMap?: Map<string, string>
 }
 
 const MAX_VISIBLE = 3
 
-export function CalendarView({ tasks, onUpdate, onDelete, onSelectTask }: CalendarViewProps) {
+export function CalendarView({ tasks, onUpdate, onDelete, onSelectTask, projectMap }: CalendarViewProps) {
   const sensors = useDndSensors()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
@@ -133,7 +134,7 @@ export function CalendarView({ tasks, onUpdate, onDelete, onSelectTask }: Calend
             {grid.flat().map((day, i) => {
               if (day === null) return <div key={`e-${i}`} className="min-h-[100px] p-1.5" style={{ background: 'var(--bg)' }} />
               const dateStr = toDateStr(viewYear, viewMonth, day)
-              return <DroppableDayCell key={dateStr} dateStr={dateStr} day={day} isToday={dateStr === todayStr} tasks={tasksByDate.get(dateStr) || []} expandedDay={expandedDay} setExpandedDay={setExpandedDay} onUpdate={onUpdate} onDelete={onDelete} onSelectTask={onSelectTask} />
+              return <DroppableDayCell key={dateStr} dateStr={dateStr} day={day} isToday={dateStr === todayStr} tasks={tasksByDate.get(dateStr) || []} expandedDay={expandedDay} setExpandedDay={setExpandedDay} onUpdate={onUpdate} onDelete={onDelete} onSelectTask={onSelectTask} projectMap={projectMap} />
             })}
           </div>
 
@@ -142,18 +143,19 @@ export function CalendarView({ tasks, onUpdate, onDelete, onSelectTask }: Calend
         </div>
 
         {/* Undated tasks (droppable zone — drag here to remove date) */}
-        <UndatedDropZone tasks={undatedTasks} onUpdate={onUpdate} onDelete={onDelete} onSelectTask={onSelectTask} isDragging={!!activeTask} />
+        <UndatedDropZone tasks={undatedTasks} onUpdate={onUpdate} onDelete={onDelete} onSelectTask={onSelectTask} isDragging={!!activeTask} projectMap={projectMap} />
       </div>
       <TaskDragOverlay activeTask={activeTask} compact />
     </DndContext>
   )
 }
 
-function DroppableDayCell({ dateStr, day, isToday, tasks, expandedDay, setExpandedDay, onUpdate, onDelete, onSelectTask }: {
+function DroppableDayCell({ dateStr, day, isToday, tasks, expandedDay, setExpandedDay, onUpdate, onDelete, onSelectTask, projectMap }: {
   dateStr: string; day: number; isToday: boolean; tasks: Task[]
   expandedDay: string | null; setExpandedDay: (d: string | null) => void
   onUpdate: (t: Task) => void; onDelete: (id: string) => void
   onSelectTask?: (taskId: string) => void
+  projectMap?: Map<string, string>
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dateStr })
   const isExpanded = expandedDay === dateStr
@@ -172,7 +174,7 @@ function DroppableDayCell({ dateStr, day, isToday, tasks, expandedDay, setExpand
         {tasks.length > 0 && <span className="text-[9px] font-mono" style={{ color: 'var(--muted)' }}>{tasks.length}</span>}
       </div>
       <div className="space-y-0.5">
-        {visibleTasks.map((task) => <DraggableCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} compact onSelectTask={onSelectTask} />)}
+        {visibleTasks.map((task) => <DraggableCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} compact onSelectTask={onSelectTask} projectName={task.projectId ? projectMap?.get(task.projectId) : undefined} />)}
         {overflow > 0 && !isExpanded && <button type="button" onClick={() => setExpandedDay(dateStr)} className="w-full text-[10px] py-0.5 rounded transition-colors hover:bg-[var(--surface)]" style={{ color: 'var(--neon)' }}>+{overflow} more</button>}
         {isExpanded && tasks.length > MAX_VISIBLE && <button type="button" onClick={() => setExpandedDay(null)} className="w-full text-[10px] py-0.5 rounded transition-colors hover:bg-[var(--surface)]" style={{ color: 'var(--muted)' }}>Show less</button>}
       </div>
@@ -180,18 +182,19 @@ function DroppableDayCell({ dateStr, day, isToday, tasks, expandedDay, setExpand
   )
 }
 
-function DraggableCard({ task, onUpdate, onDelete, compact, onSelectTask }: { task: Task; onUpdate: (t: Task) => void; onDelete: (id: string) => void; compact?: boolean; onSelectTask?: (taskId: string) => void }) {
+function DraggableCard({ task, onUpdate, onDelete, compact, onSelectTask, projectName }: { task: Task; onUpdate: (t: Task) => void; onDelete: (id: string) => void; compact?: boolean; onSelectTask?: (taskId: string) => void; projectName?: string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id, data: { task } })
   return (
     <div ref={setNodeRef} {...listeners} {...attributes} style={{ opacity: isDragging ? 0.3 : 1, cursor: 'grab' }}>
-      <TaskCard task={task} onUpdate={onUpdate} onDelete={onDelete} compact={compact} showStatus onSelect={onSelectTask} />
+      <TaskCard task={task} onUpdate={onUpdate} onDelete={onDelete} compact={compact} showStatus onSelect={onSelectTask} projectName={projectName} />
     </div>
   )
 }
 
-function UndatedDropZone({ tasks, onUpdate, onDelete, onSelectTask, isDragging }: {
+function UndatedDropZone({ tasks, onUpdate, onDelete, onSelectTask, isDragging, projectMap }: {
   tasks: Task[]; onUpdate: (t: Task) => void; onDelete: (id: string) => void
   onSelectTask?: (taskId: string) => void; isDragging: boolean
+  projectMap?: Map<string, string>
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'undated' })
   const showZone = tasks.length > 0 || isDragging
@@ -209,7 +212,7 @@ function UndatedDropZone({ tasks, onUpdate, onDelete, onSelectTask, isDragging }
       </h3>
       {tasks.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          {tasks.map((task) => <DraggableCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} onSelectTask={onSelectTask} />)}
+          {tasks.map((task) => <DraggableCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} onSelectTask={onSelectTask} projectName={task.projectId ? projectMap?.get(task.projectId) : undefined} />)}
         </div>
       ) : isDragging ? (
         <div className="text-center py-4 text-xs rounded-lg" style={{ color: isOver ? 'var(--neon)' : 'var(--muted)', border: `1px dashed ${isOver ? 'var(--neon)' : 'var(--border)'}` }}>

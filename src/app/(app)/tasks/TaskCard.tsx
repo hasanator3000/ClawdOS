@@ -24,9 +24,10 @@ interface TaskCardProps {
   compact?: boolean
   showStatus?: boolean
   onSelect?: (taskId: string) => void
+  projectName?: string
 }
 
-export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compact = false, showStatus = false, onSelect }: TaskCardProps) {
+export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compact = false, showStatus = false, onSelect, projectName }: TaskCardProps) {
   const [isPending, startTransition] = useTransition()
   const isDone = task.status === 'done'
 
@@ -137,6 +138,11 @@ export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compa
                 style={{ color: STATUS_META[task.status].color, background: STATUS_META[task.status].bg }}
               >
                 {STATUS_META[task.status].label}
+              </span>
+            )}
+            {projectName && (
+              <span className="text-[10px] font-medium" style={{ color: 'var(--cyan)' }}>
+                {projectName}
               </span>
             )}
             {dateLabel && (
