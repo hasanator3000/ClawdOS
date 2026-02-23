@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, memo } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { normalizeDate, formatTaskDate, getDateColor } from '@/lib/date-utils'
 import { getTagColor } from '@/lib/tag-colors'
+import { recurrenceLabel } from '@/lib/recurrence'
 import { createTask, completeTask, reopenTask, deleteTask, updateTask, updateTaskPriority, fetchSubtasks } from './actions'
 import { DateTimePicker } from './DateTimePicker'
 
@@ -66,6 +67,12 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
         ? await reopenTask(task.id)
         : await completeTask(task.id)
       if (result.task) onUpdate(result.task)
+      // REC-02: notify TaskList about auto-created next occurrence
+      if ('nextTask' in result && result.nextTask) {
+        window.dispatchEvent(new CustomEvent('clawdos:task-refresh', {
+          detail: { actions: [{ action: 'task.create', task: result.nextTask }] },
+        }))
+      }
     })
   }
 
@@ -185,6 +192,20 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
             style={{ color: STATUS_META[task.status].color, background: STATUS_META[task.status].bg }}
           >
             {STATUS_META[task.status].label}
+          </span>
+        )}
+
+        {/* Recurrence indicator (REC-04) */}
+        {task.recurrenceRule && (
+          <span
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 flex items-center gap-1"
+            style={{ color: 'var(--cyan)', background: 'rgba(0, 188, 212, 0.12)' }}
+            title={recurrenceLabel(task.recurrenceRule)}
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {recurrenceLabel(task.recurrenceRule)}
           </span>
         )}
 

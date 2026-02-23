@@ -16,7 +16,9 @@ import {
   type CreateTaskParams,
   type UpdateTaskParams,
   type Task,
+  type RecurrenceRule,
 } from '@/lib/db/repositories/task.repository'
+import { computeNextDate } from '@/lib/recurrence'
 import {
   createProject as createProjectRepo,
   getProjectsByWorkspace,
@@ -97,23 +99,56 @@ export async function deleteTask(taskId: string) {
   }
 }
 
-export async function completeTask(taskId: string) {
+export async function completeTask(taskId: string): Promise<{ task?: Task; nextTask?: Task; error?: string }> {
   const session = await getSession()
   if (!session.userId) {
     return { error: 'Unauthorized' }
   }
 
   try {
-    const task = await withUser(session.userId, async (client) => {
-      return completeTaskRepo(client, taskId)
+    const result = await withUser(session.userId, async (client) => {
+      const task = await completeTaskRepo(client, taskId)
+      if (!task) return { task: null, nextTask: null }
+
+      // REC-02: Auto-create next occurrence for recurring tasks
+      let nextTask: Task | null = null
+      if (task.recurrenceRule) {
+        const nextDueDate = computeNextDate(task.dueDate, task.recurrenceRule)
+        // Compute shifted start date if task had a duration
+        let nextStartDate: string | undefined
+        if (task.startDate && task.dueDate) {
+          const oldStart = new Date(task.startDate + 'T00:00')
+          const oldDue = new Date(task.dueDate + 'T00:00')
+          const durationMs = oldDue.getTime() - oldStart.getTime()
+          const newDue = new Date(nextDueDate + 'T00:00')
+          const newStart = new Date(newDue.getTime() - durationMs)
+          nextStartDate = newStart.toISOString().slice(0, 10)
+        }
+
+        nextTask = await createTaskRepo(client, {
+          workspaceId: task.workspaceId,
+          title: task.title,
+          description: task.description || undefined,
+          priority: task.priority,
+          dueDate: nextDueDate,
+          dueTime: task.dueTime || undefined,
+          startDate: nextStartDate,
+          startTime: task.startTime || undefined,
+          tags: task.tags,
+          projectId: task.projectId || undefined,
+          recurrenceRule: task.recurrenceRule,
+        })
+      }
+
+      return { task, nextTask }
     })
 
-    if (!task) {
+    if (!result.task) {
       return { error: 'Task not found' }
     }
 
     revalidatePath('/tasks')
-    return { task }
+    return { task: result.task, nextTask: result.nextTask ?? undefined }
   } catch (error) {
     console.error('Complete task error:', error)
     return { error: 'Failed to complete task' }
@@ -289,6 +324,26 @@ export async function createProject(name: string): Promise<{ project?: Project; 
   } catch (error) {
     console.error('createProject error:', error)
     return { error: 'Failed to create project' }
+  }
+}
+
+export async function updateRecurrence(
+  taskId: string,
+  rule: RecurrenceRule | null
+): Promise<{ task?: Task; error?: string }> {
+  const session = await getSession()
+  if (!session.userId) return { error: 'Unauthorized' }
+
+  try {
+    const task = await withUser(session.userId, async (client) => {
+      return updateTaskRepo(client, taskId, { recurrenceRule: rule })
+    })
+    if (!task) return { error: 'Task not found' }
+    revalidatePath('/tasks')
+    return { task }
+  } catch (error) {
+    console.error('updateRecurrence error:', error)
+    return { error: 'Failed to update recurrence' }
   }
 }
 

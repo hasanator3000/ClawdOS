@@ -5,6 +5,8 @@ import type { Task } from '@/lib/db/repositories/task.repository'
 import type { Project } from '@/lib/db/repositories/project.repository'
 import { normalizeDate, formatShortDate } from '@/lib/date-utils'
 import { getTagColor } from '@/lib/tag-colors'
+import { recurrenceLabel } from '@/lib/recurrence'
+import type { RecurrenceRule, RecurrenceType } from '@/lib/db/repositories/task.repository'
 import {
   updateTask,
   completeTask,
@@ -15,6 +17,7 @@ import {
   fetchAllTags,
   fetchProjects,
   createProject as createProjectAction,
+  updateRecurrence,
 } from './actions'
 import { DateTimePicker } from './DateTimePicker'
 
@@ -57,6 +60,7 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
   const [tagsLoaded, setTagsLoaded] = useState(false)
   const [showProjectPicker, setShowProjectPicker] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
+  const [showRecurrencePicker, setShowRecurrencePicker] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
@@ -237,6 +241,17 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
         onProjectsChange?.()
         handleProjectChange(result.project.id)
       }
+    })
+  }
+
+  const handleRecurrenceChange = (rule: RecurrenceRule | null) => {
+    const updated = { ...task, recurrenceRule: rule }
+    onUpdate(updated)
+    setShowRecurrencePicker(false)
+    startTransition(async () => {
+      const result = await updateRecurrence(task.id, rule)
+      if (result.error) onUpdate(task)
+      else if (result.task) onUpdate(result.task)
     })
   }
 
@@ -490,6 +505,34 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
             </div>
           </Section>
 
+          {/* Recurrence (REC-01, REC-03) */}
+          <Section label="Repeat">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowRecurrencePicker(!showRecurrencePicker)}
+                className="px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-2"
+                style={{
+                  color: task.recurrenceRule ? 'var(--cyan)' : 'var(--muted)',
+                  background: task.recurrenceRule ? 'rgba(0, 188, 212, 0.1)' : 'var(--surface)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {task.recurrenceRule ? recurrenceLabel(task.recurrenceRule) : 'No repeat'}
+              </button>
+              {showRecurrencePicker && (
+                <RecurrencePicker
+                  current={task.recurrenceRule}
+                  onChange={handleRecurrenceChange}
+                  onClose={() => setShowRecurrencePicker(false)}
+                />
+              )}
+            </div>
+          </Section>
+
           {/* Description */}
           <Section label="Description">
             {editingField === 'description' ? (
@@ -578,6 +621,106 @@ function Section({ label, children }: { label: string; children: React.ReactNode
     <div>
       <div className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>{label}</div>
       {children}
+    </div>
+  )
+}
+
+const RECURRENCE_PRESETS: Array<{ label: string; rule: RecurrenceRule }> = [
+  { label: 'Daily', rule: { type: 'daily', interval: 1 } },
+  { label: 'Weekly', rule: { type: 'weekly', interval: 1 } },
+  { label: 'Bi-weekly', rule: { type: 'weekly', interval: 2 } },
+  { label: 'Monthly', rule: { type: 'monthly', interval: 1 } },
+]
+
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function RecurrencePicker({
+  current,
+  onChange,
+  onClose,
+}: {
+  current: RecurrenceRule | null
+  onChange: (rule: RecurrenceRule | null) => void
+  onClose: () => void
+}) {
+  const [customWeekdays, setCustomWeekdays] = useState<number[]>(
+    current?.type === 'custom' ? current.weekdays || [] : []
+  )
+
+  const toggleWeekday = (day: number) => {
+    setCustomWeekdays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b)
+    )
+  }
+
+  const applyCustom = () => {
+    if (customWeekdays.length === 0) return
+    onChange({ type: 'custom', interval: 1, weekdays: customWeekdays })
+  }
+
+  return (
+    <div
+      className="absolute left-0 top-full mt-1 min-w-[220px] rounded-lg shadow-lg z-20 overflow-hidden"
+      style={{ background: 'var(--bg)', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}
+    >
+      {/* Presets */}
+      {RECURRENCE_PRESETS.map((preset) => {
+        const isActive = current?.type === preset.rule.type && current?.interval === preset.rule.interval
+        return (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => onChange(preset.rule)}
+            className={`w-full px-3 py-2 text-left text-sm transition-colors ${isActive ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`}
+            style={{ color: isActive ? 'var(--cyan)' : 'var(--fg)' }}
+          >
+            {preset.label}
+          </button>
+        )
+      })}
+
+      {/* Custom weekdays */}
+      <div className="px-3 py-2" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="text-[10px] font-mono uppercase mb-1.5" style={{ color: 'var(--muted)' }}>Custom days</div>
+        <div className="flex gap-1 mb-1.5">
+          {WEEKDAY_NAMES.map((name, i) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => toggleWeekday(i)}
+              className="w-7 h-7 rounded text-[10px] font-medium transition-colors"
+              style={{
+                background: customWeekdays.includes(i) ? 'var(--cyan)' : 'var(--surface)',
+                color: customWeekdays.includes(i) ? 'var(--bg)' : 'var(--muted)',
+              }}
+            >
+              {name.slice(0, 2)}
+            </button>
+          ))}
+        </div>
+        {customWeekdays.length > 0 && (
+          <button
+            type="button"
+            onClick={applyCustom}
+            className="text-xs font-medium transition-colors"
+            style={{ color: 'var(--cyan)' }}
+          >
+            Apply custom
+          </button>
+        )}
+      </div>
+
+      {/* Remove */}
+      {current && (
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          className="w-full px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--surface)]"
+          style={{ color: 'var(--red)', borderTop: '1px solid var(--border)' }}
+        >
+          Remove recurrence
+        </button>
+      )}
     </div>
   )
 }

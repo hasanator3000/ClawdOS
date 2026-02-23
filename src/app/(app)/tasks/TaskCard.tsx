@@ -4,6 +4,7 @@ import { memo, useTransition } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { normalizeDate, formatShortDate, getDateColor } from '@/lib/date-utils'
 import { getTagColor } from '@/lib/tag-colors'
+import { recurrenceLabel } from '@/lib/recurrence'
 import { completeTask, reopenTask } from './actions'
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -35,6 +36,12 @@ export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compa
     startTransition(async () => {
       const result = isDone ? await reopenTask(task.id) : await completeTask(task.id)
       if (result.task) onUpdate(result.task)
+      // REC-02: notify TaskList about auto-created next occurrence
+      if ('nextTask' in result && result.nextTask) {
+        window.dispatchEvent(new CustomEvent('clawdos:task-refresh', {
+          detail: { actions: [{ action: 'task.create', task: result.nextTask }] },
+        }))
+      }
     })
   }
 
@@ -80,6 +87,13 @@ export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compa
         <span className={`truncate ${isDone ? 'line-through text-[var(--muted)]' : ''}`} style={{ color: isDone ? undefined : 'var(--fg)' }}>
           {task.title}
         </span>
+        {task.recurrenceRule && (
+          <span className="flex-shrink-0" title={recurrenceLabel(task.recurrenceRule)}>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="var(--cyan)">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </span>
+        )}
         {showStatus && STATUS_META[task.status] && (
           <span
             className="flex-shrink-0 ml-auto text-[9px] font-medium px-1 rounded"
@@ -153,6 +167,14 @@ export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compa
             {task.dueTime && (
               <span className="text-[10px]" style={{ color: 'var(--muted)' }}>
                 {task.dueTime}
+              </span>
+            )}
+            {task.recurrenceRule && (
+              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--cyan)' }} title={recurrenceLabel(task.recurrenceRule)}>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {recurrenceLabel(task.recurrenceRule)}
               </span>
             )}
           </div>

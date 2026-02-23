@@ -1,5 +1,13 @@
 import type { PoolClient } from 'pg'
 
+export type RecurrenceType = 'daily' | 'weekly' | 'monthly' | 'custom'
+
+export interface RecurrenceRule {
+  type: RecurrenceType
+  interval: number       // every N (days/weeks/months)
+  weekdays?: number[]    // for 'custom': 0=Sun, 1=Mon … 6=Sat
+}
+
 export interface Task {
   id: string
   workspaceId: string
@@ -15,6 +23,7 @@ export interface Task {
   tags: string[]
   projectId: string | null
   assigneeId: string | null
+  recurrenceRule: RecurrenceRule | null
   createdAt: Date
   updatedAt: Date
   completedAt: Date | null
@@ -35,6 +44,7 @@ export interface CreateTaskParams {
   parentId?: string
   projectId?: string
   assigneeId?: string
+  recurrenceRule?: RecurrenceRule | null
 }
 
 export interface UpdateTaskParams {
@@ -50,6 +60,7 @@ export interface UpdateTaskParams {
   parentId?: string | null
   projectId?: string | null
   assigneeId?: string | null
+  recurrenceRule?: RecurrenceRule | null
 }
 
 // Shared SELECT column list
@@ -59,6 +70,7 @@ const TASK_COLS = `
   start_date as "startDate", start_time as "startTime",
   due_date as "dueDate", due_time as "dueTime",
   tags, project_id as "projectId", assignee_id as "assigneeId",
+  recurrence_rule as "recurrenceRule",
   created_at as "createdAt", updated_at as "updatedAt",
   completed_at as "completedAt", created_by as "createdBy"`
 
@@ -66,21 +78,22 @@ export async function createTask(client: PoolClient, params: CreateTaskParams): 
   const {
     workspaceId, title, description, status = 'todo', priority = 0,
     startDate, startTime, dueDate, dueTime,
-    tags = [], parentId, projectId, assigneeId,
+    tags = [], parentId, projectId, assigneeId, recurrenceRule,
   } = params
 
   const result = await client.query(
     `insert into core.task (
        workspace_id, title, description, status, priority,
        start_date, start_time, due_date, due_time,
-       tags, parent_id, project_id, assignee_id, created_by
+       tags, parent_id, project_id, assignee_id, recurrence_rule, created_by
      )
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, core.current_user_id())
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, core.current_user_id())
      returning ${TASK_COLS}`,
     [
       workspaceId, title, description || null, status, priority,
       startDate || null, startTime || null, dueDate || null, dueTime || null,
       tags, parentId || null, projectId || null, assigneeId || null,
+      recurrenceRule ? JSON.stringify(recurrenceRule) : null,
     ]
   )
 
@@ -148,6 +161,10 @@ export async function updateTask(
   if (params.assigneeId !== undefined) {
     updates.push(`assignee_id = $${paramIndex++}`)
     values.push(params.assigneeId)
+  }
+  if (params.recurrenceRule !== undefined) {
+    updates.push(`recurrence_rule = $${paramIndex++}`)
+    values.push(params.recurrenceRule ? JSON.stringify(params.recurrenceRule) : null)
   }
 
   values.push(taskId)
