@@ -93,7 +93,11 @@ export function TaskList({ initialTasks }: TaskListProps) {
       if (task.priority !== filterState.priority) return false
     }
     if (searchQuery) {
-      if (!task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      const q = searchQuery.toLowerCase()
+      const titleMatch = task.title.toLowerCase().includes(q)
+      const descMatch = task.description?.toLowerCase().includes(q) ?? false
+      const subtaskMatch = tasks.some((t) => t.parentId === task.id && t.title.toLowerCase().includes(q))
+      if (!titleMatch && !descMatch && !subtaskMatch) return false
     }
     if (filterState.tags.length > 0) {
       if (!filterState.tags.some((tag) => task.tags.includes(tag))) return false

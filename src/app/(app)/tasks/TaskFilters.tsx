@@ -239,7 +239,7 @@ export function TaskFilters({
             type="text"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search tasks by title..."
+            placeholder="Search tasks..."
             className="w-full px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-colors pr-10"
           />
 
