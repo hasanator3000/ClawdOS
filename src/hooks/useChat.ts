@@ -2,31 +2,17 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import type { ChatMessage, UseChatOptions } from './chat-types'
+import { MAX_MESSAGES } from './chat-types'
+import {
+  createDisplayFilter,
+  parseSSEBuffer,
+  parseChatEvent,
+  dispatchChatEvent,
+} from './chat-stream-parser'
 
-// Prevent unbounded memory growth - keep only recent messages
-const MAX_MESSAGES = 100
-
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  isStreaming?: boolean
-  toolCalls?: {
-    id: string
-    name: string
-    status: 'pending' | 'running' | 'success' | 'error'
-    input?: Record<string, unknown>
-    output?: Record<string, unknown>
-    error?: string
-  }[]
-}
-
-interface UseChatOptions {
-  workspaceId: string
-  workspaceName: string
-  /** Current route pathname (e.g. "/tasks") */
-  currentPage: string
-}
+// Re-export types for backwards compatibility
+export type { ChatMessage } from './chat-types'
 
 export function useChat(options: UseChatOptions) {
   const router = useRouter()
@@ -65,7 +51,6 @@ export function useChat(options: UseChatOptions) {
     async (content: string) => {
       if (!content.trim()) return
 
-      // If a request is in-flight, cancel it so the UI stays responsive.
       if (isLoading) {
         abortControllerRef.current?.abort()
       }
@@ -74,31 +59,18 @@ export function useChat(options: UseChatOptions) {
 
       setError(null)
 
-      // Add user message
       const userMessageId = `user-${Date.now()}`
-      const userMessage: ChatMessage = {
-        id: userMessageId,
-        role: 'user',
-        content: content.trim(),
-      }
+      const userMessage: ChatMessage = { id: userMessageId, role: 'user', content: content.trim() }
 
-      // Add placeholder assistant message
       const assistantMessageId = `assistant-${Date.now()}`
-      const assistantMessage: ChatMessage = {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '',
-        isStreaming: true,
-      }
+      const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'assistant', content: '', isStreaming: true }
 
       setMessages((prev) => {
         const updated = [...prev, userMessage, assistantMessage]
-        // Keep only recent messages to prevent memory bloat
         return updated.length > MAX_MESSAGES ? updated.slice(-MAX_MESSAGES) : updated
       })
       setIsLoading(true)
 
-      // All messages go to the server — command registry handles fast-paths there.
       abortControllerRef.current = new AbortController()
 
       try {
@@ -118,7 +90,6 @@ export function useChat(options: UseChatOptions) {
         })
 
         if (!response.ok) {
-          // Best-effort error parsing; upstream may return plain text.
           const text = await response.text().catch(() => '')
           try {
             const j = JSON.parse(text) as { error?: string }
@@ -129,127 +100,41 @@ export function useChat(options: UseChatOptions) {
         }
 
         const reader = response.body?.getReader()
-        if (!reader) {
-          throw new Error('No response stream')
-        }
+        if (!reader) throw new Error('No response stream')
         readerRef.current = reader
 
         const decoder = new TextDecoder()
         let buffer = ''
-
-        // Server can emit structured events during streaming.
-        // Navigation must be deferred until the stream ends, otherwise the page transition
-        // will tear down this request and we may miss follow-up events (e.g. task.refresh).
         let pendingNavigation: string | null = null
         let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
         const scheduleRefresh = () => {
           if (refreshTimer) return
-          refreshTimer = setTimeout(() => {
-            refreshTimer = null
-            router.refresh()
-          }, 50)
+          refreshTimer = setTimeout(() => { refreshTimer = null; router.refresh() }, 50)
         }
 
-        let displayBuffer = '' // Buffer for incomplete tags during streaming
-        let inClawdosBlock = false
+        const filter = createDisplayFilter()
 
-        const appendAssistant = (delta: string) => {
-          if (requestSeq !== requestSeqRef.current) return
-          if (!delta) return
-
-          // Add to buffer for tag-aware filtering (server filters most, this is fallback)
-          displayBuffer += delta
-          let visibleDelta = ''
-
-          // Process buffer with tag detection (handles split tags across chunks)
-          while (displayBuffer.length > 0) {
-            if (!inClawdosBlock) {
-              // Look for opening tag
-              const openIdx = displayBuffer.indexOf('<clawdos>')
-
-              if (openIdx === -1) {
-                // No complete opening tag found
-                // Check if buffer ends with partial tag start to avoid displaying incomplete tags
-                let keepLen = 0
-                for (let len = Math.min(7, displayBuffer.length); len > 0; len--) {
-                  if ('<clawdos>'.startsWith(displayBuffer.slice(-len))) {
-                    keepLen = len
-                    break
-                  }
-                }
-
-                if (keepLen > 0) {
-                  // Keep potential tag start in buffer
-                  visibleDelta += displayBuffer.slice(0, -keepLen)
-                  displayBuffer = displayBuffer.slice(-keepLen)
-                  break
-                } else {
-                  // No potential tag, flush everything
-                  visibleDelta += displayBuffer
-                  displayBuffer = ''
-                  break
-                }
-              } else {
-                // Found opening tag
-                visibleDelta += displayBuffer.slice(0, openIdx)
-                displayBuffer = displayBuffer.slice(openIdx + 8) // Skip '<clawdos>'
-                inClawdosBlock = true
-              }
-            } else {
-              // Inside block, look for closing tag
-              const closeIdx = displayBuffer.indexOf('</clawdos>')
-
-              if (closeIdx === -1) {
-                // No complete closing tag found
-                // Check if buffer ends with partial closing tag start
-                let keepLen = 0
-                for (let len = Math.min(8, displayBuffer.length); len > 0; len--) {
-                  if ('</clawdos>'.startsWith(displayBuffer.slice(-len))) {
-                    keepLen = len
-                    break
-                  }
-                }
-
-                if (keepLen > 0) {
-                  // Keep potential tag start in buffer
-                  displayBuffer = displayBuffer.slice(-keepLen)
-                  break
-                } else {
-                  // No potential closing tag, discard all (we're inside the block)
-                  displayBuffer = ''
-                  break
-                }
-              } else {
-                // Found closing tag
-                displayBuffer = displayBuffer.slice(closeIdx + 9) // Skip '</clawdos>'
-                inClawdosBlock = false
-              }
-            }
-          }
-
-          // Update visible message content (only non-<clawdos> text)
-          if (visibleDelta) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId ? { ...msg, content: msg.content + visibleDelta } : msg
-              )
+        const appendVisible = (visibleDelta: string) => {
+          if (requestSeq !== requestSeqRef.current || !visibleDelta) return
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId ? { ...msg, content: msg.content + visibleDelta } : msg
             )
-          }
+          )
         }
 
         const finalizeAssistant = () => {
           if (requestSeq !== requestSeqRef.current) return
-          // Flush any remaining displayBuffer (if stream ended mid-tag, show what we have)
-          if (!inClawdosBlock && displayBuffer) {
+          const flushed = filter.flush()
+          if (flushed) {
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === assistantMessageId
-                  ? { ...msg, content: msg.content + displayBuffer, isStreaming: false }
+                  ? { ...msg, content: msg.content + flushed, isStreaming: false }
                   : msg
               )
             )
-            displayBuffer = ''
           } else {
             setMessages((prev) =>
               prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg))
@@ -257,150 +142,53 @@ export function useChat(options: UseChatOptions) {
           }
         }
 
+        const dispatchDeps = {
+          currentPage: optionsRef.current.currentPage,
+          scheduleRefresh,
+          setPendingNavigation: (target: string) => { pendingNavigation = target },
+        }
+
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
 
           buffer += decoder.decode(value, { stream: true })
+          const parsed = parseSSEBuffer(buffer)
+          buffer = parsed.remainder
 
-          // SSE frames separated by blank line
-          const frames = buffer.split('\n\n')
-          buffer = frames.pop() || ''
+          for (const data of parsed.frames) {
+            const event = parseChatEvent(data)
 
-          for (const frame of frames) {
-            const dataLines = frame
-              .split('\n')
-              .filter((l) => l.startsWith('data: '))
-              .map((l) => l.slice(6).trim())
-
-            for (const data of dataLines) {
-              if (!data) continue
-              if (data === '[DONE]') {
-                finalizeAssistant()
-                continue
-              }
-
-              let evt: any
-              try {
-                evt = JSON.parse(data)
-              } catch {
-                continue
-              }
-
-              // Track conversationId from server
-              if (evt?.type === 'conversationId' && evt?.id) {
-                setConversationId(String(evt.id))
-                continue
-              }
-
-              // Handle navigation events from server
-              if (evt?.type === 'navigation' && evt?.target) {
-                const target = String(evt.target)
-                pendingNavigation = target
-                continue
-              }
-
-              // Handle tasks filter events
-              if (evt?.type === 'tasks.filter' && evt?.value) {
-                const value = String(evt.value)
-                window.dispatchEvent(new CustomEvent('clawdos:tasks-filter', { detail: { value } }))
-                // If we're not on /tasks, navigate there.
-                if (optionsRef.current.currentPage !== '/tasks') {
-                  pendingNavigation = '/tasks'
-                }
-                continue
-              }
-
-              // Handle task refresh events
-              if (evt?.type === 'task.refresh') {
-                // Dispatch custom event for client lists (TaskList) to patch state instantly
-                window.dispatchEvent(
-                  new CustomEvent('clawdos:task-refresh', {
-                    detail: { actions: evt.actions },
-                  })
-                )
-
-                // Also refresh server components (sidebar badges, today widgets, etc.)
-                // Debounced to avoid over-refreshing while streaming.
-                scheduleRefresh()
-                continue
-              }
-
-              // Handle news refresh events
-              if (evt?.type === 'news.refresh') {
-                window.dispatchEvent(
-                  new CustomEvent('clawdos:news-refresh', {
-                    detail: { actions: evt.actions },
-                  })
-                )
-                scheduleRefresh()
-                continue
-              }
-
-              // Handle news sources panel open
-              if (evt?.type === 'news.sources.open') {
-                window.dispatchEvent(new CustomEvent('clawdos:news-sources-open'))
-                if (optionsRef.current.currentPage !== '/news') {
-                  pendingNavigation = '/news'
-                }
-                continue
-              }
-
-              // Handle news tab switch events
-              if (evt?.type === 'news.tab.switch') {
-                window.dispatchEvent(
-                  new CustomEvent('clawdos:news-tab-switch', {
-                    detail: {
-                      tabId: evt.tabId ?? undefined,
-                      tabName: evt.tabName ? String(evt.tabName) : undefined,
-                    },
-                  })
-                )
-                continue
-              }
-
-              // Handle workspace switch events
-              if (evt?.type === 'workspace.switch' && evt?.workspaceId) {
-                window.dispatchEvent(
-                  new CustomEvent('clawdos:workspace-switch', {
-                    detail: { workspaceId: String(evt.workspaceId) },
-                  })
-                )
-                scheduleRefresh()
-                continue
-              }
-
-              // OpenAI chat.completions streaming shape
-              const choice = evt?.choices?.[0]
-              const delta = choice?.delta
-
-              // Handle text content (already filtered by server)
-              if (typeof delta?.content === 'string') {
-                appendAssistant(delta.content)
-              }
+            if (event.type === 'done') {
+              finalizeAssistant()
+              continue
             }
+            if (event.type === 'conversationId') {
+              setConversationId(event.id)
+              continue
+            }
+            if (event.type === 'delta') {
+              appendVisible(filter.feed(event.content))
+              continue
+            }
+
+            // Side-effect events (navigation, refresh, etc.)
+            dispatchDeps.currentPage = optionsRef.current.currentPage
+            dispatchChatEvent(event, dispatchDeps)
           }
         }
 
-        // Finalize message
         finalizeAssistant()
 
-        // Execute deferred navigation after the stream ends, so we don't miss events.
         if (pendingNavigation) {
           router.push(pendingNavigation)
-          // Ensure server-rendered parts on the destination reflect the latest data.
           scheduleRefresh()
         }
       } catch (err) {
-        // Always cleanup stream reader to prevent connection leaks
         readerRef.current?.cancel().catch(() => {})
         readerRef.current = null
 
-        if (err instanceof Error && err.name === 'AbortError') {
-          // Request was cancelled
-          return
-        }
-
+        if (err instanceof Error && err.name === 'AbortError') return
         if (requestSeq !== requestSeqRef.current) return
 
         const errorMessage = err instanceof Error ? err.message : 'Failed to send message'
@@ -409,7 +197,6 @@ export function useChat(options: UseChatOptions) {
           prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg))
         )
       } finally {
-        // Ensure reader is always cleaned up
         readerRef.current?.cancel().catch(() => {})
         readerRef.current = null
 
@@ -424,13 +211,11 @@ export function useChat(options: UseChatOptions) {
 
   const stopGeneration = useCallback(() => {
     abortControllerRef.current?.abort()
-    // Invalidate current stream updates
     requestSeqRef.current += 1
     setIsLoading(false)
   }, [])
 
   const clearMessages = useCallback(() => {
-    // Archive conversation in DB before clearing local state
     if (conversationId) {
       fetch('/api/ai/chat', {
         method: 'DELETE',
@@ -444,13 +229,5 @@ export function useChat(options: UseChatOptions) {
     loadedWorkspaceRef.current = null
   }, [conversationId])
 
-  return {
-    messages,
-    isLoading,
-    error,
-    sendMessage,
-    stopGeneration,
-    clearMessages,
-    conversationId,
-  }
+  return { messages, isLoading, error, sendMessage, stopGeneration, clearMessages, conversationId }
 }
