@@ -3,6 +3,7 @@
 import { memo, useTransition } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { normalizeDate, formatShortDate, getDateColor } from '@/lib/date-utils'
+import { getTagColor } from '@/lib/tag-colors'
 import { completeTask, reopenTask } from './actions'
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -149,6 +150,18 @@ export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compa
               </span>
             )}
           </div>
+          {task.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {task.tags.map((tag) => {
+                const tc = getTagColor(tag)
+                return (
+                  <span key={tag} className="text-[9px] font-medium px-1.5 py-px rounded-full" style={{ color: tc.color, background: tc.bg }}>
+                    {tag}
+                  </span>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Delete (hover only) */}

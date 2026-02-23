@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { getTagColor } from '@/lib/tag-colors'
 
 export type FilterStatus = 'all' | 'active' | 'completed'
 
 export interface TaskFilterState {
   status: FilterStatus
   priority: number | 'all'
+  tags: string[]
 }
 
 interface TaskFiltersProps {
@@ -15,6 +17,7 @@ interface TaskFiltersProps {
   activeTasks: number
   completedTasks: number
   totalTasks: number
+  allTags?: string[]
 }
 
 const PRIORITY_OPTIONS: Array<{ value: number | 'all'; label: string; color?: string }> = [
@@ -32,13 +35,16 @@ export function TaskFilters({
   activeTasks,
   completedTasks,
   totalTasks,
+  allTags = [],
 }: TaskFiltersProps) {
   const [filterState, setFilterState] = useState<TaskFilterState>({
     status: 'all',
     priority: 'all',
+    tags: [],
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [isPriorityOpen, setIsPriorityOpen] = useState(false)
+  const [isTagsOpen, setIsTagsOpen] = useState(false)
 
   const handleStatusChange = (status: FilterStatus) => {
     const newState = { ...filterState, status }
@@ -56,6 +62,22 @@ export function TaskFilters({
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
     onSearchChange(query)
+  }
+
+  const handleTagToggle = (tag: string) => {
+    const tags = filterState.tags.includes(tag)
+      ? filterState.tags.filter((t) => t !== tag)
+      : [...filterState.tags, tag]
+    const newState = { ...filterState, tags }
+    setFilterState(newState)
+    onFilterChange(newState)
+  }
+
+  const handleClearTags = () => {
+    const newState = { ...filterState, tags: [] }
+    setFilterState(newState)
+    onFilterChange(newState)
+    setIsTagsOpen(false)
   }
 
   const handleClearSearch = () => {
@@ -133,22 +155,83 @@ export function TaskFilters({
               <div className="fixed inset-0 z-10" onClick={() => setIsPriorityOpen(false)} />
 
               {/* Dropdown options */}
-              <div className="absolute top-full left-0 mt-1 w-full bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg z-20 overflow-hidden">
+              <div
+                className="absolute top-full left-0 mt-1 w-full rounded-lg shadow-lg z-20 overflow-hidden backdrop-blur-xl"
+                style={{
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                }}
+              >
                 {PRIORITY_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     type="button"
                     onClick={() => handlePriorityChange(option.value)}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-[var(--neon-dim)] transition-colors"
-                    style={{ color: option.color }}
+                    className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center gap-2.5 ${
+                      filterState.priority === option.value
+                        ? 'bg-[var(--neon-dim)]'
+                        : 'hover:bg-[var(--surface)]'
+                    }`}
                   >
-                    {option.label}
+                    {option.color && (
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: option.color }}
+                      />
+                    )}
+                    <span style={{ color: option.color || 'var(--fg)' }}>
+                      {option.label}
+                    </span>
                   </button>
                 ))}
               </div>
             </>
           )}
         </div>
+
+        {/* Tags filter dropdown */}
+        {allTags.length > 0 && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsTagsOpen(!isTagsOpen)}
+              className="px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--neon-dim)] transition-colors text-sm flex items-center gap-2 min-w-[120px] justify-between"
+            >
+              <span style={{ color: filterState.tags.length > 0 ? 'var(--neon)' : 'var(--fg)' }}>
+                {filterState.tags.length > 0 ? `Tags (${filterState.tags.length})` : 'Tags'}
+              </span>
+              <svg className={`w-4 h-4 transition-transform ${isTagsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isTagsOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsTagsOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 min-w-[180px] rounded-lg shadow-lg z-20 overflow-hidden backdrop-blur-xl" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  {allTags.map((tag) => {
+                    const tc = getTagColor(tag)
+                    const isActive = filterState.tags.includes(tag)
+                    return (
+                      <button key={tag} type="button" onClick={() => handleTagToggle(tag)} className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center gap-2.5 ${isActive ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`}>
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tc.color }} />
+                        <span style={{ color: tc.color }}>{tag}</span>
+                        {isActive && (
+                          <svg className="w-3.5 h-3.5 ml-auto" fill="none" viewBox="0 0 24 24" stroke="var(--neon)"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        )}
+                      </button>
+                    )
+                  })}
+                  {filterState.tags.length > 0 && (
+                    <button type="button" onClick={handleClearTags} className="w-full px-4 py-2 text-left text-xs transition-colors hover:bg-[var(--surface)]" style={{ color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
+                      Clear tags
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Search input */}
         <div className="flex-1 relative">

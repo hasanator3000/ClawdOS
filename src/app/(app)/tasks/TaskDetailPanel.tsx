@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { normalizeDate, formatShortDate } from '@/lib/date-utils'
+import { getTagColor } from '@/lib/tag-colors'
 import {
   updateTask,
   completeTask,
@@ -10,6 +11,7 @@ import {
   createTask,
   deleteTask,
   fetchSubtasks,
+  fetchAllTags,
 } from './actions'
 import { DateTimePicker } from './DateTimePicker'
 
@@ -45,6 +47,9 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
   const [subtasks, setSubtasks] = useState<Task[]>([])
   const [subtasksLoaded, setSubtasksLoaded] = useState(false)
   const [newSubtask, setNewSubtask] = useState('')
+  const [newTag, setNewTag] = useState('')
+  const [allTags, setAllTags] = useState<string[]>([])
+  const [tagsLoaded, setTagsLoaded] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
@@ -62,7 +67,17 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
     setShowDatePicker(false)
     setSubtasksLoaded(false)
     setSubtasks([])
+    setNewTag('')
   }, [task.id])
+
+  // Fetch all workspace tags for suggestions
+  useEffect(() => {
+    if (tagsLoaded) return
+    setTagsLoaded(true)
+    fetchAllTags().then((res) => {
+      if (res.tags) setAllTags(res.tags)
+    })
+  }, [tagsLoaded])
 
   // Fetch subtasks on open
   useEffect(() => {
@@ -163,6 +178,32 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
         startDate: startDate || null,
         startTime: startTime || null,
       })
+      if (result.error) onUpdate(task)
+      else if (result.task) onUpdate(result.task)
+    })
+  }
+
+  const handleAddTag = (tag: string) => {
+    const trimmed = tag.trim().toLowerCase()
+    if (!trimmed || task.tags.includes(trimmed)) { setNewTag(''); return }
+    const newTags = [...task.tags, trimmed]
+    const updated = { ...task, tags: newTags }
+    onUpdate(updated)
+    setNewTag('')
+    if (!allTags.includes(trimmed)) setAllTags((prev) => [...prev, trimmed].sort())
+    startTransition(async () => {
+      const result = await updateTask(task.id, { tags: newTags })
+      if (result.error) onUpdate(task)
+      else if (result.task) onUpdate(result.task)
+    })
+  }
+
+  const handleRemoveTag = (tag: string) => {
+    const newTags = task.tags.filter((t) => t !== tag)
+    const updated = { ...task, tags: newTags }
+    onUpdate(updated)
+    startTransition(async () => {
+      const result = await updateTask(task.id, { tags: newTags })
       if (result.error) onUpdate(task)
       else if (result.task) onUpdate(result.task)
     })
@@ -341,6 +382,43 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
                   onSave={handleDateSave}
                   onCancel={() => setShowDatePicker(false)}
                 />
+              )}
+            </div>
+          </Section>
+
+          {/* Tags */}
+          <Section label="Tags">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {task.tags.map((tag) => {
+                const tc = getTagColor(tag)
+                return (
+                  <span key={tag} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full" style={{ color: tc.color, background: tc.bg }}>
+                    {tag}
+                    <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:opacity-60 transition-opacity">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(newTag) } }}
+                placeholder="Add tag..."
+                className="w-full px-3 py-1.5 rounded-lg text-sm bg-transparent outline-none focus:border-[var(--neon)] transition-colors"
+                style={{ border: '1px solid var(--border)', color: 'var(--fg)' }}
+              />
+              {newTag && allTags.filter((t) => t.includes(newTag.toLowerCase()) && !task.tags.includes(t)).length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-10 max-h-32 overflow-y-auto" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  {allTags.filter((t) => t.includes(newTag.toLowerCase()) && !task.tags.includes(t)).slice(0, 6).map((tag) => (
+                    <button key={tag} type="button" onClick={() => handleAddTag(tag)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-[var(--surface)] transition-colors" style={{ color: 'var(--fg)' }}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </Section>

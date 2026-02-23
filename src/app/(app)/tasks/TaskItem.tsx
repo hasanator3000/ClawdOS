@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, memo } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import { normalizeDate, formatTaskDate, getDateColor } from '@/lib/date-utils'
+import { getTagColor } from '@/lib/tag-colors'
 import { createTask, completeTask, reopenTask, deleteTask, updateTask, updateTaskPriority, fetchSubtasks } from './actions'
 import { DateTimePicker } from './DateTimePicker'
 
@@ -158,6 +159,18 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
           </div>
           {task.description && (
             <div className="text-sm text-[var(--muted)] truncate">{task.description}</div>
+          )}
+          {task.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {task.tags.map((tag) => {
+                const tc = getTagColor(tag)
+                return (
+                  <span key={tag} className="text-[9px] font-medium px-1.5 py-px rounded-full" style={{ color: tc.color, background: tc.bg }}>
+                    {tag}
+                  </span>
+                )
+              })}
+            </div>
           )}
         </div>
 

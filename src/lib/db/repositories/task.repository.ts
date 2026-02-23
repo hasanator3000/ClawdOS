@@ -8,6 +8,8 @@ export interface Task {
   description: string | null
   status: 'todo' | 'in_progress' | 'done' | 'cancelled'
   priority: number
+  startDate: string | null
+  startTime: string | null
   dueDate: string | null
   dueTime: string | null
   tags: string[]
@@ -25,6 +27,8 @@ export interface CreateTaskParams {
   description?: string
   status?: 'todo' | 'in_progress' | 'done' | 'cancelled'
   priority?: number
+  startDate?: string
+  startTime?: string
   dueDate?: string
   dueTime?: string
   tags?: string[]
@@ -38,6 +42,8 @@ export interface UpdateTaskParams {
   description?: string
   status?: 'todo' | 'in_progress' | 'done' | 'cancelled'
   priority?: number
+  startDate?: string | null
+  startTime?: string | null
   dueDate?: string | null
   dueTime?: string | null
   tags?: string[]
@@ -46,56 +52,35 @@ export interface UpdateTaskParams {
   assigneeId?: string | null
 }
 
+// Shared SELECT column list
+const TASK_COLS = `
+  id, workspace_id as "workspaceId", parent_id as "parentId",
+  title, description, status, priority,
+  start_date as "startDate", start_time as "startTime",
+  due_date as "dueDate", due_time as "dueTime",
+  tags, project_id as "projectId", assignee_id as "assigneeId",
+  created_at as "createdAt", updated_at as "updatedAt",
+  completed_at as "completedAt", created_by as "createdBy"`
+
 export async function createTask(client: PoolClient, params: CreateTaskParams): Promise<Task> {
   const {
-    workspaceId,
-    title,
-    description,
-    status = 'todo',
-    priority = 0,
-    dueDate,
-    dueTime,
-    tags = [],
-    parentId,
-    projectId,
-    assigneeId,
+    workspaceId, title, description, status = 'todo', priority = 0,
+    startDate, startTime, dueDate, dueTime,
+    tags = [], parentId, projectId, assigneeId,
   } = params
 
   const result = await client.query(
     `insert into core.task (
        workspace_id, title, description, status, priority,
-       due_date, due_time, tags, parent_id, project_id, assignee_id, created_by
+       start_date, start_time, due_date, due_time,
+       tags, parent_id, project_id, assignee_id, created_by
      )
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, core.current_user_id())
-     returning
-       id,
-       workspace_id as "workspaceId",
-       parent_id as "parentId",
-       title,
-       description,
-       status,
-       priority,
-       due_date as "dueDate",
-       due_time as "dueTime",
-       tags,
-       project_id as "projectId",
-       assignee_id as "assigneeId",
-       created_at as "createdAt",
-       updated_at as "updatedAt",
-       completed_at as "completedAt",
-       created_by as "createdBy"`,
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, core.current_user_id())
+     returning ${TASK_COLS}`,
     [
-      workspaceId,
-      title,
-      description || null,
-      status,
-      priority,
-      dueDate || null,
-      dueTime || null,
-      tags,
-      parentId || null,
-      projectId || null,
-      assigneeId || null,
+      workspaceId, title, description || null, status, priority,
+      startDate || null, startTime || null, dueDate || null, dueTime || null,
+      tags, parentId || null, projectId || null, assigneeId || null,
     ]
   )
 
@@ -122,7 +107,6 @@ export async function updateTask(
   if (params.status !== undefined) {
     updates.push(`status = $${paramIndex++}`)
     values.push(params.status)
-    // Set completed_at when task is done
     if (params.status === 'done') {
       updates.push('completed_at = now()')
     } else if (params.status === 'todo' || params.status === 'in_progress') {
@@ -132,6 +116,14 @@ export async function updateTask(
   if (params.priority !== undefined) {
     updates.push(`priority = $${paramIndex++}`)
     values.push(params.priority)
+  }
+  if (params.startDate !== undefined) {
+    updates.push(`start_date = $${paramIndex++}`)
+    values.push(params.startDate)
+  }
+  if (params.startTime !== undefined) {
+    updates.push(`start_time = $${paramIndex++}`)
+    values.push(params.startTime)
   }
   if (params.dueDate !== undefined) {
     updates.push(`due_date = $${paramIndex++}`)
@@ -161,26 +153,8 @@ export async function updateTask(
   values.push(taskId)
 
   const result = await client.query(
-    `update core.task
-     set ${updates.join(', ')}
-     where id = $${paramIndex}
-     returning
-       id,
-       workspace_id as "workspaceId",
-       parent_id as "parentId",
-       title,
-       description,
-       status,
-       priority,
-       due_date as "dueDate",
-       due_time as "dueTime",
-       tags,
-       project_id as "projectId",
-       assignee_id as "assigneeId",
-       created_at as "createdAt",
-       updated_at as "updatedAt",
-       completed_at as "completedAt",
-       created_by as "createdBy"`,
+    `update core.task set ${updates.join(', ')} where id = $${paramIndex}
+     returning ${TASK_COLS}`,
     values
   )
 
@@ -194,28 +168,9 @@ export async function deleteTask(client: PoolClient, taskId: string): Promise<bo
 
 export async function getTaskById(client: PoolClient, taskId: string): Promise<Task | null> {
   const result = await client.query(
-    `select
-       id,
-       workspace_id as "workspaceId",
-       parent_id as "parentId",
-       title,
-       description,
-       status,
-       priority,
-       due_date as "dueDate",
-       due_time as "dueTime",
-       tags,
-       project_id as "projectId",
-       assignee_id as "assigneeId",
-       created_at as "createdAt",
-       updated_at as "updatedAt",
-       completed_at as "completedAt",
-       created_by as "createdBy"
-     from core.task
-     where id = $1`,
+    `select ${TASK_COLS} from core.task where id = $1`,
     [taskId]
   )
-
   return (result.rows[0] as Task) || null
 }
 
@@ -246,35 +201,11 @@ export async function getTasksByWorkspace(
   }
 
   const result = await client.query(
-    `select
-       id,
-       workspace_id as "workspaceId",
-       parent_id as "parentId",
-       title,
-       description,
-       status,
-       priority,
-       due_date as "dueDate",
-       due_time as "dueTime",
-       tags,
-       project_id as "projectId",
-       assignee_id as "assigneeId",
-       created_at as "createdAt",
-       updated_at as "updatedAt",
-       completed_at as "completedAt",
-       created_by as "createdBy"
-     from core.task
+    `select ${TASK_COLS} from core.task
      ${whereClause}
      order by
-       case status
-         when 'in_progress' then 0
-         when 'todo' then 1
-         when 'done' then 2
-         when 'cancelled' then 3
-       end,
-       priority desc,
-       due_date asc nulls last,
-       created_at desc
+       case status when 'in_progress' then 0 when 'todo' then 1 when 'done' then 2 when 'cancelled' then 3 end,
+       priority desc, due_date asc nulls last, created_at desc
      limit $${values.length + 1}`,
     [...values, limit]
   )
@@ -296,58 +227,44 @@ export async function getTasksByTags(
   tags: string[]
 ): Promise<Task[]> {
   const result = await client.query(
-    `select
-       id,
-       workspace_id as "workspaceId",
-       parent_id as "parentId",
-       title,
-       description,
-       status,
-       priority,
-       due_date as "dueDate",
-       due_time as "dueTime",
-       tags,
-       project_id as "projectId",
-       assignee_id as "assigneeId",
-       created_at as "createdAt",
-       updated_at as "updatedAt",
-       completed_at as "completedAt",
-       created_by as "createdBy"
-     from core.task
+    `select ${TASK_COLS} from core.task
      where workspace_id = $1 and tags && $2
      order by priority desc, created_at desc`,
     [workspaceId, tags]
   )
-
   return result.rows as Task[]
+}
+
+export async function getSubtasksByParent(client: PoolClient, parentId: string): Promise<Task[]> {
+  const result = await client.query(
+    `select ${TASK_COLS} from core.task
+     where parent_id = $1
+     order by
+       case status when 'in_progress' then 0 when 'todo' then 1 when 'done' then 2 when 'cancelled' then 3 end,
+       priority desc, created_at desc`,
+    [parentId]
+  )
+  return result.rows as Task[]
+}
+
+export async function getUniqueTags(client: PoolClient, workspaceId: string): Promise<string[]> {
+  const result = await client.query(
+    `select distinct unnest(tags) as tag from core.task
+     where workspace_id = $1 and array_length(tags, 1) > 0
+     order by tag`,
+    [workspaceId]
+  )
+  return result.rows.map((r: { tag: string }) => r.tag)
 }
 
 export async function getOverdueTasks(client: PoolClient, workspaceId: string): Promise<Task[]> {
   const result = await client.query(
-    `select
-       id,
-       workspace_id as "workspaceId",
-       parent_id as "parentId",
-       title,
-       description,
-       status,
-       priority,
-       due_date as "dueDate",
-       due_time as "dueTime",
-       tags,
-       project_id as "projectId",
-       assignee_id as "assigneeId",
-       created_at as "createdAt",
-       updated_at as "updatedAt",
-       completed_at as "completedAt",
-       created_by as "createdBy"
-     from core.task
+    `select ${TASK_COLS} from core.task
      where workspace_id = $1
        and status not in ('done', 'cancelled')
        and due_date < current_date
      order by due_date asc, priority desc`,
     [workspaceId]
   )
-
   return result.rows as Task[]
 }

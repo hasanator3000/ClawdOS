@@ -11,6 +11,8 @@ import {
   completeTask as completeTaskRepo,
   reopenTask as reopenTaskRepo,
   getTaskById,
+  getSubtasksByParent,
+  getUniqueTags,
   type CreateTaskParams,
   type UpdateTaskParams,
   type Task,
@@ -175,5 +177,71 @@ export async function updateTaskPriority(
   } catch (err) {
     console.error('updateTaskPriority error:', err)
     return { success: false, error: 'Server error' }
+  }
+}
+
+// Optimized action for DnD operations (status, date, startDate changes)
+export async function updateTaskDate(
+  taskId: string,
+  params: {
+    dueDate?: string | null
+    startDate?: string | null
+    status?: 'todo' | 'in_progress' | 'done' | 'cancelled'
+  }
+): Promise<{ task?: Task; error?: string }> {
+  const session = await getSession()
+  if (!session.userId) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const task = await withUser(session.userId, async (client) => {
+      return updateTaskRepo(client, taskId, params)
+    })
+
+    if (!task) {
+      return { error: 'Task not found' }
+    }
+
+    revalidatePath('/tasks')
+    return { task }
+  } catch (error) {
+    console.error('updateTaskDate error:', error)
+    return { error: 'Failed to update task' }
+  }
+}
+
+export async function fetchSubtasks(parentId: string): Promise<{ tasks?: Task[]; error?: string }> {
+  const session = await getSession()
+  if (!session.userId) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const tasks = await withUser(session.userId, async (client) => {
+      return getSubtasksByParent(client, parentId)
+    })
+    return { tasks }
+  } catch (error) {
+    console.error('fetchSubtasks error:', error)
+    return { error: 'Failed to fetch subtasks' }
+  }
+}
+
+export async function fetchAllTags(): Promise<{ tags?: string[]; error?: string }> {
+  const session = await getSession()
+  if (!session.userId) return { error: 'Unauthorized' }
+
+  const workspace = await getActiveWorkspace()
+  if (!workspace) return { error: 'No workspace' }
+
+  try {
+    const tags = await withUser(session.userId, async (client) => {
+      return getUniqueTags(client, workspace.id)
+    })
+    return { tags }
+  } catch (error) {
+    console.error('fetchAllTags error:', error)
+    return { error: 'Failed to fetch tags' }
   }
 }
