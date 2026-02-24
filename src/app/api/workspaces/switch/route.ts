@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth/session'
 import { getWorkspacesForUser } from '@/lib/workspace'
 import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/constants'
 import { revalidatePath } from 'next/cache'
+import { formatZodErrors } from '@/lib/validation'
+import { workspaceSwitchSchema } from '@/lib/validation-schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,17 +19,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: { type?: string }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  const body = await request.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', fields: {} }, { status: 400 })
+
+  const parsed = workspaceSwitchSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Validation failed', fields: formatZodErrors(parsed.error) }, { status: 400 })
   }
 
-  const { type } = body
-  if (type !== 'personal' && type !== 'shared') {
-    return NextResponse.json({ error: 'Invalid type. Must be "personal" or "shared"' }, { status: 400 })
-  }
+  const { type } = parsed.data
 
   const workspaces = await getWorkspacesForUser()
   const target = workspaces.find((w) => w.type === type)

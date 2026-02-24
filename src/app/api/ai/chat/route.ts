@@ -4,6 +4,8 @@ import { withUser } from '@/lib/db'
 import { routeCommand } from '@/lib/intents/router'
 import { withCircuitBreaker } from '@/lib/circuit-breaker'
 import { createLogger } from '@/lib/logger'
+import { formatZodErrors } from '@/lib/validation'
+import { chatMessageSchema, chatDeleteSchema } from '@/lib/validation-schemas'
 import {
   getActiveConversation,
   getMessagesByConversation,
@@ -19,42 +21,28 @@ const log = createLogger('ai-chat')
 
 export const dynamic = 'force-dynamic'
 
-const MAX_MESSAGE_LENGTH = 10_000
-
-
-
 export async function POST(request: Request) {
   const session = await getSession()
   if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = (await request.json().catch(() => null)) as
-    | {
-        message?: string
-        conversationId?: string | null
-        context?: {
-          workspaceId?: string
-          workspaceName?: string
-          currentPage?: string
-        }
-        stream?: boolean
-      }
-    | null
+  const body = await request.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', fields: {} }, { status: 400 })
 
-  const message = String(body?.message || '').trim()
-  if (!message) return NextResponse.json({ error: 'Missing message' }, { status: 400 })
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    return NextResponse.json({ error: 'Message too long' }, { status: 400 })
+  const parsed = chatMessageSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Validation failed', fields: formatZodErrors(parsed.error) }, { status: 400 })
   }
 
-  const workspaceId = body?.context?.workspaceId ? String(body.context.workspaceId) : null
-  const workspaceName = body?.context?.workspaceName ? String(body.context.workspaceName) : null
-  const currentPage = body?.context?.currentPage ? String(body.context.currentPage) : '/'
-  const stream = body?.stream !== false
+  const { message, context, stream: streamOpt } = parsed.data
+  const workspaceId = context?.workspaceId ?? null
+  const workspaceName = context?.workspaceName ?? null
+  const currentPage = context?.currentPage ?? '/'
+  const stream = streamOpt !== false
 
   // Persist conversation + user message
   const conversationId = await ensureConversation(
     session.userId,
-    body?.conversationId ?? null,
+    parsed.data.conversationId ?? null,
     workspaceId,
     message
   )
@@ -257,11 +245,15 @@ export async function DELETE(request: Request) {
   if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json().catch(() => null)
-  const conversationId = body?.conversationId
-  if (!conversationId) return NextResponse.json({ error: 'Missing conversationId' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', fields: {} }, { status: 400 })
+
+  const parsed = chatDeleteSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Validation failed', fields: formatZodErrors(parsed.error) }, { status: 400 })
+  }
 
   await withUser(session.userId, (client) =>
-    updateConversation(client, conversationId, { status: 'archived' })
+    updateConversation(client, parsed.data.conversationId, { status: 'archived' })
   )
 
   return NextResponse.json({ success: true })

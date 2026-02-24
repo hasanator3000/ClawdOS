@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
+import { formatZodErrors } from '@/lib/validation'
+import { assistantMessageSchema } from '@/lib/validation-schemas'
 
 export const dynamic = 'force-dynamic'
-
-const MAX_MESSAGE_LENGTH = 10_000
 
 function getGateway() {
   const url = process.env.CLAWDBOT_URL || 'http://127.0.0.1:18789'
@@ -18,23 +18,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const body = (await req.json().catch(() => null)) as
-    | {
-        message?: string
-        workspaceId?: string | null
-        conversationId?: string | null
-        stream?: boolean
-      }
-    | null
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', fields: {} }, { status: 400 })
 
-  const message = String(body?.message || '').trim()
-  if (!message) return NextResponse.json({ error: 'empty_message' }, { status: 400 })
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    return NextResponse.json({ error: 'message_too_long' }, { status: 400 })
+  const parsed = assistantMessageSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Validation failed', fields: formatZodErrors(parsed.error) }, { status: 400 })
   }
 
-  const workspaceId = body?.workspaceId ? String(body.workspaceId) : null
-  const stream = body?.stream !== false
+  const { message, workspaceId: wsId, stream: streamOpt } = parsed.data
+  const workspaceId = wsId ?? null
+  const stream = streamOpt !== false
 
   const { url, token } = getGateway()
 

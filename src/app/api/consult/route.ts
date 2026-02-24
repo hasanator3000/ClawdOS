@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
 import { getSession } from '@/lib/auth/session'
+import { formatZodErrors } from '@/lib/validation'
+import { consultQuestionSchema } from '@/lib/validation-schemas'
 
 export const dynamic = 'force-dynamic'
-
-const MAX_QUESTION_LEN = 20_000
 
 function getGateway() {
   const url = process.env.CLAWDBOT_URL || 'http://127.0.0.1:18789'
@@ -31,13 +31,15 @@ export async function POST(req: Request) {
   const authed = Boolean(session.userId) || (consultToken && headerToken === consultToken)
   if (!authed) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = (await req.json().catch(() => null)) as
-    | { question?: string; context?: Record<string, unknown>; filesChanged?: string[]; plan?: string }
-    | null
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', fields: {} }, { status: 400 })
 
-  const question = String(body?.question || '').trim()
-  if (!question) return NextResponse.json({ error: 'Missing question' }, { status: 400 })
-  if (question.length > MAX_QUESTION_LEN) return NextResponse.json({ error: 'Question too long' }, { status: 400 })
+  const parsed = consultQuestionSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Validation failed', fields: formatZodErrors(parsed.error) }, { status: 400 })
+  }
+
+  const { question } = parsed.data
 
   const manifest = readOptional('docs/AGENT_MANIFEST.md')
   const capabilities = readOptional('docs/capabilities.json')
