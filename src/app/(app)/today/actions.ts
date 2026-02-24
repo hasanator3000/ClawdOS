@@ -12,6 +12,9 @@ import {
   type CreateProcessParams,
   type UpdateProcessParams,
 } from '@/lib/db/repositories/process.repository'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('today-actions')
 
 export async function createProcessAction(
   params: Omit<CreateProcessParams, 'workspaceId'>
@@ -37,7 +40,7 @@ export async function createProcessAction(
     revalidatePath('/today')
     return { data: process }
   } catch (error) {
-    console.error('Create process error:', error)
+    log.error('Create process failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to create process' }
   }
 }
@@ -60,7 +63,7 @@ export async function toggleProcessAction(id: string) {
     revalidatePath('/today')
     return { success: true, data: process }
   } catch (error) {
-    console.error('Toggle process error:', error)
+    log.error('Toggle process failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to toggle process' }
   }
 }
@@ -86,7 +89,7 @@ export async function updateProcessAction(
     revalidatePath('/today')
     return { data: process }
   } catch (error) {
-    console.error('Update process error:', error)
+    log.error('Update process failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to update process' }
   }
 }
@@ -109,7 +112,7 @@ export async function deleteProcessAction(id: string) {
     revalidatePath('/today')
     return { success: true }
   } catch (error) {
-    console.error('Delete process error:', error)
+    log.error('Delete process failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to delete process' }
   }
 }

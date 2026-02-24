@@ -4,6 +4,9 @@ import { useState } from 'react'
 import type { Process } from '@/lib/db/repositories/process.repository'
 import { toggleProcessAction } from '@/app/(app)/today/actions'
 import { ProcessModal } from './ProcessModal'
+import { createClientLogger } from '@/lib/client-logger'
+
+const log = createClientLogger('processes-widget')
 
 interface ProcessesWidgetProps {
   initialProcesses: Process[]
@@ -22,7 +25,7 @@ export function ProcessesWidget({ initialProcesses, workspaceId }: ProcessesWidg
     try {
       const result = await toggleProcessAction(id)
       if (result.error) {
-        console.error('Toggle error:', result.error)
+        log.error('Toggle failed', { error: result.error })
       } else if (result.data) {
         // Update local state with toggled process
         setProcesses((prev) =>
@@ -30,7 +33,7 @@ export function ProcessesWidget({ initialProcesses, workspaceId }: ProcessesWidg
         )
       }
     } catch (error) {
-      console.error('Toggle failed:', error)
+      log.error('Toggle error', { error: error instanceof Error ? error.message : String(error) })
     } finally {
       setIsToggling(null)
     }

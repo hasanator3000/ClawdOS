@@ -4,6 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('task-actions')
 import {
   createTask as createTaskRepo,
   updateTask as updateTaskRepo,
@@ -48,7 +51,7 @@ export async function createTask(params: Omit<CreateTaskParams, 'workspaceId'>) 
     revalidatePath('/tasks')
     return { task }
   } catch (error) {
-    console.error('Create task error:', error)
+    log.error('Create task failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to create task' }
   }
 }
@@ -71,7 +74,7 @@ export async function updateTask(taskId: string, params: UpdateTaskParams) {
     revalidatePath('/tasks')
     return { task }
   } catch (error) {
-    console.error('Update task error:', error)
+    log.error('Update task failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to update task' }
   }
 }
@@ -94,7 +97,7 @@ export async function deleteTask(taskId: string) {
     revalidatePath('/tasks')
     return { success: true }
   } catch (error) {
-    console.error('Delete task error:', error)
+    log.error('Delete task failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to delete task' }
   }
 }
@@ -150,7 +153,7 @@ export async function completeTask(taskId: string): Promise<{ task?: Task; nextT
     revalidatePath('/tasks')
     return { task: result.task, nextTask: result.nextTask ?? undefined }
   } catch (error) {
-    console.error('Complete task error:', error)
+    log.error('Complete task failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to complete task' }
   }
 }
@@ -173,7 +176,7 @@ export async function reopenTask(taskId: string) {
     revalidatePath('/tasks')
     return { task }
   } catch (error) {
-    console.error('Reopen task error:', error)
+    log.error('Reopen task failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to reopen task' }
   }
 }
@@ -216,7 +219,7 @@ export async function updateTaskPriority(
     revalidatePath('/tasks')
     return { success: true, task: result }
   } catch (err) {
-    console.error('updateTaskPriority error:', err)
+    log.error('updateTaskPriority failed', { error: err instanceof Error ? err.message : String(err) })
     return { success: false, error: 'Server error' }
   }
 }
@@ -247,7 +250,7 @@ export async function updateTaskDate(
     revalidatePath('/tasks')
     return { task }
   } catch (error) {
-    console.error('updateTaskDate error:', error)
+    log.error('updateTaskDate failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to update task' }
   }
 }
@@ -264,7 +267,7 @@ export async function fetchSubtasks(parentId: string): Promise<{ tasks?: Task[];
     })
     return { tasks }
   } catch (error) {
-    console.error('fetchSubtasks error:', error)
+    log.error('fetchSubtasks failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to fetch subtasks' }
   }
 }
@@ -282,7 +285,7 @@ export async function fetchAllTags(): Promise<{ tags?: string[]; error?: string 
     })
     return { tags }
   } catch (error) {
-    console.error('fetchAllTags error:', error)
+    log.error('fetchAllTags failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to fetch tags' }
   }
 }
@@ -300,7 +303,7 @@ export async function fetchProjects(): Promise<{ projects?: Project[]; error?: s
     })
     return { projects }
   } catch (error) {
-    console.error('fetchProjects error:', error)
+    log.error('fetchProjects failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to fetch projects' }
   }
 }
@@ -322,7 +325,7 @@ export async function createProject(name: string): Promise<{ project?: Project; 
     revalidatePath('/tasks')
     return { project }
   } catch (error) {
-    console.error('createProject error:', error)
+    log.error('createProject failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to create project' }
   }
 }
@@ -342,7 +345,7 @@ export async function updateRecurrence(
     revalidatePath('/tasks')
     return { task }
   } catch (error) {
-    console.error('updateRecurrence error:', error)
+    log.error('updateRecurrence failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to update recurrence' }
   }
 }
@@ -359,7 +362,7 @@ export async function deleteProject(projectId: string): Promise<{ success?: bool
     revalidatePath('/tasks')
     return { success: true }
   } catch (error) {
-    console.error('deleteProject error:', error)
+    log.error('deleteProject failed', { error: error instanceof Error ? error.message : String(error) })
     return { error: 'Failed to delete project' }
   }
 }

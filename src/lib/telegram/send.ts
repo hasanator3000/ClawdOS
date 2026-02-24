@@ -3,6 +3,9 @@
  * Send messages directly via api.telegram.org
  */
 
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('telegram')
 const TELEGRAM_API_BASE = 'https://api.telegram.org'
 
 interface SendMessageParams {
@@ -27,16 +30,16 @@ export async function sendTelegramMessage(
   telegramUserId: string | number,
   message: string
 ): Promise<boolean> {
-  console.log('[Telegram] sendTelegramMessage called', { telegramUserId, messageLength: message.length })
+  log.info('Sending message', { telegramUserId, messageLength: message.length })
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN
 
   if (!botToken) {
-    console.error('[Telegram] TELEGRAM_BOT_TOKEN not configured')
+    log.error('TELEGRAM_BOT_TOKEN not configured')
     return false
   }
 
-  console.log('[Telegram] Bot token found, preparing request')
+  log.info('Bot token found, preparing request')
   const url = `${TELEGRAM_API_BASE}/bot${botToken}/sendMessage`
 
   const params: SendMessageParams = {
@@ -56,22 +59,22 @@ export async function sendTelegramMessage(
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
-      console.error(`[Telegram] Failed to send message: ${response.status} - ${errorText}`)
+      log.error('Failed to send message', { status: response.status, errorText })
       return false
     }
 
     const data = (await response.json()) as TelegramResponse
 
     if (!data.ok) {
-      console.error(`[Telegram] API returned error: ${data.description}`)
+      log.error('API returned error', { description: data.description })
       return false
     }
 
-    console.log(`[Telegram] Message sent successfully to user ${telegramUserId}`)
+    log.info('Message sent successfully', { telegramUserId })
     return true
   } catch (error) {
     if (error instanceof Error) {
-      console.error(`[Telegram] Error sending message: ${error.message}`)
+      log.error('Error sending message', { error: error.message })
     }
     return false
   }

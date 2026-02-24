@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { createAuthChallenge, enqueueTelegram } from '@/lib/auth'
 import { withUser } from '@/lib/db'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('telegram-link')
 
 export const dynamic = 'force-dynamic'
 
@@ -9,26 +12,26 @@ async function startLink(formData: FormData) {
   'use server'
 
   const telegramUserId = String(formData.get('telegram_user_id') || '').trim()
-  console.log('[TelegramLink] startLink called', { telegramUserId })
+  log.info('startLink called', { telegramUserId })
 
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
   if (!/^[0-9]{5,20}$/.test(telegramUserId)) {
-    console.error('[TelegramLink] Invalid telegram_user_id format:', telegramUserId)
+    log.error('Invalid telegram_user_id format', { telegramUserId })
     redirect('/settings/telegram?error=Invalid%20telegram%20user%20id')
   }
 
-  console.log('[TelegramLink] Creating auth challenge')
+  log.info('Creating auth challenge')
   const ch = await createAuthChallenge(session.userId, 'link')
-  console.log('[TelegramLink] Challenge created', { challengeId: ch.id, code: ch.code })
+  log.info('Challenge created', { challengeId: ch.id, code: ch.code })
 
-  console.log('[TelegramLink] Enqueueing Telegram message')
+  log.info('Enqueueing Telegram message')
   try {
     await enqueueTelegram(telegramUserId, `ClawdOS link code: ${ch.code} (valid 10 min)`)
-    console.log('[TelegramLink] Message enqueued successfully')
+    log.info('Message enqueued successfully')
   } catch (error) {
-    console.error('[TelegramLink] Failed to enqueue message:', error)
+    log.error('Failed to enqueue message', { error: error instanceof Error ? error.message : String(error) })
     throw error
   }
 
@@ -36,7 +39,7 @@ async function startLink(formData: FormData) {
   ;(session as any).pendingTelegramUserId = telegramUserId
   await session.save()
 
-  console.log('[TelegramLink] Redirecting to verify page')
+  log.info('Redirecting to verify page')
   redirect('/settings/telegram/verify')
 }
 

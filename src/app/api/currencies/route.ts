@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('currencies')
 
 export interface CurrencyRate {
   symbol: string
@@ -22,7 +25,7 @@ async function fetchFiatRates(): Promise<CurrencyRate[]> {
     )
 
     if (!response.ok) {
-      console.error('Currency API (jsdelivr) error:', response.status)
+      log.error('Currency API (jsdelivr) error', { status: response.status })
       return []
     }
 
@@ -46,7 +49,7 @@ async function fetchFiatRates(): Promise<CurrencyRate[]> {
       },
     ]
   } catch (error) {
-    console.error('Failed to fetch fiat rates:', error)
+    log.error('Failed to fetch fiat rates', { error: error instanceof Error ? error.message : String(error) })
     return []
   }
 }
@@ -63,7 +66,7 @@ async function fetchCryptoRates(): Promise<CurrencyRate[]> {
     )
 
     if (!response.ok) {
-      console.error('CoinGecko API error:', response.status)
+      log.error('CoinGecko API error', { status: response.status })
       return []
     }
 
@@ -93,7 +96,7 @@ async function fetchCryptoRates(): Promise<CurrencyRate[]> {
 
     return rates
   } catch (error) {
-    console.error('Failed to fetch crypto rates:', error)
+    log.error('Failed to fetch crypto rates', { error: error instanceof Error ? error.message : String(error) })
     return []
   }
 }
@@ -115,7 +118,7 @@ export async function GET() {
 
     return NextResponse.json({ rates, cached: false })
   } catch (error) {
-    console.error('Currency API error:', error)
+    log.error('Currency API error', { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json({ error: 'Failed to fetch rates', rates: [] }, { status: 500 })
   }
 }

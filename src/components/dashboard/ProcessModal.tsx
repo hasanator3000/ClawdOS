@@ -8,6 +8,9 @@ import {
   updateProcessAction,
   deleteProcessAction,
 } from '@/app/(app)/today/actions'
+import { createClientLogger } from '@/lib/client-logger'
+
+const log = createClientLogger('process-modal')
 
 interface ProcessModalProps {
   processes: Process[]
@@ -48,7 +51,7 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
 
     const result = await deleteProcessAction(id)
     if (result.error) {
-      console.error('Delete error:', result.error)
+      log.error('Delete failed', { error: result.error })
     } else {
       const updated = localProcesses.filter((p) => p.id !== id)
       setLocalProcesses(updated)
@@ -61,7 +64,7 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
       // Update existing process
       const result = await updateProcessAction(editingProcess.id, data)
       if (result.error) {
-        console.error('Update error:', result.error)
+        log.error('Update failed', { error: result.error })
       } else if (result.data) {
         const updated = localProcesses.map((p) =>
           p.id === editingProcess.id ? result.data! : p
@@ -75,7 +78,7 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
       // Create new process
       const result = await createProcessAction(data)
       if (result.error) {
-        console.error('Create error:', result.error)
+        log.error('Create failed', { error: result.error })
       } else if (result.data) {
         const updated = [result.data, ...localProcesses]
         setLocalProcesses(updated)

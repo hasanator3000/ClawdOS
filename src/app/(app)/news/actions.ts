@@ -4,6 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('news-actions')
 import {
   createNewsSource,
   deleteNewsSource,
@@ -330,7 +333,7 @@ export async function setupNewsTopics(userTopics: string) {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     config = JSON.parse(cleaned) as SetupConfig
   } catch (err) {
-    console.error('[setupNewsTopics] LLM error:', err)
+    log.error('setupNewsTopics LLM error', { error: err instanceof Error ? err.message : String(err) })
     return { error: 'Failed to generate feed configuration' }
   }
 
