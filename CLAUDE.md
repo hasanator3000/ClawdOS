@@ -37,6 +37,40 @@ Read these files BEFORE writing any code. They are not optional.
 
 Full context and rationale: [RULES/07-GOLDEN-RULES.md](RULES/07-GOLDEN-RULES.md)
 
+6. **Build & deploy through systemd** — NEVER kill/restart the Next.js process directly. See "Build & deploy procedure" below.
+
+## Build & deploy procedure (CRITICAL)
+
+Production server runs via **systemd** (`clawdos.service`, `Restart=always`, `RestartSec=2`).
+
+**If you kill the process directly, systemd restarts it in 2 seconds — potentially with a half-deleted `.next` directory, causing 404 on chunks.**
+
+### Correct sequence (always follow):
+
+```bash
+# 1. Stop the service FIRST (prevents premature restart)
+systemctl stop clawdos
+
+# 2. Clean build
+rm -rf .next && npm run build
+
+# 3. Start the service
+systemctl start clawdos
+
+# 4. Verify
+systemctl status clawdos --no-pager
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/login  # expect 200
+```
+
+### NEVER do:
+- `kill <pid>` then `npm start &` — systemd will race you
+- `rm -rf .next` without stopping the service first — server serves 404
+- `npm run dev` in production — use `systemctl` for everything
+
+### After deploy:
+- Tell user to **hard refresh** browser (`Ctrl+Shift+R`) — old chunks are cached with different hashes
+- Verify chunks: `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/_next/static/chunks/<any-chunk>.js`
+
 ## Key paths
 
 ```
@@ -62,13 +96,17 @@ RULES/                      → Developer guide (10 files)
 
 ```bash
 npm run setup           # Install everything (DB + schema + user)
-npm run dev             # Dev server on :3000
-npm run build           # Production build
+npm run dev             # Dev server on :3000 (NOT for production)
+npm run build           # Production build (Turbopack)
+npm run build --webpack # Production build (webpack fallback)
 npm run lint            # ESLint (no-console enforced)
 npm run analyze         # Bundle size analysis
 npm run db:migrate      # Apply pending migrations
 npm run db:reset        # Destroy + recreate DB
 npm run test            # Run vitest
+
+# Production deploy (ALWAYS use this, never kill processes manually):
+systemctl stop clawdos && rm -rf .next && npm run build && systemctl start clawdos
 ```
 
 ## Infrastructure context (not in RULES/)
