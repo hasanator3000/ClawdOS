@@ -46,6 +46,20 @@ export async function GET() {
     }
   }
 
+  // --- Pool metrics ---
+  let poolMetrics: { totalCount: number; idleCount: number; waitingCount: number; max: number } | null = null
+  try {
+    const pool = getPool()
+    poolMetrics = {
+      totalCount: pool.totalCount,
+      idleCount: pool.idleCount,
+      waitingCount: pool.waitingCount,
+      max: (pool.options as { max?: number }).max ?? 20,
+    }
+  } catch {
+    // Pool not available — skip metrics
+  }
+
   const allOk = Object.values(checks).every((c) => c.status === 'ok')
 
   return NextResponse.json(
@@ -53,6 +67,7 @@ export async function GET() {
       status: allOk ? 'healthy' : 'degraded',
       totalMs: Date.now() - t0,
       checks,
+      ...(poolMetrics ? { pool: poolMetrics } : {}),
     },
     { status: allOk ? 200 : 503 }
   )
