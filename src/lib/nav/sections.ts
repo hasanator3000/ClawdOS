@@ -52,20 +52,6 @@ export const SECTIONS: Section[] = [
     aliases: ['password', 'пароль', 'пароли', 'смена пароля', 'настройки пароля'],
     sidebar: false,
   },
-  {
-    id: 'settings.skills',
-    title: 'Skills & Commands',
-    path: '/settings/skills',
-    aliases: ['skills', 'скиллы', 'навыки', 'команды', 'commands', 'marketplace', 'маркетплейс', 'clawdtm', 'clawdhub'],
-    sidebar: false,
-  },
-  {
-    id: 'settings.files',
-    title: 'Agent Files',
-    path: '/settings/files',
-    aliases: ['files', 'файлы', 'файлы агента', 'agent files', 'memory', 'soul'],
-    sidebar: false,
-  },
 ]
 
 export const SIDEBAR_SECTIONS = SECTIONS.filter((s) => s.sidebar)

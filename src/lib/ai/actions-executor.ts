@@ -16,14 +16,6 @@ import {
   findTabsByWorkspace,
 } from '@/lib/db/repositories/news-tab.repository'
 
-/** A single action payload from the Clawdbot <clawdos> block */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ActionPayload = Record<string, any> & { k?: string }
-
-/** Result of a single action execution */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ActionResult = Record<string, any> & { action: string }
-
 // Whitelisted navigation paths
 const ALLOWED_PATHS = new Set([
   '/today',
@@ -39,12 +31,12 @@ const ALLOWED_PATHS = new Set([
  * @returns Object with optional navigation target and array of action results
  */
 export async function executeActions(
-  actions: ActionPayload[],
+  actions: any[],
   userId: string,
   workspaceId: string | null
-): Promise<{ navigation?: string; results: ActionResult[] }> {
+): Promise<{ navigation?: string; results: any[] }> {
   let navigationTarget: string | undefined
-  const results: ActionResult[] = []
+  const results: any[] = []
 
   // Track tab name→id for source-tab assignment within same batch
   const tabNameToId = new Map<string, string>()

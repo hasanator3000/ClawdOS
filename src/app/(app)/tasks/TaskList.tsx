@@ -3,11 +3,10 @@
 import { useState, useTransition, useEffect, useMemo, useCallback } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import type { Project } from '@/lib/db/repositories/project.repository'
-import { createTask, fetchAllTags } from './actions'
-import { fetchProjects } from './project-actions'
+import { createTask, fetchAllTags, fetchProjects } from './actions'
 import { TaskFilters, type TaskFilterState } from './TaskFilters'
 import { TaskCreateForm } from './TaskCreateForm'
-import { ViewModeSlider, useViewMode } from './ViewModeSlider'
+import { ViewModeSlider, useViewMode, type ViewMode } from './ViewModeSlider'
 import dynamic from 'next/dynamic'
 import { ListView } from './views/ListView'
 
@@ -149,32 +148,6 @@ export function TaskList({ initialTasks }: TaskListProps) {
   })
 
   const handleCreateTask = (data: { title: string; priority: number; dueDate?: string; dueTime?: string; startDate?: string; startTime?: string; tags?: string[] }) => {
-    // Optimistic: show task immediately with temp ID
-    const tempId = `temp-${Date.now()}`
-    const now = new Date()
-    const optimisticTask: Task = {
-      id: tempId,
-      title: data.title,
-      description: null,
-      status: 'todo',
-      priority: data.priority,
-      dueDate: data.dueDate || null,
-      dueTime: data.dueTime || null,
-      startDate: data.startDate || null,
-      startTime: data.startTime || null,
-      tags: data.tags || [],
-      workspaceId: '',
-      parentId: null,
-      projectId: null,
-      assigneeId: null,
-      completedAt: null,
-      createdAt: now,
-      updatedAt: now,
-      recurrenceRule: null,
-      createdBy: null,
-    }
-    setTasks((prev) => [optimisticTask, ...prev])
-
     startTransition(async () => {
       const result = await createTask({
         title: data.title,
@@ -186,11 +159,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
         tags: data.tags,
       })
       if (result.task) {
-        // Replace temp task with real one from server
-        setTasks((prev) => prev.map((t) => (t.id === tempId ? result.task! : t)))
-      } else {
-        // Remove optimistic task on failure
-        setTasks((prev) => prev.filter((t) => t.id !== tempId))
+        setTasks((prev) => [result.task!, ...prev])
       }
     })
   }

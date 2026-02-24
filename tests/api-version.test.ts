@@ -34,8 +34,8 @@ describe('/api/version logic', () => {
   })
 
   it('version comparison logic: different version = update available', () => {
-    const current = '0.1.0' as string
-    const latest = '0.2.0' as string
+    const current = '0.1.0'
+    const latest = '0.2.0'
     expect(current !== latest).toBe(true)
   })
 

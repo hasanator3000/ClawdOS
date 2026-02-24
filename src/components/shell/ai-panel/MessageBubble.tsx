@@ -15,7 +15,7 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
           isUser
             ? {
                 background: 'linear-gradient(135deg, var(--neon), var(--pink))',
-                color: 'white',
+                color: '#ffffff',
                 boxShadow: '0 2px 12px var(--neon-glow)',
               }
             : {
@@ -29,7 +29,7 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
         <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
           {message.content}
           {message.isStreaming && (
-            <span className="inline-block ml-0.5 animate-pulse" style={{ color: isUser ? 'white' : 'var(--neon)' }}>
+            <span className="inline-block ml-0.5 animate-pulse" style={{ color: isUser ? '#ffffff' : 'var(--neon)' }}>
               ▊
             </span>
           )}

@@ -53,15 +53,6 @@ export default async function SettingsPage() {
       </section>
 
       <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-        <h2 className="font-medium">Clawdbot</h2>
-        <div className="mt-2 text-sm text-[var(--muted)]">Agent skills, commands, and workspace files.</div>
-        <div className="mt-3 flex gap-4">
-          <Link className="underline text-[var(--muted-2)]" href="/settings/skills">Skills & Marketplace</Link>
-          <Link className="underline text-[var(--muted-2)]" href="/settings/files">Agent Files</Link>
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
         <h2 className="font-medium">Account</h2>
         <div className="mt-2 text-sm text-[var(--muted)]">Created: {new Date(profile.createdAt).toLocaleString()}</div>
         <div className="mt-3 text-sm text-[var(--muted)]">Username changes are not implemented yet.</div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
-import { setupNewsTopics } from './setup-actions'
+import { setupNewsTopics } from './actions'
 
 const SUGGESTIONS = ['AI', 'Crypto', 'Tech', 'Science', 'Economy', 'Gaming', 'Startups', 'Space']
 
@@ -50,7 +50,7 @@ export function NewsOnboarding({ onManualSetup, onSetupComplete }: Props) {
       <div className="text-center space-y-2">
         <h2 className="text-xl font-semibold">Set up your news feed</h2>
         <p className="text-[var(--muted)] max-w-md">
-          Describe what topics you want to follow. We&apos;ll find the best RSS sources and set everything up.
+          Describe what topics you want to follow. We'll find the best RSS sources and set everything up.
         </p>
       </div>
 

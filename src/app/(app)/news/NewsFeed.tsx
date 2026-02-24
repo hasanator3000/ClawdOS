@@ -14,12 +14,9 @@ interface Props {
 export function NewsFeed({ items, onLoadMore, hasMore, isLoading }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const onLoadMoreRef = useRef(onLoadMore)
+  onLoadMoreRef.current = onLoadMore
   const isLoadingRef = useRef(isLoading)
-
-  useEffect(() => {
-    onLoadMoreRef.current = onLoadMore
-    isLoadingRef.current = isLoading
-  }, [onLoadMore, isLoading])
+  isLoadingRef.current = isLoading
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -48,7 +45,7 @@ export function NewsFeed({ items, onLoadMore, hasMore, isLoading }: Props) {
   return (
     <div>
       <div className="grid grid-cols-1 sm:[grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] gap-4">
-        {items.map((item) => (
+        {items.map((item, i) => (
           <NewsCard key={item.guid || item.id} item={item} />
         ))}
       </div>

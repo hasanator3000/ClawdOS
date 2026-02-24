@@ -1,15 +1,27 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, memo } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
-import { normalizeDate } from '@/lib/date-utils'
+import { normalizeDate, formatTaskDate, getDateColor } from '@/lib/date-utils'
 import { getTagColor } from '@/lib/tag-colors'
 import { recurrenceLabel } from '@/lib/recurrence'
-import { completeTask, reopenTask, deleteTask, updateTask, updateTaskPriority, fetchSubtasks } from './actions'
+import { createTask, completeTask, reopenTask, deleteTask, updateTask, updateTaskPriority, fetchSubtasks } from './actions'
 import { DateTimePicker } from './DateTimePicker'
-import { PRIORITY_LABELS, PRIORITY_COLORS, STATUS_META } from './task-item/constants'
-import { DueDate } from './task-item/DueDate'
-import { SubtasksPanel } from './task-item/SubtasksPanel'
+
+const PRIORITY_LABELS: Record<number, string> = {
+  0: '', 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent',
+}
+
+const PRIORITY_COLORS: Record<number, string> = {
+  0: '', 1: 'var(--cyan)', 2: 'var(--warm)', 3: 'var(--pink)', 4: 'var(--red)',
+}
+
+const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  todo: { label: 'To Do', color: 'var(--cyan)', bg: 'rgba(0, 188, 212, 0.12)' },
+  in_progress: { label: 'In Progress', color: 'var(--warm)', bg: 'rgba(255, 171, 64, 0.12)' },
+  done: { label: 'Done', color: 'var(--green)', bg: 'rgba(76, 175, 80, 0.12)' },
+  cancelled: { label: 'Cancelled', color: 'var(--muted)', bg: 'rgba(128, 128, 128, 0.12)' },
+}
 
 interface TaskItemProps {
   task: Task
@@ -27,16 +39,19 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
   const [dateMode, setDateMode] = useState(false)
   const [subtasksOpen, setSubtasksOpen] = useState(false)
   const [subtasks, setSubtasks] = useState<Task[]>([])
-  const subtasksLoadedRef = useRef(false)
+  const [subtasksLoaded, setSubtasksLoaded] = useState(false)
+  const [newSubtask, setNewSubtask] = useState('')
 
+  // Fetch subtasks when panel opens for the first time
   useEffect(() => {
-    if (!subtasksOpen || subtasksLoadedRef.current) return
-    subtasksLoadedRef.current = true
+    if (!subtasksOpen || subtasksLoaded) return
+    setSubtasksLoaded(true)
     fetchSubtasks(task.id).then((res) => {
       if (res.tasks) setSubtasks(res.tasks)
     })
-  }, [subtasksOpen, task.id])
+  }, [subtasksOpen, subtasksLoaded, task.id])
 
+  // Close priority dropdown on click outside
   useEffect(() => {
     if (!priorityMode) return
     const handleClick = (e: MouseEvent) => {
@@ -47,19 +62,12 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
   }, [priorityMode])
 
   const handleToggleComplete = () => {
-    // Optimistic: toggle status immediately
-    const optimistic = {
-      ...task,
-      status: task.status === 'done' ? 'todo' as const : 'done' as const,
-      completedAt: task.status === 'done' ? null : new Date(),
-    }
-    onUpdate(optimistic)
     startTransition(async () => {
       const result = task.status === 'done'
         ? await reopenTask(task.id)
         : await completeTask(task.id)
       if (result.task) onUpdate(result.task)
-      else onUpdate(task) // revert on error
+      // REC-02: notify TaskList about auto-created next occurrence
       if ('nextTask' in result && result.nextTask) {
         window.dispatchEvent(new CustomEvent('clawdos:task-refresh', {
           detail: { actions: [{ action: 'task.create', task: result.nextTask }] },
@@ -74,7 +82,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
     setPriorityMode(false)
     startTransition(async () => {
       const result = await updateTaskPriority(task.id, p)
-      if (!result.success) onUpdate(task)
+      if (!result.success) onUpdate(task) // rollback
     })
   }
 
@@ -101,11 +109,32 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
   }
 
   const handleDelete = () => {
-    // Optimistic: remove immediately
-    onDelete(task.id)
     startTransition(async () => {
-      await deleteTask(task.id)
+      const result = await deleteTask(task.id)
+      if (result.success) onDelete(task.id)
     })
+  }
+
+  const handleAddSubtask = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newSubtask.trim()) return
+    const title = newSubtask.trim()
+    setNewSubtask('')
+
+    startTransition(async () => {
+      const result = await createTask({ title, parentId: task.id })
+      if (result.task) {
+        setSubtasks((prev) => [result.task!, ...prev])
+      }
+    })
+  }
+
+  const handleSubtaskUpdate = (updated: Task) => {
+    setSubtasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+  }
+
+  const handleSubtaskDelete = (id: string) => {
+    setSubtasks((prev) => prev.filter((t) => t.id !== id))
   }
 
   const maxDepth = 2
@@ -166,7 +195,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
           </span>
         )}
 
-        {/* Recurrence indicator */}
+        {/* Recurrence indicator (REC-04) */}
         {task.recurrenceRule && (
           <span
             className="text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 flex items-center gap-1"
@@ -291,16 +320,63 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
 
       {/* Subtasks panel */}
       {subtasksOpen && depth < maxDepth && (
-        <SubtasksPanel
-          parentId={task.id}
-          subtasks={subtasks}
-          onSubtaskUpdate={(updated) => setSubtasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))}
-          onSubtaskDelete={(id) => setSubtasks((prev) => prev.filter((t) => t.id !== id))}
-          onSubtaskCreate={(t) => setSubtasks((prev) => [t, ...prev])}
-          depth={depth}
-          TaskItemComponent={TaskItem}
-        />
+        <div className="mt-1 space-y-1">
+          {/* Add subtask form */}
+          <form onSubmit={handleAddSubtask} className="flex gap-2" style={{ marginLeft: 20 }}>
+            <input
+              type="text"
+              value={newSubtask}
+              onChange={(e) => setNewSubtask(e.target.value)}
+              placeholder="Add subtask..."
+              className="flex-1 px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:border-[var(--neon)] transition-colors"
+              disabled={isPending}
+            />
+            <button
+              type="submit"
+              disabled={!newSubtask.trim() || isPending}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 transition-opacity text-[var(--neon)] border border-[var(--neon-dim)] hover:bg-[var(--neon-dim)]"
+            >
+              Add
+            </button>
+          </form>
+
+          {/* Subtask list */}
+          {subtasks.map((sub) => (
+            <TaskItem
+              key={sub.id}
+              task={sub}
+              onUpdate={handleSubtaskUpdate}
+              onDelete={handleSubtaskDelete}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
       )}
     </div>
   )
 }
+
+
+const DueDate = memo(function DueDate({
+  startDate, dueDate, dueTime, isDone,
+}: {
+  startDate: string | null; dueDate: string | null; dueTime: string | null; isDone: boolean
+}) {
+  const startLabel = startDate ? formatTaskDate(startDate, null) : ''
+  const endLabel = dueDate ? formatTaskDate(dueDate, dueTime) : ''
+
+  // Show range if both exist and differ
+  if (startLabel && endLabel && normalizeDate(startDate) !== normalizeDate(dueDate)) {
+    return (
+      <span className="text-xs" style={{ color: getDateColor(dueDate, isDone) }}>
+        {startLabel} - {endLabel}
+      </span>
+    )
+  }
+
+  return (
+    <span className="text-xs" style={{ color: getDateColor(dueDate || startDate, isDone) }}>
+      {endLabel || startLabel}
+    </span>
+  )
+})

@@ -15,9 +15,6 @@ export interface ParsedFeed {
   items: FeedItem[]
 }
 
-/** Represents a node from the XML parser — structure varies by feed format */
-type XmlNode = Record<string, unknown>
-
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
@@ -57,7 +54,7 @@ export function parseFeed(raw: string, feedUrl: string): ParsedFeed {
     return {
       title: str(channel.title),
       feedType: 'rss',
-      items: (ensureArray(items) as XmlNode[]).map((item) => rssItemToFeedItem(item, feedUrl)),
+      items: ensureArray(items).map((item: any) => rssItemToFeedItem(item, feedUrl)),
     }
   }
 
@@ -68,26 +65,26 @@ export function parseFeed(raw: string, feedUrl: string): ParsedFeed {
 // RSS 2.0
 // ---------------------------------------------------------------------------
 
-function parseRss(channel: XmlNode, feedUrl: string): ParsedFeed {
-  const items = ensureArray(channel.item || []) as XmlNode[]
+function parseRss(channel: any, feedUrl: string): ParsedFeed {
+  const items = ensureArray(channel.item || [])
 
   return {
     title: str(channel.title),
     feedType: 'rss',
-    items: items.map((item) => rssItemToFeedItem(item, feedUrl)),
+    items: items.map((item: any) => rssItemToFeedItem(item, feedUrl)),
   }
 }
 
-function rssItemToFeedItem(item: XmlNode, feedUrl: string): FeedItem {
-  const title = decodeEntities(str(item.title)) || 'Untitled'
+function rssItemToFeedItem(item: any, feedUrl: string): FeedItem {
+  const title = str(item.title) || 'Untitled'
   const link = str(item.link)
   const description = stripHtml(str(item.description) || str(item['content:encoded']))
   const pubDate = parseDate(str(item.pubDate))
 
   // GUID: prefer <guid>, fallback to link, fallback to title hash
   let guid = str(item.guid)
-  if (typeof item.guid === 'object' && item.guid !== null && '#text' in (item.guid as Record<string, unknown>)) {
-    guid = (item.guid as Record<string, unknown>)['#text'] as string
+  if (typeof item.guid === 'object' && item.guid?.['#text']) {
+    guid = item.guid['#text']
   }
   if (!guid) guid = link || hashGuid(title, feedUrl)
 
@@ -105,35 +102,35 @@ function rssItemToFeedItem(item: XmlNode, feedUrl: string): FeedItem {
 // Atom
 // ---------------------------------------------------------------------------
 
-function parseAtom(feed: XmlNode, feedUrl: string): ParsedFeed {
-  const entries = ensureArray(feed.entry || []) as XmlNode[]
+function parseAtom(feed: any, feedUrl: string): ParsedFeed {
+  const entries = ensureArray(feed.entry || [])
 
   return {
     title: str(feed.title),
     feedType: 'atom',
-    items: entries.map((entry) => atomEntryToFeedItem(entry, feedUrl)),
+    items: entries.map((entry: any) => atomEntryToFeedItem(entry, feedUrl)),
   }
 }
 
-function atomEntryToFeedItem(entry: XmlNode, feedUrl: string): FeedItem {
-  const title = decodeEntities(str(entry.title)) || 'Untitled'
+function atomEntryToFeedItem(entry: any, feedUrl: string): FeedItem {
+  const title = str(entry.title) || 'Untitled'
 
   // Atom links can be objects or arrays
   let link: string | null = null
-  const links = ensureArray(entry.link || []) as XmlNode[]
+  const links = ensureArray(entry.link || [])
   for (const l of links) {
     if (typeof l === 'string') {
       link = l
       break
     }
     if (l?.['@_rel'] === 'alternate' || !l?.['@_rel']) {
-      link = (l['@_href'] as string) || null
+      link = l['@_href'] || null
       break
     }
   }
   if (!link && links.length > 0) {
     const first = links[0]
-    link = typeof first === 'string' ? first : (first?.['@_href'] as string) || null
+    link = typeof first === 'string' ? first : first?.['@_href'] || null
   }
 
   const summary = stripHtml(
@@ -157,26 +154,26 @@ function atomEntryToFeedItem(entry: XmlNode, feedUrl: string): FeedItem {
 // ---------------------------------------------------------------------------
 
 function parseJsonFeed(raw: string, feedUrl: string): ParsedFeed {
-  const data = JSON.parse(raw) as Record<string, unknown>
-  const items = ensureArray((data.items as unknown[]) || []) as XmlNode[]
+  const data = JSON.parse(raw)
+  const items = ensureArray(data.items || [])
 
   return {
-    title: (data.title as string) || null,
+    title: data.title || null,
     feedType: 'json',
-    items: items.map((item: XmlNode) => {
-      const title = decodeEntities(item.title as string) || 'Untitled'
-      const url = (item.url as string) || (item.external_url as string) || null
-      const summary = stripHtml((item.summary as string) || (item.content_text as string) || (item.content_html as string))
-      const published = parseDate((item.date_published as string) || (item.date_modified as string))
-      const guid = (item.id as string) || url || hashGuid(title, feedUrl)
+    items: items.map((item: any) => {
+      const title = item.title || 'Untitled'
+      const url = item.url || item.external_url || null
+      const summary = stripHtml(item.summary || item.content_text || item.content_html)
+      const published = parseDate(item.date_published || item.date_modified)
+      const guid = item.id || url || hashGuid(title, feedUrl)
 
       // JSON Feed image: item.image, item.banner_image, or first image attachment
-      let imageUrl: string | null = (item.image as string) || (item.banner_image as string) || null
+      let imageUrl: string | null = item.image || item.banner_image || null
       if (!imageUrl && Array.isArray(item.attachments)) {
-        const imgAttach = (item.attachments as XmlNode[]).find(
-          (a) => typeof a.mime_type === 'string' && (a.mime_type as string).startsWith('image/')
+        const imgAttach = item.attachments.find(
+          (a: any) => typeof a.mime_type === 'string' && a.mime_type.startsWith('image/')
         )
-        if (imgAttach?.url) imageUrl = imgAttach.url as string
+        if (imgAttach?.url) imageUrl = imgAttach.url
       }
 
       return {
@@ -199,54 +196,53 @@ function parseJsonFeed(raw: string, feedUrl: string): ParsedFeed {
  * Extract the best image URL from an RSS/Atom item.
  * Checks media:content, media:thumbnail, enclosure, and common patterns.
  */
-function extractImage(item: XmlNode): string | null {
+function extractImage(item: any): string | null {
   if (!item || typeof item !== 'object') return null
 
   // media:content (can be object or array)
-  const mediaGroup = item['media:group'] as XmlNode | undefined
-  const mediaContent = item['media:content'] || mediaGroup?.['media:content']
+  const mediaContent = item['media:content'] || item['media:group']?.['media:content']
   if (mediaContent) {
-    const entries = ensureArray(mediaContent) as XmlNode[]
+    const entries = ensureArray(mediaContent)
     for (const mc of entries) {
-      const url = mc?.['@_url'] as string | undefined
-      const medium = mc?.['@_medium'] as string | undefined
-      const type = (mc?.['@_type'] as string) || ''
+      const url = mc?.['@_url']
+      const medium = mc?.['@_medium']
+      const type = mc?.['@_type'] || ''
       if (url && (medium === 'image' || type.startsWith('image/') || /\.(jpe?g|png|webp|gif)/i.test(url))) {
         return url
       }
     }
     // If only one media:content with a URL, assume it's the image
     if (entries.length === 1 && entries[0]?.['@_url']) {
-      return entries[0]['@_url'] as string
+      return entries[0]['@_url']
     }
   }
 
   // media:thumbnail
   const mediaThumbnail = item['media:thumbnail']
   if (mediaThumbnail) {
-    const entries = ensureArray(mediaThumbnail) as XmlNode[]
-    if (entries[0]?.['@_url']) return entries[0]['@_url'] as string
+    const entries = ensureArray(mediaThumbnail)
+    if (entries[0]?.['@_url']) return entries[0]['@_url']
   }
 
   // enclosure (RSS)
   const enclosure = item.enclosure
   if (enclosure) {
-    const entries = ensureArray(enclosure) as XmlNode[]
+    const entries = ensureArray(enclosure)
     for (const enc of entries) {
-      const type = (enc?.['@_type'] as string) || ''
+      const type = enc?.['@_type'] || ''
       if (type.startsWith('image/') && enc?.['@_url']) {
-        return enc['@_url'] as string
+        return enc['@_url']
       }
     }
   }
 
   // Atom: link[rel=enclosure] with image type
-  const links = ensureArray(item.link || []) as XmlNode[]
+  const links = ensureArray(item.link || [])
   for (const l of links) {
     if (typeof l === 'object' && l?.['@_rel'] === 'enclosure') {
-      const type = (l?.['@_type'] as string) || ''
+      const type = l?.['@_type'] || ''
       if (type.startsWith('image/') && l?.['@_href']) {
-        return l['@_href'] as string
+        return l['@_href']
       }
     }
   }
@@ -257,8 +253,8 @@ function extractImage(item: XmlNode): string | null {
 function str(val: unknown): string | null {
   if (val == null) return null
   if (typeof val === 'string') return val.trim() || null
-  if (typeof val === 'object' && val !== null && '#text' in (val as Record<string, unknown>)) {
-    return str((val as Record<string, unknown>)['#text'])
+  if (typeof val === 'object' && '#text' in (val as any)) {
+    return str((val as any)['#text'])
   }
   return String(val).trim() || null
 }
@@ -273,28 +269,18 @@ function parseDate(val: string | null): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-/** Decode HTML/XML entities: named (&amp;), decimal (&#8216;), hex (&#x2018;) */
-function decodeEntities(text: string | null): string | null {
-  if (!text) return null
-  return text
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+function stripHtml(html: string | null): string | null {
+  if (!html) return null
+  return html
+    .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
     .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
     .trim() || null
-}
-
-function stripHtml(html: string | null): string | null {
-  if (!html) return null
-  const stripped = html.replace(/<[^>]+>/g, '')
-  const decoded = decodeEntities(stripped)
-  if (!decoded) return null
-  return decoded.replace(/\s+/g, ' ').trim() || null
 }
 
 function truncate(text: string | null, maxLen: number): string | null {
