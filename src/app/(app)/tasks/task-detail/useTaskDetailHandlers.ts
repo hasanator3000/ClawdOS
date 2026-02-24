@@ -11,9 +11,9 @@ import {
   deleteTask,
   fetchSubtasks,
   fetchAllTags,
-  createProject as createProjectAction,
   updateRecurrence,
 } from '../actions'
+import { createProject as createProjectAction } from '../project-actions'
 
 interface UseTaskDetailHandlersParams {
   task: Task
@@ -27,7 +27,7 @@ export function useTaskDetailHandlers({
   task,
   onUpdate,
   onDelete,
-  onClose,
+  onClose: _onClose,
   onProjectsChange,
 }: UseTaskDetailHandlersParams) {
   const [isPending, startTransition] = useTransition()
@@ -47,6 +47,7 @@ export function useTaskDetailHandlers({
 
   // Sync edit values when switching tasks
   useEffect(() => {
+     
     setEditTitle(task.title)
     setEditDescription(task.description || '')
     setEditingField(null)
@@ -54,11 +55,13 @@ export function useTaskDetailHandlers({
     setSubtasksLoaded(false)
     setSubtasks([])
     setNewTag('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset when task.id changes
   }, [task.id])
 
   // Fetch all workspace tags for suggestions
   useEffect(() => {
     if (tagsLoaded) return
+     
     setTagsLoaded(true)
     fetchAllTags().then((res) => {
       if (res.tags) setAllTags(res.tags)
@@ -68,6 +71,7 @@ export function useTaskDetailHandlers({
   // Fetch subtasks on open
   useEffect(() => {
     if (subtasksLoaded) return
+     
     setSubtasksLoaded(true)
     fetchSubtasks(task.id).then((res) => {
       if (res.tasks) setSubtasks(res.tasks)

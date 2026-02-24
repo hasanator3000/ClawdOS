@@ -6,7 +6,7 @@ function isTypingTarget(el: EventTarget | null) {
   const node = el as HTMLElement | null
   if (!node) return false
   const tag = node.tagName?.toLowerCase()
-  return tag === 'input' || tag === 'textarea' || (node as any).isContentEditable
+  return tag === 'input' || tag === 'textarea' || node.isContentEditable
 }
 
 const STORAGE_KEY = 'clawdos.ai-panel'
@@ -52,6 +52,7 @@ export function useAIPanel() {
 
   // Hydrate from localStorage on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from localStorage
     setState(getStoredState())
     setIsHydrated(true)
   }, [])
@@ -80,10 +81,12 @@ export function useAIPanel() {
   const toggleRef = useRef(toggle)
   const closeRef = useRef(close)
 
-  // Keep refs in sync (direct assignment, no useEffect needed)
-  stateRef.current = state
-  toggleRef.current = toggle
-  closeRef.current = close
+  // Keep refs in sync after each render
+  useEffect(() => {
+    stateRef.current = state
+    toggleRef.current = toggle
+    closeRef.current = close
+  })
 
   // Keyboard shortcuts - single listener registered on mount
   useEffect(() => {

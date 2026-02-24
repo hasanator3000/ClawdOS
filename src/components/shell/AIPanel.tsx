@@ -15,7 +15,7 @@ interface AIPanelProps {
   onWidthChange: (width: number) => void
 }
 
-export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIPanelProps) {
+export function AIPanel({ isOpen, onClose, onWidthChange }: AIPanelProps) {
   const { workspace } = useWorkspace()
   const workspaceName = workspace?.name
   const workspaceId = workspace?.id
@@ -62,7 +62,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
 
   // Handle resize
   const onWidthChangeRef = useRef(onWidthChange)
-  onWidthChangeRef.current = onWidthChange
+  useEffect(() => { onWidthChangeRef.current = onWidthChange })
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -177,7 +177,7 @@ export function AIPanel({ isOpen, width, onClose, onToggle, onWidthChange }: AIP
             ) : (
               <button type="submit" disabled={!input.trim() || !workspaceId}
                 className="flex-shrink-0 p-1.5 rounded-lg text-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90"
-                style={{ background: input.trim() && workspaceId ? 'linear-gradient(135deg, var(--neon), var(--pink))' : 'var(--muted-2)', color: input.trim() && workspaceId ? '#ffffff' : 'var(--muted)', boxShadow: input.trim() && workspaceId ? '0 0 12px var(--neon-glow)' : 'none' }}
+                style={{ background: input.trim() && workspaceId ? 'linear-gradient(135deg, var(--neon), var(--pink))' : 'var(--muted-2)', color: input.trim() && workspaceId ? 'white' : 'var(--muted)', boxShadow: input.trim() && workspaceId ? '0 0 12px var(--neon-glow)' : 'none' }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
               </button>

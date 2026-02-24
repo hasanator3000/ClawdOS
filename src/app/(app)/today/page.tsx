@@ -11,6 +11,7 @@ import {
   QuickLinksWidget,
   RecentTasksWidget,
 } from '@/components/dashboard'
+import { WidgetErrorBoundary } from '@/components/ui/WidgetErrorBoundary'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,34 +29,44 @@ export default async function DashboardPage() {
     )
   }
 
-  // Fetch tasks and processes in parallel
+  // Fetch tasks and processes in parallel (processes may fail if table is new)
   const [tasks, processes] = await Promise.all([
     withUser(session.userId, (client) =>
       getTasksByWorkspace(client, workspace.id, { limit: 10 })
     ),
     withUser(session.userId, (client) =>
       findProcessesByWorkspace(client, workspace.id)
-    ),
+    ).catch(() => [] as import('@/lib/db/repositories/process.repository').Process[]),
   ])
 
   return (
     <div className="space-y-5">
       {/* Top row: Greeting + Currency */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <GreetingWidget username={session.username} />
-        <CurrencyWidget />
+        <WidgetErrorBoundary name="Greeting">
+          <GreetingWidget username={session.username} />
+        </WidgetErrorBoundary>
+        <WidgetErrorBoundary name="Currency">
+          <CurrencyWidget />
+        </WidgetErrorBoundary>
       </div>
 
       {/* Agent metrics */}
       <div className="grid grid-cols-1">
-        <AgentMetricsWidget />
+        <WidgetErrorBoundary name="AgentMetrics">
+          <AgentMetricsWidget />
+        </WidgetErrorBoundary>
       </div>
 
       {/* Processes */}
-      <ProcessesWidget initialProcesses={processes} workspaceId={workspace.id} />
+      <WidgetErrorBoundary name="Processes">
+        <ProcessesWidget initialProcesses={processes} workspaceId={workspace.id} />
+      </WidgetErrorBoundary>
 
       {/* Quick links */}
-      <QuickLinksWidget />
+      <WidgetErrorBoundary name="QuickLinks">
+        <QuickLinksWidget />
+      </WidgetErrorBoundary>
 
       {/* Bottom row: Tasks */}
       <RecentTasksWidget tasks={tasks} />

@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
+import { createClientLogger } from '@/lib/client-logger'
+
+const log = createClientLogger('RouteError')
 
 interface RouteErrorFallbackProps {
   error: Error & { digest?: string }
@@ -9,7 +12,7 @@ interface RouteErrorFallbackProps {
 
 export function RouteErrorFallback({ error, reset }: RouteErrorFallbackProps) {
   useEffect(() => {
-    console.error('[RouteError]', error)
+    log.error(error.message, { digest: error.digest })
   }, [error])
 
   return (

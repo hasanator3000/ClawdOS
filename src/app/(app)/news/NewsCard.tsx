@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, memo } from 'react'
+import { useState, useMemo, memo } from 'react'
+import Image from 'next/image'
 import type { NewsItem } from '@/types/news'
 
 function formatRelativeTime(dateStr: string): string {
@@ -25,16 +26,22 @@ export const NewsCard = memo(function NewsCard({ item }: { item: NewsItem }) {
   const [imgError, setImgError] = useState(false)
   const showImage = item.imageUrl && !imgError
 
+  const relTime = useMemo(
+    () => (item.publishedAt ? formatRelativeTime(item.publishedAt) : ''),
+    [item.publishedAt]
+  )
+
   const content = (
     <div className="flex flex-col h-full rounded-lg border border-[var(--border)] bg-[var(--card)] overflow-hidden transition-colors hover:bg-[var(--hover)]">
       {showImage && (
-        <div className="aspect-video overflow-hidden bg-[var(--hover)]">
-          <img
+        <div className="relative aspect-video overflow-hidden bg-[var(--hover)]">
+          <Image
             src={item.imageUrl!}
             alt=""
-            loading="lazy"
+            fill
+            unoptimized
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover"
+            className="object-cover"
           />
         </div>
       )}
@@ -42,7 +49,7 @@ export const NewsCard = memo(function NewsCard({ item }: { item: NewsItem }) {
         <div className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
           {item.sourceName && <span>{item.sourceName}</span>}
           {item.sourceName && item.publishedAt && <span>·</span>}
-          {item.publishedAt && <span>{formatRelativeTime(item.publishedAt)}</span>}
+          {relTime && <span>{relTime}</span>}
         </div>
         <h3 className="mt-1 font-medium text-sm leading-snug line-clamp-2">
           {item.title}
