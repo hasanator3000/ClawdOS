@@ -7,6 +7,8 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // Inline styles intentional — global error replaces the entire document,
+  // so the app stylesheet (CSS variables) is NOT available.
   return (
     <html lang="ru">
       <body style={{ fontFamily: 'system-ui, sans-serif', padding: 40, background: '#06060a', color: '#e2e0ec' }}>

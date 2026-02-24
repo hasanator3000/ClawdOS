@@ -19,7 +19,8 @@ export async function processStreamWithActions(
   userId: string,
   workspaceId: string | null,
   conversationId: string | null,
-  executeActionsFn: (actions: any[], userId: string, workspaceId: string | null) => Promise<{ navigation?: string; results: any[] }>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  executeActionsFn: (actions: Record<string, any>[], userId: string, workspaceId: string | null) => Promise<{ navigation?: string; results: Array<Record<string, any> & { action?: string }> }>,
   saveAssistantMessageFn: (userId: string, conversationId: string | null, content: string) => Promise<void>
 ): Promise<ReadableStream> {
   const reader = upstreamResponse.body?.getReader()
@@ -74,14 +75,15 @@ export async function processStreamWithActions(
                     })
 
                   for (const raw of blocks) {
-                    let payload: any
+                    let payload: Record<string, unknown>
                     try {
-                      payload = JSON.parse(raw)
+                      payload = JSON.parse(raw) as Record<string, unknown>
                     } catch {
                       continue
                     }
 
-                    const actions: any[] = Array.isArray(payload?.actions) ? payload.actions : []
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const actions: Record<string, any>[] = Array.isArray(payload?.actions) ? payload.actions : []
                     if (actions.length > 0) {
                       log.info('Executing actions', { count: actions.length })
                       const result = await executeActionsFn(actions, userId, workspaceId)
@@ -123,7 +125,8 @@ export async function processStreamWithActions(
                 continue
               }
 
-              let evt: any
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              let evt: { choices?: Array<{ delta?: { content?: string } }> } & Record<string, any>
               try {
                 evt = JSON.parse(data)
               } catch {

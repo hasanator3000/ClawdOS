@@ -116,22 +116,9 @@ export function middleware(req: NextRequest) {
 
   const cookieToken = req.cookies.get(TOKEN_COOKIE)?.value
   const headerToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
-  const queryToken = req.nextUrl.searchParams.get('token')
 
-  const token = cookieToken || headerToken || queryToken
+  const token = cookieToken || headerToken
   if (token === required) {
-    // If user passed token via ?token=..., persist it as a cookie.
-    if (!cookieToken && queryToken === required) {
-      const res = NextResponse.next()
-      res.cookies.set(TOKEN_COOKIE, required, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: false, // set true when behind HTTPS
-        path: '/',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-      })
-      return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
-    }
     const res = NextResponse.next()
     return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
   }

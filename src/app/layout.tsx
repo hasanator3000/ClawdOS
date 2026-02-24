@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
-      <body className={`${outfit.variable} ${spaceMono.variable} antialiased bg-[var(--bg)] text-[var(--fg)]`}>
+    <html lang="ru" suppressHydrationWarning>
+      <body suppressHydrationWarning className={`${outfit.variable} ${spaceMono.variable} antialiased bg-[var(--bg)] text-[var(--fg)]`}>
         <div className="bg-mesh" />
         {children}
       </body>

@@ -12,6 +12,7 @@ import {
   assignSourceToTab,
   removeSourceFromTab,
 } from './actions'
+import { SourceCard } from './SourceCard'
 
 interface Props {
   sources: NewsSource[]
@@ -21,12 +22,6 @@ interface Props {
   onSourcesChange: (sources: NewsSource[]) => void
   onTabsChange: (tabs: NewsTab[]) => void
   onSourceTabMapChange: (map: Record<string, string[]>) => void
-}
-
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  active: { label: 'Active', cls: 'text-[var(--success-fg)] bg-[var(--success-bg)]' },
-  paused: { label: 'Paused', cls: 'text-[var(--muted)] bg-[var(--hover)]' },
-  error: { label: 'Error', cls: 'text-[var(--error-fg)] bg-[var(--error-bg)]' },
 }
 
 export function NewsSourcesPanel({
@@ -67,8 +62,10 @@ export function NewsSourcesPanel({
       const result = await removeSource(sourceId)
       if (result.success) {
         onSourcesChange(sources.filter((s) => s.id !== sourceId))
-        const { [sourceId]: _, ...rest } = sourceTabMap
-        onSourceTabMapChange(rest)
+        const updated = Object.fromEntries(
+          Object.entries(sourceTabMap).filter(([key]) => key !== sourceId)
+        )
+        onSourceTabMapChange(updated)
       }
     })
   }
@@ -202,76 +199,18 @@ export function NewsSourcesPanel({
             {sources.length === 0 && (
               <div className="text-sm text-[var(--muted)]">No sources added yet.</div>
             )}
-            {sources.map((source) => {
-              const badge = STATUS_BADGE[source.status] || STATUS_BADGE.active
-              const assignedSet = new Set(sourceTabMap[source.id] || [])
-              return (
-                <div
-                  key={source.id}
-                  className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 space-y-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {source.title || new URL(source.url).hostname}
-                      </div>
-                      <div className="text-xs text-[var(--muted)] truncate">{source.url}</div>
-                    </div>
-                    <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${badge.cls}`}>
-                      {badge.label}
-                    </span>
-                  </div>
-
-                  {source.errorMessage && (
-                    <div className="text-xs text-[var(--error-fg)]">{source.errorMessage}</div>
-                  )}
-
-                  {/* Tab assignments */}
-                  {tabs.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {tabs.map((tab) => {
-                        const assigned = assignedSet.has(tab.id)
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => handleToggleTabAssignment(source.id, tab.id)}
-                            disabled={isPending}
-                            className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                              assigned
-                                ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--hover)]'
-                                : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
-                            }`}
-                          >
-                            {tab.name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleSource(source.id)}
-                      disabled={isPending}
-                      className="text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-                    >
-                      {source.status === 'active' ? 'Pause' : 'Resume'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSource(source.id)}
-                      disabled={isPending}
-                      className="text-xs text-[var(--muted)] hover:text-[var(--red)] transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
+            {sources.map((source) => (
+              <SourceCard
+                key={source.id}
+                source={source}
+                tabs={tabs}
+                assignedTabIds={sourceTabMap[source.id] || []}
+                isPending={isPending}
+                onToggle={handleToggleSource}
+                onRemove={handleRemoveSource}
+                onToggleTab={handleToggleTabAssignment}
+              />
+            ))}
           </div>
 
           {/* Tabs management */}
