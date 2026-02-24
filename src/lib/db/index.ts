@@ -1,4 +1,7 @@
 import { Pool, type PoolClient } from 'pg'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('db')
 
 let _pool: Pool | null = null
 
@@ -40,6 +43,22 @@ export async function withUser<T>(userId: string, fn: (client: PoolClient) => Pr
   } finally {
     client.release()
   }
+}
+
+/**
+ * Drain the connection pool gracefully.
+ * Waits for active queries to finish, then closes all connections.
+ */
+export async function drainPool(): Promise<void> {
+  if (!_pool) return
+  log.info('Draining connection pool', {
+    total: _pool.totalCount,
+    idle: _pool.idleCount,
+    waiting: _pool.waitingCount,
+  })
+  await _pool.end()
+  _pool = null
+  log.info('Connection pool drained')
 }
 
 export type { PoolClient }
