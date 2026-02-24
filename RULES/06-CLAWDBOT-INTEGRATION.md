@@ -160,6 +160,59 @@ const token = process.env.CLAWDBOT_TOKEN  // Required, throws if missing
 }
 ```
 
+## Skill Ecosystem
+
+### What is a skill?
+
+A skill is a directory with a `SKILL.md` file containing YAML frontmatter (name, description) and markdown instructions. Clawdbot loads these at runtime and can activate them contextually.
+
+### Where skills live
+
+| Location | Type | Example |
+|----------|------|---------|
+| `/root/clawd/skills/` | Workspace (user-installed) | `frontend-design`, `postgres` |
+| `/usr/lib/node_modules/clawdbot/skills/` | Built-in (bundled with Clawdbot) | `github`, `slack`, `weather` |
+
+### ClawdHub CLI (`clawdhub`)
+
+Package manager for Clawdbot skills. Installed globally at `/usr/bin/clawdhub`.
+
+```bash
+clawdhub list                    # Show installed workspace skills (from lockfile)
+clawdhub search "postgres"       # Vector search the registry
+clawdhub install <slug>          # Install into ./skills/<slug>/
+clawdhub install <slug> --version 1.2.3
+clawdhub update <slug>           # Update to latest version
+clawdhub update --all            # Update all installed skills
+clawdhub explore                 # Browse latest skills from registry
+```
+
+**Key details:**
+- Default registry: `https://clawdhub.com` (override with `CLAWDHUB_REGISTRY`)
+- Working directory: cwd or `CLAWDHUB_WORKDIR` (default: `/root/clawd`)
+- Install dir: `./skills/` relative to workdir
+- Lockfile: `clawdhub-lock.json` in workdir
+
+### ClawdTM Marketplace API
+
+ClawdTM (`clawdtm.com`) is a web frontend over ClawdHub with security scanning, ratings, and search.
+
+**Search endpoint:** `GET https://clawdtm.com/api/v1/skills/search?q=<query>&limit=<n>`
+
+Response fields per skill: `slug`, `name`, `author`, `description`, `version`, `downloads`, `stars`, `installs`, `security` (score 0-100, risk level, flags), `community` (ratings, verified/featured), `install_command`, `clawdtm_url`.
+
+### Settings UI integration
+
+The `/settings/skills` page has 3 tabs:
+
+| Tab | Source | Files |
+|-----|--------|-------|
+| **Installed** | Reads `SKILL.md` from disk (workspace + bundled dirs) | `skills-actions.ts`, `InstalledSkillCard.tsx` |
+| **Commands** | Hardcoded registry of chat commands | `skills-registry.ts`, `SkillCard.tsx` |
+| **Marketplace** | ClawdTM API search | `marketplace-actions.ts`, `MarketplaceCard.tsx` |
+
+Install flow: Marketplace "Install" button → server action calls `clawdhub install <slug>` → refreshes installed list.
+
 ## Anti-patterns (DO NOT)
 
 - **DO NOT** call Clawdbot from client-side code — always proxy through Next.js API

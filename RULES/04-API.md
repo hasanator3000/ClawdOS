@@ -160,7 +160,7 @@ NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 
 - [ ] Never expose stack traces in responses
 - [ ] Always return JSON — never plain text errors
-- [ ] Log errors server-side with `console.error()` (not `console.log`)
+- [ ] Log errors server-side with `createLogger()` (never raw `console.*`)
 - [ ] Wrap DB operations in try/catch
 
 ## Server actions vs API routes

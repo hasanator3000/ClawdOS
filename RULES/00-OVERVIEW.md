@@ -48,7 +48,8 @@ src/
       today/page.tsx    # Dashboard
       tasks/            # page.tsx + TaskList.tsx + actions.ts
       news/             # page.tsx + NewsShell.tsx + components + actions.ts
-      settings/         # page.tsx + sub-pages (telegram, password)
+      settings/         # page.tsx + sub-pages (telegram, password, skills, files)
+        skills/           # Skills & Marketplace (3 tabs: Installed, Commands, Marketplace)
     api/
       ai/chat/route.ts  # Clawdbot proxy (the big one: 1000+ lines)
       actions/task/      # Task CRUD API

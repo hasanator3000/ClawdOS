@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+._*
 
 # debug
 npm-debug.log*
@@ -74,6 +75,7 @@ id_ed25519*
 *.sqlite
 *.sqlite3
 db/backups/
+/backups/
 
 # Dev-only files (architecture docs, planning, agent rules)
 /dev/
