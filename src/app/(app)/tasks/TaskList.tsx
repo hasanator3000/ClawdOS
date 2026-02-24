@@ -7,10 +7,30 @@ import { createTask, fetchAllTags, fetchProjects } from './actions'
 import { TaskFilters, type TaskFilterState } from './TaskFilters'
 import { TaskCreateForm } from './TaskCreateForm'
 import { ViewModeSlider, useViewMode, type ViewMode } from './ViewModeSlider'
+import dynamic from 'next/dynamic'
 import { ListView } from './views/ListView'
-import { CalendarView } from './views/CalendarView'
-import { KanbanView } from './views/KanbanView'
-import { TimelineView } from './views/TimelineView'
+
+function ViewSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3">
+      <div className="h-8 w-48 rounded-lg bg-[var(--hover)]" />
+      <div className="h-64 rounded-xl bg-[var(--hover)]" />
+    </div>
+  )
+}
+
+const CalendarView = dynamic(
+  () => import('./views/CalendarView').then(m => m.CalendarView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+)
+const KanbanView = dynamic(
+  () => import('./views/KanbanView').then(m => m.KanbanView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+)
+const TimelineView = dynamic(
+  () => import('./views/TimelineView').then(m => m.TimelineView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+)
 import { TaskDetailPanel } from './TaskDetailPanel'
 
 interface TaskListProps {
