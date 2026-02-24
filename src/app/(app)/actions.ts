@@ -4,15 +4,12 @@ import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/constants'
 import { getWorkspacesForUser } from '@/lib/workspace'
-
-// UUID v4 regex for validation
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+import { validateAction } from '@/lib/validation'
+import { workspaceIdSchema } from '@/lib/validation-schemas'
 
 export async function setActiveWorkspace(workspaceId: string) {
-  // Validate UUID format to prevent injection
-  if (!UUID_REGEX.test(workspaceId)) {
-    throw new Error('Invalid workspace ID')
-  }
+  const v = validateAction(workspaceIdSchema, workspaceId)
+  if (v.error) throw new Error('Invalid workspace ID')
 
   // Verify user has access to this workspace (IDOR protection)
   const workspaces = await getWorkspacesForUser()

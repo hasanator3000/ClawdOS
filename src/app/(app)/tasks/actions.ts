@@ -5,6 +5,8 @@ import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
 import { createLogger } from '@/lib/logger'
+import { validateAction } from '@/lib/validation'
+import { createTaskSchema, updateTaskSchema, updateTaskDateSchema, updateTaskPrioritySchema, recurrenceRuleSchema, projectNameSchema, uuidSchema } from '@/lib/validation-schemas'
 
 const log = createLogger('task-actions')
 import {
@@ -31,21 +33,17 @@ import {
 
 export async function createTask(params: Omit<CreateTaskParams, 'workspaceId'>) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+
+  const v = validateAction(createTaskSchema, params)
+  if (v.error) return { error: v.error }
 
   const workspace = await getActiveWorkspace()
-  if (!workspace) {
-    return { error: 'No workspace selected' }
-  }
+  if (!workspace) return { error: 'No workspace selected' }
 
   try {
     const task = await withUser(session.userId, async (client) => {
-      return createTaskRepo(client, {
-        ...params,
-        workspaceId: workspace.id,
-      })
+      return createTaskRepo(client, { ...params, workspaceId: workspace.id })
     })
 
     revalidatePath('/tasks')
@@ -58,9 +56,12 @@ export async function createTask(params: Omit<CreateTaskParams, 'workspaceId'>) 
 
 export async function updateTask(taskId: string, params: UpdateTaskParams) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+
+  const idV = validateAction(uuidSchema, taskId)
+  if (idV.error) return { error: 'Invalid task ID' }
+  const v = validateAction(updateTaskSchema, params)
+  if (v.error) return { error: v.error }
 
   try {
     const task = await withUser(session.userId, async (client) => {
@@ -81,9 +82,9 @@ export async function updateTask(taskId: string, params: UpdateTaskParams) {
 
 export async function deleteTask(taskId: string) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, taskId)
+  if (idV.error) return { error: 'Invalid task ID' }
 
   try {
     const deleted = await withUser(session.userId, async (client) => {
@@ -104,9 +105,9 @@ export async function deleteTask(taskId: string) {
 
 export async function completeTask(taskId: string): Promise<{ task?: Task; nextTask?: Task; error?: string }> {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, taskId)
+  if (idV.error) return { error: 'Invalid task ID' }
 
   try {
     const result = await withUser(session.userId, async (client) => {
@@ -160,9 +161,9 @@ export async function completeTask(taskId: string): Promise<{ task?: Task; nextT
 
 export async function reopenTask(taskId: string) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, taskId)
+  if (idV.error) return { error: 'Invalid task ID' }
 
   try {
     const task = await withUser(session.userId, async (client) => {
@@ -191,14 +192,14 @@ export async function updateTaskPriority(
       return { success: false, error: 'Unauthorized' }
     }
 
+    const idV = validateAction(uuidSchema, taskId)
+    if (idV.error) return { success: false, error: 'Invalid task ID' }
+    const pv = validateAction(updateTaskPrioritySchema, { priority: newPriority })
+    if (pv.error) return { success: false, error: pv.error }
+
     const workspace = await getActiveWorkspace()
     if (!workspace) {
       return { success: false, error: 'No active workspace' }
-    }
-
-    // Validate priority is in valid range (0-4)
-    if (!Number.isInteger(newPriority) || newPriority < 0 || newPriority > 4) {
-      return { success: false, error: 'Invalid priority value' }
     }
 
     const result = await withUser(session.userId, async (client) => {
@@ -234,9 +235,11 @@ export async function updateTaskDate(
   }
 ): Promise<{ task?: Task; error?: string }> {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, taskId)
+  if (idV.error) return { error: 'Invalid task ID' }
+  const v = validateAction(updateTaskDateSchema, params)
+  if (v.error) return { error: v.error }
 
   try {
     const task = await withUser(session.userId, async (client) => {
@@ -257,9 +260,9 @@ export async function updateTaskDate(
 
 export async function fetchSubtasks(parentId: string): Promise<{ tasks?: Task[]; error?: string }> {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, parentId)
+  if (idV.error) return { error: 'Invalid parent ID' }
 
   try {
     const tasks = await withUser(session.userId, async (client) => {
@@ -311,12 +314,13 @@ export async function fetchProjects(): Promise<{ projects?: Project[]; error?: s
 export async function createProject(name: string): Promise<{ project?: Project; error?: string }> {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const v = validateAction(projectNameSchema, name)
+  if (v.error) return { error: v.error }
 
   const workspace = await getActiveWorkspace()
   if (!workspace) return { error: 'No workspace' }
 
   const trimmed = name.trim()
-  if (!trimmed) return { error: 'Name required' }
 
   try {
     const project = await withUser(session.userId, async (client) => {
@@ -336,6 +340,10 @@ export async function updateRecurrence(
 ): Promise<{ task?: Task; error?: string }> {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, taskId)
+  if (idV.error) return { error: 'Invalid task ID' }
+  const rv = validateAction(recurrenceRuleSchema.nullable(), rule)
+  if (rv.error) return { error: rv.error }
 
   try {
     const task = await withUser(session.userId, async (client) => {
@@ -353,6 +361,8 @@ export async function updateRecurrence(
 export async function deleteProject(projectId: string): Promise<{ success?: boolean; error?: string }> {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, projectId)
+  if (idV.error) return { error: 'Invalid project ID' }
 
   try {
     const deleted = await withUser(session.userId, async (client) => {

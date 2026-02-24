@@ -5,6 +5,8 @@ import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
 import { createLogger } from '@/lib/logger'
+import { validateAction } from '@/lib/validation'
+import { addSourceSchema, createTabSchema, reorderTabsSchema, setupNewsTopicsSchema, uuidSchema } from '@/lib/validation-schemas'
 
 const log = createLogger('news-actions')
 import {
@@ -25,13 +27,11 @@ import {
 import { validateFeedUrl } from '@/lib/rss/validator'
 import { fetchLiveFeeds, invalidateFeedCache } from '@/lib/rss/live'
 
-// ---------------------------------------------------------------------------
-// Source management
-// ---------------------------------------------------------------------------
-
 export async function addSource(url: string, tabIds?: string[]) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const v = validateAction(addSourceSchema, { url, tabIds })
+  if (v.error) return { error: v.error }
 
   const workspace = await getActiveWorkspace()
   if (!workspace) return { error: 'No workspace selected' }
@@ -77,6 +77,8 @@ export async function addSource(url: string, tabIds?: string[]) {
 export async function removeSource(sourceId: string) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, sourceId)
+  if (idV.error) return { error: 'Invalid source ID' }
 
   try {
     const deleted = await withUser(session.userId, (client) => deleteNewsSource(client, sourceId))
@@ -92,6 +94,8 @@ export async function removeSource(sourceId: string) {
 export async function toggleSource(sourceId: string) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, sourceId)
+  if (idV.error) return { error: 'Invalid source ID' }
 
   try {
     const source = await withUser(session.userId, async (client) => {
@@ -111,13 +115,11 @@ export async function toggleSource(sourceId: string) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Tab management
-// ---------------------------------------------------------------------------
-
 export async function createTab(name: string) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const v = validateAction(createTabSchema, name)
+  if (v.error) return { error: v.error }
 
   const workspace = await getActiveWorkspace()
   if (!workspace) return { error: 'No workspace selected' }
@@ -137,6 +139,8 @@ export async function createTab(name: string) {
 export async function deleteTab(tabId: string) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, tabId)
+  if (idV.error) return { error: 'Invalid tab ID' }
 
   try {
     const deleted = await withUser(session.userId, (client) => deleteNewsTab(client, tabId))
@@ -152,6 +156,8 @@ export async function deleteTab(tabId: string) {
 export async function reorderTabs(tabIds: string[]) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const v = validateAction(reorderTabsSchema, tabIds)
+  if (v.error) return { error: v.error }
 
   try {
     await withUser(session.userId, (client) => reorderTabsRepo(client, tabIds))
@@ -166,6 +172,10 @@ export async function reorderTabs(tabIds: string[]) {
 export async function assignSourceToTab(sourceId: string, tabId: string) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const sv = validateAction(uuidSchema, sourceId)
+  if (sv.error) return { error: 'Invalid source ID' }
+  const tv = validateAction(uuidSchema, tabId)
+  if (tv.error) return { error: 'Invalid tab ID' }
 
   try {
     await withUser(session.userId, (client) => assignRepo(client, sourceId, tabId))
@@ -180,6 +190,10 @@ export async function assignSourceToTab(sourceId: string, tabId: string) {
 export async function removeSourceFromTab(sourceId: string, tabId: string) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+  const sv = validateAction(uuidSchema, sourceId)
+  if (sv.error) return { error: 'Invalid source ID' }
+  const tv = validateAction(uuidSchema, tabId)
+  if (tv.error) return { error: 'Invalid tab ID' }
 
   try {
     await withUser(session.userId, (client) => removeAssignRepo(client, sourceId, tabId))
@@ -191,13 +205,6 @@ export async function removeSourceFromTab(sourceId: string, tabId: string) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Feed operations
-// ---------------------------------------------------------------------------
-
-/**
- * Fetch all RSS feeds live and return fresh items.
- */
 export async function refreshNews() {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized', items: [] }
@@ -246,10 +253,6 @@ export async function getTabs() {
   return { tabs }
 }
 
-// ---------------------------------------------------------------------------
-// Quick setup — LLM-powered topic-based feed configuration
-// ---------------------------------------------------------------------------
-
 const SETUP_SYSTEM_PROMPT = `You are an RSS feed configuration assistant.
 Given user's topic preferences, return a JSON object with tabs and RSS sources.
 
@@ -295,8 +298,9 @@ export async function setupNewsTopics(userTopics: string) {
   const workspace = await getActiveWorkspace()
   if (!workspace) return { error: 'No workspace selected' }
 
+  const tv = validateAction(setupNewsTopicsSchema, userTopics)
+  if (tv.error) return { error: tv.error }
   const input = userTopics.trim()
-  if (!input) return { error: 'Please describe what topics you want' }
 
   // 1. Ask Clawdbot for RSS config
   const gatewayUrl = process.env.CLAWDBOT_URL || 'http://127.0.0.1:18789'

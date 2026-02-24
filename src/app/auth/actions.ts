@@ -2,13 +2,15 @@
 
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
-import { usernameRegex, verifyUser, createAuthChallenge, enqueueTelegram } from '@/lib/auth'
+import { verifyUser, createAuthChallenge, enqueueTelegram } from '@/lib/auth'
+import { signInSchema } from '@/lib/validation-schemas'
 
 export async function signIn(formData: FormData) {
   const username = String(formData.get('username') || '').trim()
   const password = String(formData.get('password') || '')
 
-  if (!usernameRegex.test(username) || password.length < 8) {
+  const parsed = signInSchema.safeParse({ username, password })
+  if (!parsed.success) {
     redirect('/login?error=Invalid%20credentials')
   }
 

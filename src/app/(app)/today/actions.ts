@@ -13,6 +13,8 @@ import {
   type UpdateProcessParams,
 } from '@/lib/db/repositories/process.repository'
 import { createLogger } from '@/lib/logger'
+import { validateAction } from '@/lib/validation'
+import { createProcessSchema, updateProcessSchema, uuidSchema } from '@/lib/validation-schemas'
 
 const log = createLogger('today-actions')
 
@@ -20,9 +22,9 @@ export async function createProcessAction(
   params: Omit<CreateProcessParams, 'workspaceId'>
 ) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const v = validateAction(createProcessSchema, params)
+  if (v.error) return { error: v.error }
 
   const workspace = await getActiveWorkspace()
   if (!workspace) {
@@ -47,9 +49,9 @@ export async function createProcessAction(
 
 export async function toggleProcessAction(id: string) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, id)
+  if (idV.error) return { error: 'Invalid process ID' }
 
   try {
     const process = await withUser(session.userId, async (client) => {
@@ -73,9 +75,11 @@ export async function updateProcessAction(
   params: UpdateProcessParams
 ) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, id)
+  if (idV.error) return { error: 'Invalid process ID' }
+  const v = validateAction(updateProcessSchema, params)
+  if (v.error) return { error: v.error }
 
   try {
     const process = await withUser(session.userId, async (client) => {
@@ -96,9 +100,9 @@ export async function updateProcessAction(
 
 export async function deleteProcessAction(id: string) {
   const session = await getSession()
-  if (!session.userId) {
-    return { error: 'Unauthorized' }
-  }
+  if (!session.userId) return { error: 'Unauthorized' }
+  const idV = validateAction(uuidSchema, id)
+  if (idV.error) return { error: 'Invalid process ID' }
 
   try {
     const deleted = await withUser(session.userId, async (client) => {
