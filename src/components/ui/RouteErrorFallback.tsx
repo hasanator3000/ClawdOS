@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createClientLogger } from '@/lib/client-logger'
 
 const log = createClientLogger('RouteError')
@@ -10,14 +10,40 @@ interface RouteErrorFallbackProps {
   reset: () => void
 }
 
+function isStaleClientError(error: Error): boolean {
+  const msg = error.message || ''
+  return (
+    msg.includes('Failed to find Server Action') ||
+    msg.includes('Failed to fetch') ||
+    msg.includes('ChunkLoadError') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('dynamically imported module')
+  )
+}
+
 export function RouteErrorFallback({ error, reset }: RouteErrorFallbackProps) {
+  const [reloading, setReloading] = useState(false)
+
   useEffect(() => {
     log.error(error.message, { digest: error.digest })
+
+    if (isStaleClientError(error)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- show "updating" before reload
+      setReloading(true)
+      window.location.reload()
+    }
   }, [error])
+
+  if (reloading) {
+    return (
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8 max-w-md mx-auto mt-12 text-center">
+        <p className="text-sm text-[var(--muted)]">Updating to latest version...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8 max-w-md mx-auto mt-12 text-center">
-      {/* Alert icon */}
       <svg
         className="mx-auto mb-4 text-[var(--red)]"
         width={24}
