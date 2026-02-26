@@ -3,7 +3,7 @@
 > Canonical source: `dev/CODING_AGENT_RULES.md`
 > This file summarises the prohibitions. Refer to the canonical source for full context.
 
-## The 5 golden rules
+## The 6 golden rules
 
 ### 1. No Claude/Anthropic API in ClawdOS
 
@@ -28,8 +28,8 @@ When Clawdbot wants to trigger UI actions, it uses the `<clawdos>{...}</clawdos>
 
 - DO NOT execute `document.querySelector(modelProvided)` or similar
 - DO NOT allow the model to specify CSS selectors, XPath, or element IDs to click
-- Actions are a whitelisted set: `navigate`, `task.create`, `task.complete`, `task.reopen`, `task.delete`, `news.source.add`, `news.source.remove`, `news.tab.create`
-- Adding a new action = adding it to the whitelist in `src/app/api/ai/chat/route.ts`
+- Actions are a whitelisted set (11 keys): `navigate`, `task.create`, `task.complete`, `task.reopen`, `task.delete`, `task.priority`, `news.source.add`, `news.source.remove`, `news.tab.create`, `delivery.track`, `delivery.remove`
+- Adding a new action = adding it to the whitelist in `src/lib/ai/actions-executor.ts`
 
 ### 4. No tokens to browser
 
@@ -47,6 +47,26 @@ Every database operation that reads or writes user data MUST run under RLS conte
 - Always use `withUser(userId, async (client) => { ... })`
 - Never use `getPool().query()` directly for user data
 - `withUser()` sets `app.user_id` via `set_config()` → enables `core.current_user_id()` → RLS policies check `core.is_workspace_member(workspace_id)`
+
+**Exception: webhook routes.** External service callbacks (e.g., `/api/webhooks/trackingmore`) need to do cross-user lookups by identifiers like tracking numbers. These routes intentionally use `getPool().query()` directly because there is no user session context. This is documented and acceptable — see [05-DATABASE.md](05-DATABASE.md).
+
+### 6. Build & deploy through systemd
+
+Production runs via `clawdos.service` (systemd, `Restart=always`, `RestartSec=2`). NEVER kill the Next.js process directly.
+
+- DO NOT use `kill <pid>` then `npm start &` — systemd will race you
+- DO NOT `rm -rf .next` without stopping the service first — server serves 404 on chunks
+- DO NOT use `npm run dev` in production
+
+**Correct deploy sequence:**
+```bash
+systemctl stop clawdos        # 1. Stop service first
+rm -rf .next && npm run build  # 2. Clean build
+systemctl start clawdos        # 3. Start service
+systemctl status clawdos --no-pager  # 4. Verify
+```
+
+See [08-DEPLOY-CONTRACT.md](08-DEPLOY-CONTRACT.md) for full details.
 
 ## PostgreSQL constraint
 

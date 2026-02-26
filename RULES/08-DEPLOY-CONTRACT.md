@@ -15,6 +15,9 @@
 | `TELEGRAM_BOT_TOKEN` | Optional | String | From @BotFather | For 2FA codes |
 | `ACCESS_TOKEN` | Optional | Base64 string | `openssl rand -base64 32` | IP-access gate token |
 | `SESSION_COOKIE_SECURE` | Optional | `"true"` | Set if HTTPS | Secure cookie flag |
+| `TRACKINGMORE_API_KEY` | Optional | String | From TrackingMore dashboard | TrackingMore API v3 key (required for delivery tracking) |
+| `WEATHER_CITY` | Optional | String | Manual | City name for weather widget (e.g., `Moscow`) |
+| `LOG_LEVEL` | Optional | String | Default: `info` | Structured logger level (`debug`, `info`, `warn`, `error`) |
 
 ### Rules for adding new ENV variables
 
@@ -34,7 +37,8 @@
 - [ ] All secrets in `.env.local` only (gitignored)
 - [ ] Tokens accessed only in server-side code (API routes, server components, server actions)
 - [ ] No `NEXT_PUBLIC_*` for any secret or token
-- [ ] `CLAWDBOT_TOKEN` used only in `src/app/api/ai/chat/route.ts`, `src/app/api/assistant/route.ts`, `src/app/api/consult/route.ts`
+- [ ] `CLAWDBOT_TOKEN` used only in `src/app/api/ai/utils/gateway.ts`, `src/app/api/assistant/route.ts`, `src/app/api/consult/route.ts`
+- [ ] `TRACKINGMORE_API_KEY` used only in `src/lib/trackingmore/client.ts`
 - [ ] `TELEGRAM_BOT_TOKEN` used only in `src/lib/telegram/send.ts`
 
 ### When adding a new external service
@@ -46,42 +50,79 @@
 
 ## Health check
 
-Currently there is **no dedicated `/api/health` endpoint**. If you add one:
+**`/api/health` exists** at `src/app/api/health/route.ts` — no auth required.
 
-### Recommended `/api/health` pattern
+### What it checks
 
-```typescript
-export async function GET() {
-  const checks: Record<string, 'ok' | 'error'> = {}
+1. **Database connectivity** — `SELECT 1` with latency measurement
+2. **Clawdbot upstream** — `GET ${CLAWDBOT_URL}/health` with 3s timeout
+3. **Pool metrics** — totalCount, idleCount, waitingCount, max
 
-  // DB connectivity
-  try {
-    const pool = getPool()
-    await pool.query('SELECT 1')
-    checks.database = 'ok'
-  } catch {
-    checks.database = 'error'
+### Response shape
+
+```json
+{
+  "status": "healthy",          // "healthy" | "degraded"
+  "totalMs": 45,                // Total check duration
+  "checks": {
+    "database": { "status": "ok", "latencyMs": 3 },
+    "clawdbot": { "status": "ok", "latencyMs": 42 }
+  },
+  "pool": {
+    "totalCount": 5,
+    "idleCount": 3,
+    "waitingCount": 0,
+    "max": 20
   }
-
-  // Clawdbot connectivity (optional)
-  try {
-    const res = await fetch(`${process.env.CLAWDBOT_URL}/health`, { signal: AbortSignal.timeout(3000) })
-    checks.clawdbot = res.ok ? 'ok' : 'error'
-  } catch {
-    checks.clawdbot = 'error'
-  }
-
-  const allOk = Object.values(checks).every((v) => v === 'ok')
-  return NextResponse.json({ status: allOk ? 'healthy' : 'degraded', checks }, { status: allOk ? 200 : 503 })
 }
 ```
 
+- Returns **200** if all checks pass, **503** if any check fails (degraded)
+- No auth required — exempt from CSRF and rate limiting in middleware
+- Individual check failures include `detail` field with error message
+
 ### Rules for health checks
 
-- [ ] If your section adds a new external dependency (new service, new port), add it to health checks
+- [ ] If your section adds a new external dependency (new service, new port), add a check
 - [ ] Health endpoint must NOT require auth (for monitoring tools)
 - [ ] Health endpoint must respond within 5 seconds
 - [ ] Return 200 for healthy, 503 for degraded
+
+## Systemd deploy contract
+
+Production runs via `clawdos.service` (systemd, `Restart=always`, `RestartSec=2`).
+
+### Correct deploy sequence (ALWAYS follow)
+
+```bash
+# 1. Stop the service FIRST (prevents premature restart)
+systemctl stop clawdos
+
+# 2. Clean build
+rm -rf .next && npm run build
+
+# 3. Start the service
+systemctl start clawdos
+
+# 4. Verify
+systemctl status clawdos --no-pager
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/login  # expect 200
+```
+
+### NEVER do
+
+- `kill <pid>` then `npm start &` — systemd restarts it in 2s with broken `.next`
+- `rm -rf .next` without stopping the service first — server serves 404
+- `npm run dev` in production — use `systemctl` for everything
+
+### Post-deploy verification
+
+After deploy, tell user to **hard refresh** browser (`Ctrl+Shift+R`) — old chunks are cached with different hashes.
+
+Verify chunks:
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/_next/static/chunks/<any-chunk>.js
+```
 
 ## Database idempotency
 

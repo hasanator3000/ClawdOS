@@ -11,9 +11,10 @@
 - возвращать пользователю результат: что именно сделано (ID/slug/статус/кол-во изменений).
 
 Примеры задач:
-- Tasks: создать/обновить/закрыть/переоткрыть/удалить
+- Tasks: создать/обновить/закрыть/переоткрыть/удалить, изменить приоритет
 - News: добавить/удалить источник, переключить/создать таб, обновить/перфоманс-индексы по необходимости
-- Settings: Telegram/2FA, access-token gate, password, workspace switching
+- Deliveries: добавить трекинг-номер, обновить статус доставки, удалить отслеживание — через UI или через чат-экшены (`delivery.track`, `delivery.remove`)
+- Settings: Telegram/2FA, access-token gate, password, workspace switching, dashboard preferences
 
 ## 2) Приоритет — «main» инстанс
 
