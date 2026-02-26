@@ -18,8 +18,8 @@ This is the complete step-by-step guide. Follow it exactly.
 
 | Namespace | Use for | Example tables |
 |-----------|---------|----------------|
-| `core` | Users, workspaces, auth, membership, tasks | `user`, `workspace`, `task` |
-| `content` | News, feeds, articles, media | `news_item`, `news_source`, `digest` |
+| `core` | Users, workspaces, auth, membership, tasks, projects, processes | `user`, `workspace`, `task`, `project`, `process` |
+| `content` | News, feeds, articles, deliveries | `news_item`, `news_source`, `digest`, `delivery` |
 | `ai` | Chat history, embeddings, prompts | `conversation`, `message` |
 | `finance` | Accounts, transactions, budgets | *(empty — planned)* |
 | `biz` | Clients, projects, invoices | *(empty — planned)* |
@@ -34,11 +34,11 @@ Find the next number in `db/migrations/`:
 
 ```bash
 ls db/migrations/
-# 001_init.sql  002_data_contracts.sql ... 007_news_perf_indexes.sql
-# Next: 008
+# 001_init.sql  002_data_contracts.sql ... 012_deliveries_schema.sql
+# Next: 013
 ```
 
-Create `db/migrations/008_<section>_schema.sql`. Use the full template from the [Migration Template](#migration-template) section below.
+Create `db/migrations/013_<section>_schema.sql`. Use the full template from the [Migration Template](#migration-template) section below.
 
 ### Step 2 — Update schema registry YAML
 
@@ -295,7 +295,7 @@ core.is_workspace_member(workspace_id uuid) → boolean
 
 ### Main migrations: `db/migrations/`
 
-**Numbering:** `001_init.sql`, `002_data_contracts.sql`, ..., `007_news_perf_indexes.sql`
+**Numbering:** `001_init.sql`, `002_data_contracts.sql`, ..., `012_deliveries_schema.sql`
 
 **Purpose:** Feature-level migrations (tables, indexes, RLS policies)
 
@@ -310,6 +310,11 @@ core.is_workspace_member(workspace_id uuid) → boolean
 | `005_news_sources.sql` | news_source, news_tab, news_source_tab junction |
 | `006_news_image.sql` | image_url column on news_item |
 | `007_news_perf_indexes.sql` | Performance indexes for news |
+| `008_processes_schema.sql` | Scheduled processes table with RLS for workspace isolation |
+| `009_task_duration.sql` | start_date and start_time columns for duration-based tasks |
+| `010_projects_schema.sql` | Project grouping for tasks (core.project table) |
+| `011_task_recurrence.sql` | recurrence_rule JSONB column for recurring tasks |
+| `012_deliveries_schema.sql` | Package/shipment tracking with TrackingMore integration |
 
 **When to use:** For new features, new tables, new columns.
 
@@ -614,13 +619,35 @@ export async function deleteItem(client: PoolClient, id: string): Promise<void> 
 
 ### Etalon repositories
 
-| Repository | Complexity | Good example of |
-|-----------|-----------|----------------|
-| `task.repository.ts` | Medium (354 lines) | Full CRUD, dynamic UPDATE, status logic, array operations |
-| `news-source.repository.ts` | Medium (158 lines) | Status tracking, error counting, stale detection |
-| `news-tab.repository.ts` | Medium (147 lines) | Junction table management, bulk reorder |
-| `news.repository.ts` | Complex (206 lines) | Dynamic WHERE builder, cursor pagination, ILIKE search, batch upsert |
-| `workspace.repository.ts` | Simple (14 lines) | Minimal query with JOIN |
+| Repository | Entity | Complexity | Good example of |
+|-----------|--------|-----------|----------------|
+| `task.repository.ts` | Tasks | Complex | Full CRUD, dynamic UPDATE, status logic, array ops, subtasks |
+| `news-source.repository.ts` | RSS sources | Medium | Status tracking, error counting, stale detection |
+| `news-tab.repository.ts` | News tabs | Medium | Junction table management, bulk reorder |
+| `news.repository.ts` | News items | Complex | Dynamic WHERE builder, cursor pagination, ILIKE search, batch upsert |
+| `digest.repository.ts` | Digests | Simple | Digest CRUD |
+| `workspace.repository.ts` | Workspaces | Simple | Minimal query with JOIN |
+| `user.repository.ts` | Users | Medium | Profile retrieval, password updates, telegram linking |
+| `user-setting.repository.ts` | User settings | Simple | Key-value settings store |
+| `auth-challenge.repository.ts` | Auth challenges | Medium | 2FA challenge creation and verification |
+| `process.repository.ts` | Processes | Medium | Scheduled process CRUD with workspace scoping |
+| `project.repository.ts` | Projects | Simple | Task project grouping |
+| `delivery.repository.ts` | Deliveries | Medium | Package tracking, event updates, TrackingMore status mapping |
+
+### System-level DB access (webhook exception)
+
+Webhook routes are an exception to the `withUser()` rule. They receive callbacks from external services and need to look up records **across users** (e.g., find a delivery by tracking number regardless of who owns it).
+
+```typescript
+// In webhook routes — use getPool() directly, NOT withUser()
+const pool = getPool()
+const result = await pool.query(
+  'SELECT id, workspace_id FROM content.delivery WHERE tracking_number = $1',
+  [trackingNumber]
+)
+```
+
+This is intentional and documented in [07-GOLDEN-RULES.md](07-GOLDEN-RULES.md) Rule 5.
 
 ---
 

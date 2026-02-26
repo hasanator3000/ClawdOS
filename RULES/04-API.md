@@ -4,15 +4,34 @@
 
 ```
 src/app/api/
-  ai/chat/route.ts          # Clawdbot proxy (GET history, POST chat, DELETE archive)
-  actions/task/route.ts      # Task CRUD (POST create, PATCH complete/reopen, DELETE)
-  assistant/route.ts         # Simple Clawdbot passthrough
-  consult/route.ts           # Meta-query endpoint
-  currencies/route.ts        # Currency rates (GET)
-  news/refresh/route.ts      # RSS refresh (POST)
-  workspaces/route.ts        # List workspaces (GET)
-  workspaces/switch/route.ts # Switch workspace (POST)
-  auth/logout/route.ts       # Logout (POST)
+  # --- AI & Chat ---
+  ai/chat/route.ts            # Clawdbot proxy (GET history, POST chat, DELETE archive)
+  ai/utils/gateway.ts         # Shared gateway helpers
+  assistant/route.ts           # Simple Clawdbot passthrough (POST)
+  consult/route.ts             # Meta-query endpoint (POST, session OR token auth)
+
+  # --- CRUD APIs ---
+  actions/task/route.ts        # Task CRUD (POST create, PATCH complete/reopen, DELETE)
+  settings/route.ts            # User settings (GET list, PUT upsert, DELETE key)
+
+  # --- Data ---
+  currencies/route.ts          # Currency rates (GET)
+  weather/route.ts             # Weather data (GET)
+  news/refresh/route.ts        # RSS refresh (POST, session OR token auth)
+
+  # --- System ---
+  health/route.ts              # Health check — DB + Clawdbot + pool metrics (GET, no auth)
+  version/route.ts             # App version info (GET, no auth)
+  build-id/route.ts            # Current build hash (GET, no auth)
+  system/status/route.ts       # System info — git, disk, memory (GET)
+  system/update/route.ts       # Git pull + rebuild trigger (POST)
+
+  # --- Auth & Workspaces ---
+  workspaces/route.ts          # List workspaces (GET)
+  workspaces/switch/route.ts   # Switch workspace (POST)
+
+  # --- Webhooks (no session auth, no CSRF) ---
+  webhooks/trackingmore/route.ts  # TrackingMore delivery status updates (POST)
 ```
 
 ## Standard pattern for API routes
@@ -67,39 +86,37 @@ export async function POST(req: NextRequest) {
 
 **Etalon:** `src/app/api/actions/task/route.ts` (82 lines — clean, minimal)
 
-## Zod validation
+## Centralized validation schemas
 
-### Current patterns in use
+All Zod schemas are centralized in **`src/lib/validation-schemas.ts`**. Do NOT define ad-hoc schemas in route files — import from validation-schemas.
 
-```typescript
-// Task creation
-const CreateTaskSchema = z.object({
-  title: z.string().min(1).max(500),
-  description: z.string().max(5000).optional(),
-  priority: z.number().int().min(0).max(4).optional(),
-  dueDate: z.string().optional(),
-  dueTime: z.string().optional(),
-  tags: z.array(z.string().max(64)).optional(),
-})
+**Current schemas by domain:**
 
-// Task mutation
-const MutateTaskSchema = z.object({
-  op: z.enum(['complete', 'reopen']),
-  taskId: z.string().uuid(),
-})
+| Domain | Schemas |
+|--------|---------|
+| Tasks | `createTaskSchema`, `updateTaskSchema`, `taskIdSchema`, `updateTaskDateSchema`, `updateTaskPrioritySchema`, `recurrenceRuleSchema` |
+| Processes | `createProcessSchema`, `updateProcessSchema` |
+| Projects | `projectNameSchema` |
+| News | `addSourceSchema`, `sourceIdSchema`, `tabIdSchema`, `createTabSchema`, `reorderTabsSchema`, `setupNewsTopicsSchema` |
+| Chat | `chatMessageSchema`, `chatDeleteSchema` |
+| Assistant | `assistantMessageSchema` |
+| Consult | `consultQuestionSchema` |
+| Settings | `settingsPutSchema`, `settingsDeleteKeySchema` |
+| Workspaces | `workspaceSwitchSchema`, `workspaceIdSchema` |
+| Auth | `signInSchema` |
+| Skills | `skillSlugSchema`, `marketplaceSearchSchema` |
+| Files | `agentFilePathSchema`, `agentFileContentSchema` |
+| Dashboard | `dashboardCurrenciesSchema`, `dashboardWeatherCitySchema`, `dashboardTimezoneSchema` |
+| Deliveries | `createDeliverySchema`, `deliveryIdSchema` |
+| Shared | `uuidSchema`, `currencyQuerySchema`, `weatherQuerySchema` |
 
-// Task deletion
-const DeleteTaskSchema = z.object({
-  taskId: z.string().uuid(),
-})
-```
-
-### Rules
+### Zod validation rules
 
 - [ ] Always validate with `.safeParse()` — never `.parse()` (which throws)
 - [ ] Return 400 with `parsed.error.flatten()` for validation errors
-- [ ] Keep schemas at file top, before handlers
+- [ ] Import schemas from `src/lib/validation-schemas.ts` — never define inline
 - [ ] Use `.uuid()` for ID fields, `.min(1)` for required strings
+- [ ] Use `formatZodErrors()` from `src/lib/validation.ts` for consistent error format
 
 ## Session auth
 
@@ -172,7 +189,7 @@ NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 | Only called from same app | Need CORS or custom headers |
 | Simple create/update/delete | Complex streaming (SSE) |
 
-### Server action pattern
+### Server action pattern (with validateAction)
 
 ```typescript
 'use server'
@@ -180,18 +197,23 @@ NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
+import { validateAction } from '@/lib/validation'
+import { createItemSchema } from '@/lib/validation-schemas'
 import { revalidatePath } from 'next/cache'
 
-export async function createItem(params: { title: string }) {
+export async function createItem(data: unknown) {
   const session = await getSession()
   if (!session.userId) return { error: 'Unauthorized' }
+
+  const parsed = validateAction(createItemSchema, data)
+  if (parsed.error) return { error: parsed.error }
 
   const workspace = await getActiveWorkspace()
   if (!workspace) return { error: 'No active workspace' }
 
   try {
     const item = await withUser(session.userId, async (client) => {
-      return createItemRepo(client, { ...params, workspaceId: workspace.id })
+      return createItemRepo(client, { ...parsed.data, workspaceId: workspace.id })
     })
     revalidatePath('/<section>')
     return { item }
@@ -202,6 +224,47 @@ export async function createItem(params: { title: string }) {
 ```
 
 **Etalon:** `src/app/(app)/tasks/actions.ts`
+
+## Webhook route pattern
+
+Webhook routes receive callbacks from external services. They differ from normal routes:
+
+- **No session auth** — external services cannot authenticate as a user
+- **No CSRF** — exempt in `src/middleware.ts` via `pathname.startsWith('/api/webhooks/')`
+- **No `withUser()`** — webhooks do cross-user lookups (e.g., find delivery by tracking number across all users)
+- **Direct pool queries** — use `getPool().query()` for system-level DB access
+
+**Pattern (from `webhooks/trackingmore/route.ts`):**
+```typescript
+import { NextResponse } from 'next/server'
+import { getPool } from '@/lib/db'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+
+  // Validate webhook payload structure
+  // ...
+
+  // System-level DB access (no withUser — cross-user lookup)
+  const pool = getPool()
+  const result = await pool.query(
+    'SELECT id, workspace_id FROM content.delivery WHERE tracking_number = $1',
+    [trackingNumber]
+  )
+
+  // Process and update
+  // ...
+
+  return NextResponse.json({ success: true })
+}
+```
+
+**Middleware exemptions** (in `src/middleware.ts`):
+- CSRF exempt: `pathname.startsWith('/api/webhooks/')`
+- Auth exempt: `pathname.startsWith('/api/webhooks/')` (in `isPublicPath()`)
 
 ## Anti-patterns (DO NOT)
 
