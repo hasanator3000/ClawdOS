@@ -11,33 +11,46 @@
 - Render initial HTML
 - Pass data to client components via props
 
-**Pattern:**
+**Pattern (from `deliveries/page.tsx`):**
 ```tsx
 // src/app/(app)/<section>/page.tsx
-import { withUser } from '@/lib/db'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
-import { getData } from '@/lib/db/repositories/<section>.repository'
+import { withUser } from '@/lib/db'
+import { findItemsByWorkspace } from '@/lib/db/repositories/<section>.repository'
+import { redirect } from 'next/navigation'
+import { SectionList } from './SectionList'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SectionPage() {
-  const [session, workspace] = await Promise.all([getSession(), getActiveWorkspace()])
-  if (!session.userId) return null
+  const [session, workspace] = await Promise.all([
+    getSession(),
+    getActiveWorkspace(),
+  ])
+
+  if (!session.userId) redirect('/login')
 
   if (!workspace) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <p className="text-sm text-[var(--muted)] mt-2">No workspaces found.</p>
+      <div className="p-6">
+        <div className="text-center text-[var(--muted)]">Select a workspace to view items</div>
       </div>
     )
   }
 
   const data = await withUser(session.userId, (client) =>
-    getData(client, workspace.id)
+    findItemsByWorkspace(client, workspace.id)
   )
 
-  return <SectionClient initialData={data} />
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Section Title</h1>
+      </div>
+      <SectionList initialData={data} />
+    </div>
+  )
 }
 ```
 
@@ -121,10 +134,11 @@ Reusable components live in `src/components/`:
 
 | Directory | Purpose | Examples |
 |-----------|---------|---------|
-| `layout/` | App-level layout | `Sidebar`, `SidebarClient` |
-| `shell/` | Shell infrastructure | `Shell`, `ShellWrapper`, `AIPanel`, `ContentTopBar`, `CommandPalette` |
-| `dashboard/` | Dashboard widgets | `GreetingWidget`, `CurrencyWidget`, `QuickLinksWidget`, `RecentTasksWidget` |
-| `ui/` | Generic decorative | `GlitchText` |
+| `layout/` | App-level layout | `Sidebar`, `SidebarClient`, `sidebar/nav-icons` |
+| `shell/` | Shell infrastructure | `Shell`, `ShellWrapper`, `AIPanel`, `ContentTopBar`, `CommandPalette`, `BottomTabBar`, `MobileChatSheet`, `MobileDrawer`, `ai-panel/` (EmptyState, MessageBubble) |
+| `dashboard/` | Dashboard widgets | `GreetingWidget`, `CurrencyWidget`, `QuickLinksWidget`, `RecentTasksWidget`, `ProcessesWidget`, `ProcessForm`, `ProcessModal`, `SystemStatusWidget`, `AgentMetricsWidget` |
+| `system/` | System-level components | `BuildGuard` (stale-client detection + auto-reload), `UpdateBanner` (update notification) |
+| `ui/` | Shared error boundaries | `RouteErrorFallback`, `WidgetErrorBoundary` |
 
 ### When to add to `src/components/`:
 - Component is used in 2+ sections
@@ -147,11 +161,14 @@ Reusable components live in `src/components/`:
 
 Custom hooks live in `src/hooks/`:
 
-| Hook | Purpose |
-|------|---------|
-| `useAIPanel` | AI panel open/close/resize state with localStorage persistence |
-| `useChat` | Chat message sending, SSE streaming, conversation management |
-| `useCommandPalette` | Command palette open/close with Cmd+K shortcut |
+| Hook/File | Purpose |
+|-----------|---------|
+| `useAIPanel.ts` | AI panel open/close/resize state with localStorage persistence |
+| `useChat.ts` | Chat message sending, SSE streaming, conversation management |
+| `useCommandPalette.ts` | Command palette open/close with Cmd+K shortcut |
+| `useIsMobile.ts` | Mobile breakpoint detection (768px) via `useSyncExternalStore` |
+| `chat-types.ts` | Chat message TypeScript types |
+| `chat-stream-parser.ts` | SSE stream parser for chat responses |
 
 **Pattern for hooks:**
 - Use refs to avoid re-creating callbacks on every render
@@ -192,6 +209,99 @@ Always use specific transition properties, never `transition-all`:
 <div className="transition-all hover:bg-[var(--hover)]" />
 ```
 
+## Mobile layout
+
+### Breakpoint strategy
+
+Mobile breakpoint: **768px** (`md:` in Tailwind). Below 768px = mobile (single column), above = desktop (3-column grid).
+
+- Use `useIsMobile()` hook for JS-level detection (uses `useSyncExternalStore` + `matchMedia`)
+- Use Tailwind `md:` prefix for CSS-level responsive changes (mobile-first)
+- CSS custom properties `--rail-w` and `--rail-w-open` collapse to 0px on mobile
+
+### Key mobile components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `BottomTabBar` | `src/components/shell/BottomTabBar.tsx` | Fixed bottom navigation bar (5 tabs: Today, Tasks, News, Parcels, Settings). Hidden on desktop (`md:hidden`). |
+| `MobileChatSheet` | `src/components/shell/MobileChatSheet.tsx` | Bottom sheet chat (FAB -> Peek -> Half -> Full states). Replaces side AI panel on mobile. |
+| `MobileDrawer` | `src/components/shell/MobileDrawer.tsx` | Hamburger-triggered drawer overlay for sidebar content on mobile. |
+
+### CSS tokens for mobile
+
+```css
+:root {
+  --tab-bar-h: 56px;                              /* Bottom tab bar height */
+  --mobile-safe-bottom: env(safe-area-inset-bottom, 0px); /* Safe area for notched devices */
+}
+```
+
+### Mobile-first patterns
+
+```tsx
+{/* Show on mobile, hide on desktop */}
+<div className="md:hidden">Mobile only</div>
+
+{/* Hide on mobile, show on desktop */}
+<div className="hidden md:flex">Desktop only</div>
+
+{/* Responsive spacing */}
+<div className="px-3 md:px-4 py-2 md:py-3">Content</div>
+
+{/* Stack on mobile, row on desktop */}
+<div className="flex flex-col md:flex-row gap-2">Items</div>
+
+{/* Bottom padding for tab bar on mobile */}
+<div className="pb-[var(--tab-bar-h)] md:pb-0">Content above tab bar</div>
+```
+
+## AI event listener pattern
+
+When AI actions execute on the server (via Clawdbot), the stream processor emits SSE events. Client components listen for these to update their UI in real-time.
+
+**SSE event types** (from `src/lib/ai/stream-processor.ts`):
+
+| Event type | Trigger | Used by |
+|------------|---------|---------|
+| `task.refresh` | Any `task.*` action | Tasks page |
+| `news.refresh` | Any `news.*` action | News page |
+| `delivery.refresh` | Any `delivery.*` action | Deliveries page |
+| `navigation` | `navigate` action | Shell (router) |
+| `conversationId` | New chat session | AI panel |
+| `error` | Stream processing error | AI panel |
+
+**Client-side listener pattern:**
+```tsx
+useEffect(() => {
+  const handler = (e: Event) => {
+    const detail = (e as CustomEvent).detail
+    // detail.actions contains the action results array
+    // e.g., [{ action: 'task.create', taskId: '...', task: {...} }]
+    // Update local state accordingly
+  }
+  window.addEventListener('clawdos:<section>-refresh', handler)
+  return () => window.removeEventListener('clawdos:<section>-refresh', handler)
+}, [])
+```
+
+**Dispatching custom events** (from component code, e.g. recurring task creation):
+```tsx
+window.dispatchEvent(new CustomEvent('clawdos:task-refresh', {
+  detail: { actions: [{ action: 'task.create', task: newTask }] },
+}))
+```
+
+## View switching with dynamic imports
+
+Heavy view components (CalendarView, KanbanView, TimelineView) are lazy-loaded with `next/dynamic` and `ssr: false` to reduce initial bundle size:
+
+```tsx
+import dynamic from 'next/dynamic'
+
+const CalendarView = dynamic(() => import('./CalendarView'), { ssr: false })
+const KanbanView = dynamic(() => import('./KanbanView'), { ssr: false })
+```
+
 ## Anti-patterns (DO NOT)
 
 - **DO NOT** fetch data in client components — fetch in server component, pass via props
@@ -202,3 +312,4 @@ Always use specific transition properties, never `transition-all`:
 - **DO NOT** access `process.env` in client components (except `NEXT_PUBLIC_*`)
 - **DO NOT** use index-based keys in lists — use stable IDs (`item.id`, `item.guid`)
 - **DO NOT** create inline style objects in render (causes re-renders) — use Tailwind or `useMemo`
+- **DO NOT** use `return null` for missing session — use `redirect('/login')` from `next/navigation`
