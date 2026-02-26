@@ -23,12 +23,12 @@ export function InstalledSkillCard({ skill, onUpdated }: InstalledSkillCardProps
   }
 
   return (
-    <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+    <div className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:border-[var(--neon-dim)]">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--fg)]">{skill.name}</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--fg)]">{skill.name}</h3>
         <span
-          className={`shrink-0 rounded px-2 py-0.5 text-xs ${
+          className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium ${
             skill.source === 'workspace'
               ? 'bg-[var(--neon-dim)] text-[var(--neon)]'
               : 'bg-[var(--surface)] text-[var(--muted)]'
@@ -39,7 +39,7 @@ export function InstalledSkillCard({ skill, onUpdated }: InstalledSkillCardProps
       </div>
 
       {/* Description */}
-      <p className="mt-2 line-clamp-3 flex-1 text-xs text-[var(--muted)]">
+      <p className="mt-2 line-clamp-3 flex-1 text-sm text-[var(--muted)]">
         {skill.description || 'No description available'}
       </p>
 

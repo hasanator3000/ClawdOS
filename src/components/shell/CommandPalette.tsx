@@ -100,7 +100,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         }}
       >
         {/* Search input */}
-        <div className="p-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="p-4 border-b border-b-[var(--border)]" >
           <input
             ref={inputRef}
             type="text"
@@ -119,7 +119,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         {/* Command list */}
         <div className="max-h-80 overflow-y-auto">
           {filteredCommands.length === 0 ? (
-            <div className="p-4 text-center text-sm" style={{ color: 'var(--muted)' }}>
+            <div className="p-4 text-center text-sm text-[var(--muted)]" >
               No commands found
             </div>
           ) : (
@@ -132,8 +132,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                   <li key={cmd.id}>
                     {showHeader && (
                       <div
-                        className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-mono"
-                        style={{ color: 'var(--muted)' }}
+                        className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-mono text-[var(--muted)]"
+                        
                       >
                         {CATEGORY_LABELS[cmd.category] || cmd.category}
                       </div>
@@ -151,7 +151,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       <span className="flex-1">
                         <span className="font-medium text-sm">{cmd.name}</span>
                         {cmd.description && (
-                          <span className="ml-2 text-xs" style={{ color: 'var(--muted)' }}>
+                          <span className="ml-2 text-xs text-[var(--muted)]" >
                             {cmd.description}
                           </span>
                         )}

@@ -24,51 +24,61 @@ export default async function SettingsPage() {
         <div className="text-sm text-[var(--muted)]">User: {session.username}</div>
       </div>
 
-      <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-        <h2 className="font-medium">Security</h2>
-        <div className="mt-2 text-sm text-[var(--muted)]">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+        <h2 className="text-base font-semibold">Security</h2>
+        <p className="mt-2 text-[15px] text-[var(--muted)]">
           Password updated: {profile.passwordUpdatedAt ? new Date(profile.passwordUpdatedAt).toLocaleString() : 'never'}
-        </div>
-        <div className="mt-3">
-          <Link className="underline text-[var(--muted-2)]" href="/settings/password">
+        </p>
+        <div className="mt-4">
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--fg)] transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]" href="/settings/password">
             Change password
           </Link>
         </div>
       </section>
 
-      <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-        <h2 className="font-medium">Telegram 2FA / recovery</h2>
-        <div className="mt-2 text-sm text-[var(--muted)]">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+        <h2 className="text-base font-semibold">Telegram 2FA / recovery</h2>
+        <p className="mt-2 text-[15px] text-[var(--muted)]">
           {profile.telegramUserId ? (
             <>Linked Telegram user id: {profile.telegramUserId}</>
           ) : (
             <>Not linked. If you link Telegram, logins and recovery will send codes there.</>
           )}
-        </div>
-        <div className="mt-3">
-          <Link className="underline text-[var(--muted-2)]" href="/settings/telegram">
+        </p>
+        <div className="mt-4">
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--fg)] transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]" href="/settings/telegram">
             {profile.telegramUserId ? 'Relink Telegram' : 'Link Telegram'}
           </Link>
         </div>
       </section>
 
-      <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-        <h2 className="font-medium">Clawdbot</h2>
-        <div className="mt-2 text-sm text-[var(--muted)]">Agent skills, commands, and workspace files.</div>
-        <div className="mt-3 flex gap-4">
-          <Link className="underline text-[var(--muted-2)]" href="/settings/skills">Skills & Marketplace</Link>
-          <Link className="underline text-[var(--muted-2)]" href="/settings/files">Agent Files</Link>
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+        <h2 className="text-base font-semibold">Dashboard</h2>
+        <p className="mt-2 text-[15px] text-[var(--muted)]">Customize currencies, weather city, and timezone.</p>
+        <div className="mt-4">
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--fg)] transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]" href="/settings/dashboard">
+            Dashboard preferences
+          </Link>
         </div>
       </section>
 
-      <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-        <h2 className="font-medium">Account</h2>
-        <div className="mt-2 text-sm text-[var(--muted)]">Created: {new Date(profile.createdAt).toLocaleString()}</div>
-        <div className="mt-3 text-sm text-[var(--muted)]">Username changes are not implemented yet.</div>
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+        <h2 className="text-base font-semibold">Clawdbot</h2>
+        <p className="mt-2 text-[15px] text-[var(--muted)]">Agent skills, commands, and workspace files.</p>
+        <div className="mt-4 flex gap-3">
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--fg)] transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]" href="/settings/skills">Skills & Marketplace</Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--fg)] transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]" href="/settings/files">Agent Files</Link>
+        </div>
+      </section>
 
-        <div className="mt-4">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+        <h2 className="text-base font-semibold">Account</h2>
+        <p className="mt-2 text-[15px] text-[var(--muted)]">Created: {new Date(profile.createdAt).toLocaleString()}</p>
+        <p className="mt-2 text-[15px] text-[var(--muted)]">Username changes are not implemented yet.</p>
+
+        <div className="mt-5">
           <form action={signOut}>
-            <button className="w-full rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--hover)]">
+            <button className="w-full rounded-lg border border-[var(--border)] px-4 py-3 text-[15px] font-medium transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]">
               Sign out
             </button>
           </form>

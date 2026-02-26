@@ -4,12 +4,20 @@
  * Tracks request timestamps per key (IP address) and rejects
  * requests exceeding the configured threshold within the window.
  *
+ * Bounded memory: MAX_STORE_SIZE caps total tracked IPs.
+ * When exceeded, oldest entries are evicted during cleanup.
+ *
  * Edge-runtime compatible: uses only Map, Date.now(), setInterval.
  * No external dependencies.
+ *
+ * For a single-instance deployment (systemd) this is sufficient.
+ * If horizontal scaling is needed, swap for Redis-backed limiter.
  */
 
 const MAX_REQUESTS = 10
 const WINDOW_MS = 1000 // 1 second
+const MAX_STORE_SIZE = 10_000 // max tracked IPs before forced eviction
+const CLEANUP_INTERVAL_MS = 60_000
 
 export type RateLimitResult = {
   allowed: boolean
@@ -45,11 +53,32 @@ export function checkRateLimit(key: string): RateLimitResult {
   valid.push(now)
   store.set(key, valid)
 
+  // Trigger eviction if store exceeds size cap (non-blocking)
+  if (store.size > MAX_STORE_SIZE) {
+    evictOldest()
+  }
+
   return {
     allowed: true,
     limit: MAX_REQUESTS,
     remaining: MAX_REQUESTS - valid.length,
     resetMs: WINDOW_MS,
+  }
+}
+
+/**
+ * Evict oldest entries until store is within MAX_STORE_SIZE.
+ * Map iteration order is insertion order, so oldest entries come first.
+ */
+function evictOldest(): void {
+  const excess = store.size - MAX_STORE_SIZE
+  if (excess <= 0) return
+
+  let removed = 0
+  for (const key of store.keys()) {
+    if (removed >= excess) break
+    store.delete(key)
+    removed++
   }
 }
 
@@ -74,5 +103,5 @@ function cleanup(): void {
 // Start cleanup interval (safe in Edge runtime)
 // The typeof check prevents issues in test environments without timers
 if (typeof setInterval !== 'undefined') {
-  setInterval(cleanup, 60_000)
+  setInterval(cleanup, CLEANUP_INTERVAL_MS)
 }

@@ -95,8 +95,8 @@ export function ProcessForm({ process, onSubmit, onCancel }: ProcessFormProps) {
       <div>
         <label
           htmlFor="title"
-          className="block text-sm mb-1.5"
-          style={{ color: 'var(--muted)' }}
+          className="block text-sm mb-1.5 text-[var(--muted)]"
+          
         >
           Title *
         </label>
@@ -119,8 +119,8 @@ export function ProcessForm({ process, onSubmit, onCancel }: ProcessFormProps) {
       <div>
         <label
           htmlFor="description"
-          className="block text-sm mb-1.5"
-          style={{ color: 'var(--muted)' }}
+          className="block text-sm mb-1.5 text-[var(--muted)]"
+          
         >
           Description
         </label>
@@ -142,8 +142,8 @@ export function ProcessForm({ process, onSubmit, onCancel }: ProcessFormProps) {
       <div>
         <label
           htmlFor="schedule"
-          className="block text-sm mb-1.5"
-          style={{ color: 'var(--muted)' }}
+          className="block text-sm mb-1.5 text-[var(--muted)]"
+          
         >
           Schedule (cron format) *
         </label>
@@ -166,8 +166,8 @@ export function ProcessForm({ process, onSubmit, onCancel }: ProcessFormProps) {
       <div>
         <label
           htmlFor="actionType"
-          className="block text-sm mb-1.5"
-          style={{ color: 'var(--muted)' }}
+          className="block text-sm mb-1.5 text-[var(--muted)]"
+          
         >
           Action Type *
         </label>
@@ -192,8 +192,8 @@ export function ProcessForm({ process, onSubmit, onCancel }: ProcessFormProps) {
       <div>
         <label
           htmlFor="actionConfig"
-          className="block text-sm mb-1.5"
-          style={{ color: 'var(--muted)' }}
+          className="block text-sm mb-1.5 text-[var(--muted)]"
+          
         >
           Action Config (JSON)
         </label>

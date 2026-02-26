@@ -87,7 +87,7 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start gap-3 p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-start gap-3 p-4 border-b border-[var(--border)]" >
           <div className="flex-1 min-w-0">
             {h.editingField === 'title' ? (
               <input
@@ -101,15 +101,15 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
               />
             ) : (
               <h2
-                className="text-lg font-semibold cursor-pointer hover:text-[var(--neon)] transition-colors"
-                style={{ color: 'var(--fg)' }}
+                className="text-lg font-semibold cursor-pointer hover:text-[var(--neon)] transition-colors text-[var(--fg)]"
+                
                 onClick={() => h.setEditingField('title')}
               >
                 {task.title}
               </h2>
             )}
           </div>
-          <button type="button" onClick={handleClose} className="p-1.5 rounded-lg hover:bg-[var(--surface)] transition-colors flex-shrink-0" style={{ color: 'var(--muted)' }}>
+          <button type="button" onClick={handleClose} className="p-1.5 rounded-lg hover:bg-[var(--surface)] transition-colors flex-shrink-0 text-[var(--muted)]" >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
@@ -137,7 +137,7 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
                   title={opt.label}
                   style={task.priority === opt.value ? { background: 'var(--surface)', border: '1px solid var(--border)' } : undefined}
                 >
-                  {opt.value === 0 ? <span className="text-sm" style={{ color: 'var(--muted)' }}>--</span> : <span className="w-3 h-3 rounded-full" style={{ background: opt.color, boxShadow: task.priority === opt.value ? `0 0 8px ${opt.color}` : 'none' }} />}
+                  {opt.value === 0 ? <span className="text-sm text-[var(--muted)]" >--</span> : <span className="w-3 h-3 rounded-full" style={{ background: opt.color, boxShadow: task.priority === opt.value ? `0 0 8px ${opt.color}` : 'none' }} />}
                 </button>
               ))}
               {currentPriority && currentPriority.value > 0 && (
@@ -181,13 +181,13 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
             <div className="relative">
               <input type="text" value={h.newTag} onChange={(e) => h.setNewTag(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); h.handleAddTag(h.newTag) } }}
-                placeholder="Add tag..." className="w-full px-3 py-1.5 rounded-lg text-sm bg-transparent outline-none focus:border-[var(--neon)] transition-colors"
-                style={{ border: '1px solid var(--border)', color: 'var(--fg)' }}
+                placeholder="Add tag..." className="w-full px-3 py-1.5 rounded-lg text-sm bg-transparent outline-none focus:border-[var(--neon)] transition-colors border border-[var(--border)] text-[var(--fg)]"
+                
               />
               {h.newTag && h.allTags.filter((t) => t.includes(h.newTag.toLowerCase()) && !task.tags.includes(t)).length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-10 max-h-32 overflow-y-auto" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <div className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-10 max-h-32 overflow-y-auto bg-[var(--bg)] border border-[var(--border)]" >
                   {h.allTags.filter((t) => t.includes(h.newTag.toLowerCase()) && !task.tags.includes(t)).slice(0, 6).map((tag) => (
-                    <button key={tag} type="button" onClick={() => h.handleAddTag(tag)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-[var(--surface)] transition-colors" style={{ color: 'var(--fg)' }}>{tag}</button>
+                    <button key={tag} type="button" onClick={() => h.handleAddTag(tag)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-[var(--surface)] transition-colors text-[var(--fg)]" >{tag}</button>
                   ))}
                 </div>
               )}
@@ -206,15 +206,15 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
               {h.showProjectPicker && (
                 <>
                 <div className="fixed inset-0 z-10" onClick={() => h.setShowProjectPicker(false)} />
-                <div className="absolute left-0 top-full mt-1 min-w-[200px] rounded-lg shadow-lg z-20 overflow-hidden" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <div className="absolute left-0 top-full mt-1 min-w-[200px] rounded-lg shadow-lg z-20 overflow-hidden bg-[var(--bg)] border border-[var(--border)]" >
                   <button type="button" onClick={() => h.handleProjectChange(null)} className={`w-full px-3 py-2 text-left text-sm transition-colors ${!task.projectId ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`} style={{ color: 'var(--muted)' }}>No project</button>
                   {projects.map((p) => (
                     <button key={p.id} type="button" onClick={() => h.handleProjectChange(p.id)} className={`w-full px-3 py-2 text-left text-sm transition-colors ${task.projectId === p.id ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'}`} style={{ color: 'var(--cyan)' }}>{p.name}</button>
                   ))}
-                  <div className="px-3 py-2" style={{ borderTop: '1px solid var(--border)' }}>
+                  <div className="px-3 py-2 border-t border-t-[var(--border)]" >
                     <form onSubmit={(e) => { e.preventDefault(); h.handleCreateProject() }} className="flex gap-1.5">
-                      <input type="text" value={h.newProjectName} onChange={(e) => h.setNewProjectName(e.target.value)} placeholder="New project..." className="flex-1 px-2 py-1 rounded text-xs bg-transparent outline-none focus:border-[var(--neon)]" style={{ border: '1px solid var(--border)', color: 'var(--fg)' }} />
-                      <button type="submit" disabled={!h.newProjectName.trim()} className="px-2 py-1 rounded text-xs font-medium disabled:opacity-30" style={{ color: 'var(--neon)' }}>+</button>
+                      <input type="text" value={h.newProjectName} onChange={(e) => h.setNewProjectName(e.target.value)} placeholder="New project..." className="flex-1 px-2 py-1 rounded text-xs bg-transparent outline-none focus:border-[var(--neon)] border border-[var(--border)] text-[var(--fg)]"  />
+                      <button type="submit" disabled={!h.newProjectName.trim()} className="px-2 py-1 rounded text-xs font-medium disabled:opacity-30 text-[var(--neon)]" >+</button>
                     </form>
                   </div>
                 </div>
@@ -245,8 +245,8 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
               <textarea ref={descRef} value={h.editDescription} onChange={(e) => h.setEditDescription(e.target.value)}
                 onBlur={h.handleSaveDescription}
                 onKeyDown={(e) => { if (e.key === 'Escape') { h.setEditDescription(task.description || ''); h.setEditingField(null) } }}
-                rows={4} className="w-full px-3 py-2 rounded-lg text-sm bg-transparent resize-none outline-none"
-                style={{ border: '1px solid var(--neon)', color: 'var(--fg)' }} placeholder="Add description..."
+                rows={4} className="w-full px-3 py-2 rounded-lg text-sm bg-transparent resize-none outline-none border border-[var(--neon)] text-[var(--fg)]"
+                 placeholder="Add description..."
               />
             ) : (
               <div className="px-3 py-2 rounded-lg text-sm cursor-pointer min-h-[60px] transition-colors hover:bg-[var(--surface)]"
@@ -273,8 +273,8 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
           </Section>
 
           {/* Delete */}
-          <div className="pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <button type="button" onClick={handleDeleteWithAnimation} className="text-xs transition-colors hover:text-[var(--red)]" style={{ color: 'var(--muted)' }}>
+          <div className="pt-3 border-t border-t-[var(--border)]" >
+            <button type="button" onClick={handleDeleteWithAnimation} className="text-xs transition-colors hover:text-[var(--red)] text-[var(--muted)]" >
               Delete task
             </button>
           </div>
@@ -287,7 +287,7 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose, projects = 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>{label}</div>
+      <div className="text-[10px] font-mono uppercase tracking-wider mb-2 text-[var(--muted)]" >{label}</div>
       {children}
     </div>
   )

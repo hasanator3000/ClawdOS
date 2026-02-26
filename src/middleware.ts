@@ -50,16 +50,40 @@ function addRateLimitHeaders(
   return response
 }
 
+/** Attach request ID (and optionally rate-limit headers) to any Response. */
+function tagResponse<T extends Response>(
+  res: T,
+  requestId: string,
+  rlResult?: RateLimitResult | null
+): T {
+  res.headers.set('x-request-id', requestId)
+  if (rlResult) {
+    const rl = rateLimitHeaders(rlResult)
+    Object.entries(rl).forEach(([k, v]) => res.headers.set(k, v))
+  }
+  return res
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+
+  // Generate or propagate request ID for tracing
+  const requestId = req.headers.get('x-request-id') || crypto.randomUUID()
+
+  // Forward request ID to downstream handlers via request header
+  const requestHeaders = new Headers(req.headers)
+  requestHeaders.set('x-request-id', requestId)
 
   // CSRF origin validation for mutating requests (runs regardless of auth config)
   if (MUTATING_METHODS.has(req.method) && !isCsrfExempt(pathname)) {
     const origin = req.headers.get('origin')
     if (!origin) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: missing Origin header' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      return tagResponse(
+        new Response(
+          JSON.stringify({ error: 'Forbidden: missing Origin header' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        ),
+        requestId
       )
     }
 
@@ -67,15 +91,21 @@ export function middleware(req: NextRequest) {
     try {
       const originHost = new URL(origin).host
       if (originHost !== host) {
-        return new Response(
-          JSON.stringify({ error: 'Forbidden: origin mismatch' }),
-          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        return tagResponse(
+          new Response(
+            JSON.stringify({ error: 'Forbidden: origin mismatch' }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          ),
+          requestId
         )
       }
     } catch {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: invalid Origin header' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      return tagResponse(
+        new Response(
+          JSON.stringify({ error: 'Forbidden: invalid Origin header' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        ),
+        requestId
       )
     }
   }
@@ -88,16 +118,19 @@ export function middleware(req: NextRequest) {
 
     if (!rateLimitResult.allowed) {
       const headers = rateLimitHeaders(rateLimitResult)
-      return new Response(
-        JSON.stringify({ error: 'Too many requests' }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'Retry-After': String(Math.ceil(rateLimitResult.resetMs / 1000)),
-            ...headers,
-          },
-        }
+      return tagResponse(
+        new Response(
+          JSON.stringify({ error: 'Too many requests' }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': String(Math.ceil(rateLimitResult.resetMs / 1000)),
+              ...headers,
+            },
+          }
+        ),
+        requestId
       )
     }
   }
@@ -105,13 +138,17 @@ export function middleware(req: NextRequest) {
   // Auth check (only when ACCESS_TOKEN is configured)
   const required = process.env.ACCESS_TOKEN
   if (!required) {
-    const res = NextResponse.next()
-    return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
+    const res = NextResponse.next({ request: { headers: requestHeaders } })
+    return rateLimitResult
+      ? tagResponse(addRateLimitHeaders(res, rateLimitResult), requestId)
+      : tagResponse(res, requestId)
   }
 
   if (isPublicPath(pathname)) {
-    const res = NextResponse.next()
-    return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
+    const res = NextResponse.next({ request: { headers: requestHeaders } })
+    return rateLimitResult
+      ? tagResponse(addRateLimitHeaders(res, rateLimitResult), requestId)
+      : tagResponse(res, requestId)
   }
 
   const cookieToken = req.cookies.get(TOKEN_COOKIE)?.value
@@ -119,14 +156,16 @@ export function middleware(req: NextRequest) {
 
   const token = cookieToken || headerToken
   if (token === required) {
-    const res = NextResponse.next()
-    return rateLimitResult ? addRateLimitHeaders(res, rateLimitResult) : res
+    const res = NextResponse.next({ request: { headers: requestHeaders } })
+    return rateLimitResult
+      ? tagResponse(addRateLimitHeaders(res, rateLimitResult), requestId)
+      : tagResponse(res, requestId)
   }
 
   const url = req.nextUrl.clone()
   url.pathname = '/access'
   url.searchParams.set('next', pathname)
-  return NextResponse.redirect(url)
+  return tagResponse(NextResponse.redirect(url), requestId)
 }
 
 export const config = {

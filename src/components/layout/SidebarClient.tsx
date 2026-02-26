@@ -41,6 +41,7 @@ export default function SidebarClient({ username }: { username?: string }) {
   const [railExpanded, setRailExpanded] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const userButtonRef = useRef<HTMLButtonElement>(null)
   const wsDropdownRef = useRef<HTMLDivElement>(null)
   const wsButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -73,10 +74,14 @@ export default function SidebarClient({ username }: { username?: string }) {
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        userMenuRef.current && !userMenuRef.current.contains(target) &&
+        userButtonRef.current && !userButtonRef.current.contains(target)
+      ) {
         setUserMenuOpen(false)
       }
-      if (wsDropdownRef.current && !wsDropdownRef.current.contains(e.target as Node)) {
+      if (wsDropdownRef.current && !wsDropdownRef.current.contains(target)) {
         setWsDropdownOpen(false)
       }
     }
@@ -134,7 +139,7 @@ export default function SidebarClient({ username }: { username?: string }) {
           </span>
         </button>
         {exp && (
-          <button type="button" onClick={toggleRail} className="w-6 h-6 border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors ml-auto shrink-0" style={{ background: 'var(--card)' }} title="Collapse sidebar">
+          <button type="button" onClick={toggleRail} className="w-6 h-6 border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors ml-auto shrink-0 bg-[var(--card)]"  title="Collapse sidebar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 rotate-180"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         )}
@@ -184,7 +189,7 @@ export default function SidebarClient({ username }: { username?: string }) {
       />
 
       {/* User footer */}
-      <div ref={userMenuRef} className="relative w-full border-t border-[var(--border)] pt-3 mt-2">
+      <div className="relative w-full border-t border-[var(--border)] pt-3 mt-2">
         <UserMenu
           username={username}
           initials={initials}
@@ -192,6 +197,9 @@ export default function SidebarClient({ username }: { username?: string }) {
           userMenuOpen={userMenuOpen}
           setUserMenuOpen={setUserMenuOpen}
           handleLogout={handleLogout}
+          userButtonRef={userButtonRef}
+          userMenuRef={userMenuRef}
+          isMounted={isMounted}
         />
       </div>
     </nav>

@@ -120,8 +120,8 @@ export function UpdateBanner() {
           <button
             type="button"
             onClick={handleDismiss}
-            className="p-1 rounded transition-colors hover:bg-[var(--hover)]"
-            style={{ color: 'var(--muted)' }}
+            className="p-1 rounded transition-colors hover:bg-[var(--hover)] text-[var(--muted)]"
+            
             aria-label="Dismiss"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

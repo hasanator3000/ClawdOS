@@ -47,7 +47,7 @@ export function NewsFeed({ items, onLoadMore, hasMore, isLoading }: Props) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:[grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] gap-4">
+      <div className="grid grid-cols-1 sm:[grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] gap-5">
         {items.map((item) => (
           <NewsCard key={item.guid || item.id} item={item} />
         ))}

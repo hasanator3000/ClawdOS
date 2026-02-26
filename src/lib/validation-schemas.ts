@@ -149,6 +149,39 @@ export const marketplaceSearchSchema = z.object({
 
 // --- Files schema ---
 export const agentFilePathSchema = z.string().min(1, 'Path required').max(500)
+export const agentFileContentSchema = z.string().max(500_000, 'File too large (max 500 KB)')
+
+// --- Dashboard preference schemas ---
+export const dashboardCurrenciesSchema = z.object({
+  baseCurrency: z.string().min(1).max(10).toLowerCase(),
+  fiat: z.array(z.string().min(1).max(10).toLowerCase()).min(1).max(10),
+  crypto: z.array(z.string().min(1).max(50).toLowerCase()).max(10),
+})
+
+export const dashboardWeatherCitySchema = z.string().min(1, 'City required').max(100)
+
+export const dashboardTimezoneSchema = z.string().min(1, 'Timezone required').max(100).refine(
+  (tz) => {
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: tz })
+      return true
+    } catch {
+      return false
+    }
+  },
+  { message: 'Invalid IANA timezone' }
+)
+
+// --- API query param schemas ---
+export const currencyQuerySchema = z.object({
+  base: z.string().min(1).max(10).transform((s) => s.toLowerCase()).default('rub'),
+  fiat: z.string().max(200).optional(),
+  crypto: z.string().max(200).optional(),
+})
+
+export const weatherQuerySchema = z.object({
+  city: z.string().min(1, 'City required').max(100),
+})
 
 // Reusable UUID validator for single-string validations in server actions
 export const uuidSchema = z.string().uuid('Invalid ID')

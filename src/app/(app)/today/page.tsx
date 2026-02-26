@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { getTasksByWorkspace } from '@/lib/db/repositories/task.repository'
 import { findProcessesByWorkspace } from '@/lib/db/repositories/process.repository'
+import { getUserSettings } from '@/lib/db/repositories/user-setting.repository'
 import {
   GreetingWidget,
   CurrencyWidget,
@@ -14,6 +15,8 @@ import {
 import { WidgetErrorBoundary } from '@/components/ui/WidgetErrorBoundary'
 
 export const dynamic = 'force-dynamic'
+
+const PREF_KEYS = ['dashboard:currencies', 'dashboard:weather_city', 'dashboard:timezone'] as const
 
 export default async function DashboardPage() {
   const [session, workspace] = await Promise.all([getSession(), getActiveWorkspace()])
@@ -29,47 +32,62 @@ export default async function DashboardPage() {
     )
   }
 
-  // Fetch tasks and processes in parallel (processes may fail if table is new)
-  const [tasks, processes] = await Promise.all([
+  // Fetch tasks, processes, and user preferences in parallel
+  const [tasks, processes, settings] = await Promise.all([
     withUser(session.userId, (client) =>
       getTasksByWorkspace(client, workspace.id, { limit: 10 })
     ),
     withUser(session.userId, (client) =>
       findProcessesByWorkspace(client, workspace.id)
     ).catch(() => [] as import('@/lib/db/repositories/process.repository').Process[]),
+    withUser(session.userId, (client) =>
+      getUserSettings(client, [...PREF_KEYS])
+    ).catch(() => []),
   ])
+
+  // Extract preferences from settings
+  const prefs = Object.fromEntries(settings.map((s) => [s.key, s.value]))
+  const currencyPrefs = prefs['dashboard:currencies'] as {
+    baseCurrency: string; fiat: string[]; crypto: string[]
+  } | undefined
+  const weatherCity = prefs['dashboard:weather_city'] as string | undefined
+  const timezone = prefs['dashboard:timezone'] as string | undefined
 
   return (
     <div className="space-y-5">
-      {/* Top row: Greeting + Currency */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Row 1: Greeting (time+weather+system gauges) | Currency */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <WidgetErrorBoundary name="Greeting">
-          <GreetingWidget username={session.username} />
+          <GreetingWidget
+            username={session.username}
+            timezone={timezone}
+            weatherCity={weatherCity}
+          />
         </WidgetErrorBoundary>
         <WidgetErrorBoundary name="Currency">
-          <CurrencyWidget />
+          <CurrencyWidget preferences={currencyPrefs} />
         </WidgetErrorBoundary>
       </div>
 
-      {/* Agent metrics */}
-      <div className="grid grid-cols-1">
+      {/* Row 2: Agent Metrics | Processes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <WidgetErrorBoundary name="AgentMetrics">
           <AgentMetricsWidget />
         </WidgetErrorBoundary>
+        <WidgetErrorBoundary name="Processes">
+          <ProcessesWidget initialProcesses={processes} workspaceId={workspace.id} />
+        </WidgetErrorBoundary>
       </div>
 
-      {/* Processes */}
-      <WidgetErrorBoundary name="Processes">
-        <ProcessesWidget initialProcesses={processes} workspaceId={workspace.id} />
-      </WidgetErrorBoundary>
-
-      {/* Quick links */}
-      <WidgetErrorBoundary name="QuickLinks">
-        <QuickLinksWidget />
-      </WidgetErrorBoundary>
-
-      {/* Bottom row: Tasks */}
-      <RecentTasksWidget tasks={tasks} />
+      {/* Row 3: Recent Tasks | Quick Links */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <WidgetErrorBoundary name="RecentTasks">
+          <RecentTasksWidget tasks={tasks} />
+        </WidgetErrorBoundary>
+        <WidgetErrorBoundary name="QuickLinks">
+          <QuickLinksWidget />
+        </WidgetErrorBoundary>
+      </div>
     </div>
   )
 }

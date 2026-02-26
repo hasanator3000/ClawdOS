@@ -114,8 +114,8 @@ export function CalendarView({ tasks, onUpdate, onDelete, onSelectTask, projectM
         {/* Month header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--fg)' }}>{MONTHS[viewMonth]} {viewYear}</h2>
-            <button type="button" onClick={goToday} className="px-2.5 py-1 rounded-md text-xs transition-colors" style={{ color: 'var(--neon)', border: '1px solid var(--neon-dim)' }}>Today</button>
+            <h2 className="text-lg font-semibold text-[var(--fg)]" >{MONTHS[viewMonth]} {viewYear}</h2>
+            <button type="button" onClick={goToday} className="px-2.5 py-1 rounded-md text-xs transition-colors text-[var(--neon)] border border-[var(--neon-dim)]" >Today</button>
           </div>
           <div className="flex gap-1">
             <NavButton onClick={prevMonth} d="M15 19l-7-7 7-7" />
@@ -125,14 +125,14 @@ export function CalendarView({ tasks, onUpdate, onDelete, onSelectTask, projectM
 
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-px">
-          {DAYS.map((d) => <div key={d} className="text-center text-xs font-mono py-2" style={{ color: 'var(--muted)' }}>{d}</div>)}
+          {DAYS.map((d) => <div key={d} className="text-center text-xs font-mono py-2 text-[var(--muted)]" >{d}</div>)}
         </div>
 
         {/* Calendar grid */}
         <div className="relative">
           <div className="grid grid-cols-7 gap-px rounded-xl overflow-hidden" style={{ background: 'var(--border)' }}>
             {grid.flat().map((day, i) => {
-              if (day === null) return <div key={`e-${i}`} className="min-h-[100px] p-1.5" style={{ background: 'var(--bg)' }} />
+              if (day === null) return <div key={`e-${i}`} className="min-h-[100px] p-1.5 bg-[var(--bg)]"  />
               const dateStr = toDateStr(viewYear, viewMonth, day)
               return <DroppableDayCell key={dateStr} dateStr={dateStr} day={day} isToday={dateStr === todayStr} tasks={tasksByDate.get(dateStr) || []} expandedDay={expandedDay} setExpandedDay={setExpandedDay} onUpdate={onUpdate} onDelete={onDelete} onSelectTask={onSelectTask} projectMap={projectMap} />
             })}
@@ -171,12 +171,12 @@ function DroppableDayCell({ dateStr, day, isToday, tasks, expandedDay, setExpand
       <div className="flex items-center justify-between mb-1">
         <span className={`text-xs font-mono w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'font-bold' : ''}`}
           style={isToday ? { background: 'var(--neon)', color: 'var(--bg)' } : { color: 'var(--muted)' }}>{day}</span>
-        {tasks.length > 0 && <span className="text-[9px] font-mono" style={{ color: 'var(--muted)' }}>{tasks.length}</span>}
+        {tasks.length > 0 && <span className="text-[9px] font-mono text-[var(--muted)]" >{tasks.length}</span>}
       </div>
       <div className="space-y-0.5">
         {visibleTasks.map((task) => <DraggableCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} compact onSelectTask={onSelectTask} projectName={task.projectId ? projectMap?.get(task.projectId) : undefined} />)}
-        {overflow > 0 && !isExpanded && <button type="button" onClick={() => setExpandedDay(dateStr)} className="w-full text-[10px] py-0.5 rounded transition-colors hover:bg-[var(--surface)]" style={{ color: 'var(--neon)' }}>+{overflow} more</button>}
-        {isExpanded && tasks.length > MAX_VISIBLE && <button type="button" onClick={() => setExpandedDay(null)} className="w-full text-[10px] py-0.5 rounded transition-colors hover:bg-[var(--surface)]" style={{ color: 'var(--muted)' }}>Show less</button>}
+        {overflow > 0 && !isExpanded && <button type="button" onClick={() => setExpandedDay(dateStr)} className="w-full text-[10px] py-0.5 rounded transition-colors hover:bg-[var(--surface)] text-[var(--neon)]" >+{overflow} more</button>}
+        {isExpanded && tasks.length > MAX_VISIBLE && <button type="button" onClick={() => setExpandedDay(null)} className="w-full text-[10px] py-0.5 rounded transition-colors hover:bg-[var(--surface)] text-[var(--muted)]" >Show less</button>}
       </div>
     </div>
   )
@@ -225,7 +225,7 @@ function UndatedDropZone({ tasks, onUpdate, onDelete, onSelectTask, isDragging, 
 
 function NavButton({ onClick, d }: { onClick: () => void; d: string }) {
   return (
-    <button type="button" onClick={onClick} className="p-2 rounded-lg transition-colors hover:bg-[var(--surface)]" style={{ color: 'var(--muted)' }}>
+    <button type="button" onClick={onClick} className="p-2 rounded-lg transition-colors hover:bg-[var(--surface)] text-[var(--muted)]" >
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} /></svg>
     </button>
   )

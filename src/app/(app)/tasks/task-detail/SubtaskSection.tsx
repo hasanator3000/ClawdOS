@@ -30,8 +30,8 @@ export function SubtaskRow({ task, onToggle, onDelete }: SubtaskRowProps) {
       <button
         type="button"
         onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 p-0.5 transition-opacity"
-        style={{ color: 'var(--muted)' }}
+        className="opacity-0 group-hover:opacity-100 p-0.5 transition-opacity text-[var(--muted)]"
+        
       >
         <svg className="w-3 h-3 hover:text-[var(--red)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -66,7 +66,7 @@ export function SubtaskSection({
     <>
       {/* Progress bar */}
       {subtasks.length > 0 && (
-        <div className="h-1 rounded-full mb-3" style={{ background: 'var(--surface)' }}>
+        <div className="h-1 rounded-full mb-3 bg-[var(--surface)]" >
           <div
             className="h-full rounded-full transition-all"
             style={{ width: `${(doneCount / subtasks.length) * 100}%`, background: 'var(--green)' }}
@@ -81,15 +81,15 @@ export function SubtaskSection({
           value={newSubtask}
           onChange={(e) => setNewSubtask(e.target.value)}
           placeholder="Add subtask..."
-          className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-transparent outline-none focus:border-[var(--neon)] transition-colors"
-          style={{ border: '1px solid var(--border)', color: 'var(--fg)' }}
+          className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-transparent outline-none focus:border-[var(--neon)] transition-colors border border-[var(--border)] text-[var(--fg)]"
+          
           disabled={isPending}
         />
         <button
           type="submit"
           disabled={!newSubtask.trim() || isPending}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-30 transition-opacity"
-          style={{ color: 'var(--neon)', border: '1px solid var(--neon-dim)' }}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-30 transition-opacity text-[var(--neon)] border border-[var(--neon-dim)]"
+          
         >
           Add
         </button>

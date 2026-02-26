@@ -104,8 +104,8 @@ export function CalendarSpanBars({ tasks, grid, viewYear, viewMonth }: CalendarS
             title={`${bar.task.title} (${normalizeDate(bar.task.startDate)} → ${normalizeDate(bar.task.dueDate)})`}
           >
             <span
-              className="block px-1.5 text-[9px] font-medium truncate leading-[14px]"
-              style={{ color: 'var(--bg)' }}
+              className="block px-1.5 text-[9px] font-medium truncate leading-[14px] text-[var(--bg)]"
+              
             >
               {bar.task.title}
             </span>

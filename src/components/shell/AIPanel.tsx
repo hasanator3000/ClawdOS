@@ -120,7 +120,7 @@ export function AIPanel({ isOpen, onClose, onWidthChange }: AIPanelProps) {
       {/* Panel content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-b-[var(--border)]" >
           {/* Bot orb with spinning ring */}
           <div className="relative flex-shrink-0" style={{ width: 36, height: 36 }}>
             <div className="absolute inset-0 rounded-full" style={{ background: 'conic-gradient(var(--neon), var(--pink), var(--cyan), var(--neon))', animation: 'spin 3s linear infinite' }} />
@@ -129,8 +129,8 @@ export function AIPanel({ isOpen, onClose, onWidthChange }: AIPanelProps) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>Clawdbot</div>
-            <div className="text-xs truncate" style={{ color: 'var(--muted)' }}>{workspaceName || 'No workspace'} / {pageName}</div>
+            <div className="font-semibold text-sm text-[var(--fg)]" >Clawdbot</div>
+            <div className="text-xs truncate text-[var(--muted)]" >{workspaceName || 'No workspace'} / {pageName}</div>
           </div>
 
           <div className="flex items-center gap-1">
@@ -165,7 +165,7 @@ export function AIPanel({ isOpen, onClose, onWidthChange }: AIPanelProps) {
         )}
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="p-3" style={{ borderTop: '1px solid var(--border)' }}>
+        <form onSubmit={handleSubmit} className="p-3 border-t border-t-[var(--border)]" >
           <div className="flex items-center gap-2 rounded-xl px-3 py-2 transition-colors bg-[var(--card)] border border-[var(--border)] focus-within:border-[var(--neon)] focus-within:shadow-[0_0_0_1px_var(--neon-dim),0_0_12px_var(--neon-dim)]">
             <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)}
               placeholder={workspaceId ? 'Ask Clawdbot...' : 'Select a workspace first'}

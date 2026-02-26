@@ -38,20 +38,20 @@ export function MarketplaceCard({ skill, isInstalled, onInstalled }: Marketplace
   }
 
   return (
-    <div className="group relative flex flex-col rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:border-[var(--neon-glow)]">
+    <div className="group relative flex flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:border-[var(--neon-dim)]">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-[var(--fg)]">
+          <h3 className="truncate text-[15px] font-semibold text-[var(--fg)]">
             {skill.name}
           </h3>
-          <div className="mt-0.5 text-xs text-[var(--muted)]">
+          <div className="mt-0.5 text-sm text-[var(--muted)]">
             by {skill.author}
           </div>
         </div>
         {/* Security score badge */}
         <span
-          className="shrink-0 rounded px-2 py-0.5 text-xs font-mono font-medium"
+          className="shrink-0 rounded-md px-2 py-1 text-xs font-mono font-medium"
           style={{ color: sec.text, background: sec.bg }}
         >
           {skill.security.score}
@@ -59,7 +59,7 @@ export function MarketplaceCard({ skill, isInstalled, onInstalled }: Marketplace
       </div>
 
       {/* Description */}
-      <p className="mt-2 line-clamp-2 flex-1 text-xs text-[var(--muted)]">
+      <p className="mt-2 line-clamp-2 flex-1 text-sm text-[var(--muted)]">
         {skill.description || 'No description'}
       </p>
 

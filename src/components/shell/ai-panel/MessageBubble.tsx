@@ -63,7 +63,7 @@ export const ToolCallDisplay = memo(function ToolCallDisplay({
       }}
     >
       <div className="flex items-center gap-2">
-        <span className="font-mono" style={{ color: 'var(--cyan)' }}>{tool.name}</span>
+        <span className="font-mono text-[var(--cyan)]" >{tool.name}</span>
         <span
           className="px-1.5 py-0.5 rounded text-[10px]"
           style={{
@@ -86,7 +86,7 @@ export const ToolCallDisplay = memo(function ToolCallDisplay({
         </span>
       </div>
       {tool.error && (
-        <div className="mt-1" style={{ color: 'var(--red)' }}>{tool.error}</div>
+        <div className="mt-1 text-[var(--red)]" >{tool.error}</div>
       )}
     </div>
   )

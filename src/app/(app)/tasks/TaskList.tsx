@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useMemo, useCallback } from 'react'
 import type { Task } from '@/lib/db/repositories/task.repository'
 import type { Project } from '@/lib/db/repositories/project.repository'
-import { createTask, fetchAllTags } from './actions'
+import { createTask } from './actions'
 import { fetchProjects } from './project-actions'
 import { TaskFilters, type TaskFilterState } from './TaskFilters'
 import { TaskCreateForm } from './TaskCreateForm'
@@ -32,13 +32,18 @@ const TimelineView = dynamic(
   () => import('./views/TimelineView').then(m => m.TimelineView),
   { loading: () => <ViewSkeleton />, ssr: false }
 )
-import { TaskDetailPanel } from './TaskDetailPanel'
+const TaskDetailPanel = dynamic(
+  () => import('./TaskDetailPanel').then((m) => m.TaskDetailPanel),
+  { ssr: false }
+)
 
 interface TaskListProps {
   initialTasks: Task[]
+  initialTags: string[]
+  initialProjects: Project[]
 }
 
-export function TaskList({ initialTasks }: TaskListProps) {
+export function TaskList({ initialTasks, initialTags, initialProjects }: TaskListProps) {
   const [tasks, setTasks] = useState(initialTasks)
   const [viewMode, setViewMode] = useViewMode()
   const [filterState, setFilterState] = useState<TaskFilterState>({
@@ -49,24 +54,14 @@ export function TaskList({ initialTasks }: TaskListProps) {
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-  const [allTags, setAllTags] = useState<string[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
+  const [allTags, setAllTags] = useState<string[]>(initialTags)
+  const [projects, setProjects] = useState<Project[]>(initialProjects)
   const [isPending, startTransition] = useTransition()
 
   // Sync tasks when initialTasks change (e.g., workspace switch)
   useEffect(() => {
     setTasks(initialTasks)
   }, [initialTasks])
-
-  // Fetch all unique tags and projects for filter dropdowns
-  useEffect(() => {
-    fetchAllTags().then((res) => {
-      if (res.tags) setAllTags(res.tags)
-    })
-    fetchProjects().then((res) => {
-      if (res.projects) setProjects(res.projects)
-    })
-  }, [])
 
   const reloadProjects = useCallback(() => {
     fetchProjects().then((res) => {
@@ -196,7 +191,12 @@ export function TaskList({ initialTasks }: TaskListProps) {
   }
 
   const handleTaskUpdate = (updated: Task) => {
-    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+    setTasks((prev) => {
+      const exists = prev.some((t) => t.id === updated.id)
+      if (exists) return prev.map((t) => (t.id === updated.id ? updated : t))
+      // Re-insert (e.g., delete rollback)
+      return [updated, ...prev]
+    })
   }
 
   const handleTaskDelete = (taskId: string) => {

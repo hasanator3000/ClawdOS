@@ -74,8 +74,8 @@ export function ViewModeSlider({ value, onChange }: ViewModeSliderProps) {
 
   return (
     <div
-      className="relative flex p-1 rounded-xl"
-      style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+      className="relative flex p-1 rounded-xl bg-[var(--card)] border border-[var(--border)]"
+      
     >
       {/* Sliding indicator */}
       <div

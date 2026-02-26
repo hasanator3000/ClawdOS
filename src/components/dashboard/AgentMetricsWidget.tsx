@@ -11,53 +11,53 @@ export function AgentMetricsWidget() {
         border: '1px solid var(--border)',
       }}
     >
-      <h3 className="text-sm font-medium" style={{ color: 'var(--fg)' }}>
+      <h3 className="text-lg font-semibold text-[var(--fg)]" >
         Agent Status
       </h3>
 
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Status metric */}
-        <div>
-          <div className="text-xs" style={{ color: 'var(--muted)' }}>
+        <div className="p-4 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
+          <div className="text-sm font-medium text-[var(--muted)]" >
             Status
           </div>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2">
             <div
-              className="w-2 h-2 rounded-full"
-              style={{ background: 'var(--green)' }}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ background: 'var(--green)', boxShadow: '0 0 8px var(--green)' }}
             />
-            <span className="text-sm font-medium" style={{ color: 'var(--fg)' }}>
+            <span className="text-[15px] font-semibold text-[var(--fg)]" >
               Online
             </span>
           </div>
         </div>
 
         {/* Messages Today metric */}
-        <div>
-          <div className="text-xs" style={{ color: 'var(--muted)' }}>
+        <div className="p-4 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
+          <div className="text-sm font-medium text-[var(--muted)]" >
             Messages Today
           </div>
-          <div className="mt-1 text-sm font-medium" style={{ color: 'var(--fg)' }}>
-            0 messages
+          <div className="mt-2 text-[15px] font-semibold text-[var(--fg)]" >
+            0
           </div>
         </div>
 
         {/* Uptime metric */}
-        <div>
-          <div className="text-xs" style={{ color: 'var(--muted)' }}>
+        <div className="p-4 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
+          <div className="text-sm font-medium text-[var(--muted)]" >
             Uptime
           </div>
-          <div className="mt-1 text-sm font-medium" style={{ color: 'var(--fg)' }}>
+          <div className="mt-2 text-[15px] font-semibold text-[var(--fg)]" >
             Active
           </div>
         </div>
 
         {/* Last Activity metric */}
-        <div>
-          <div className="text-xs" style={{ color: 'var(--muted)' }}>
+        <div className="p-4 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
+          <div className="text-sm font-medium text-[var(--muted)]" >
             Last Activity
           </div>
-          <div className="mt-1 text-sm font-medium" style={{ color: 'var(--fg)' }}>
+          <div className="mt-2 text-[15px] font-semibold text-[var(--fg)]" >
             Just now
           </div>
         </div>

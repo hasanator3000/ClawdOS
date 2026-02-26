@@ -50,8 +50,8 @@ export function RecurrencePicker({ current, onChange, onClose }: RecurrencePicke
       })}
 
       {/* Custom weekdays */}
-      <div className="px-3 py-2" style={{ borderTop: '1px solid var(--border)' }}>
-        <div className="text-[10px] font-mono uppercase mb-1.5" style={{ color: 'var(--muted)' }}>Custom days</div>
+      <div className="px-3 py-2 border-t border-t-[var(--border)]" >
+        <div className="text-[10px] font-mono uppercase mb-1.5 text-[var(--muted)]" >Custom days</div>
         <div className="flex gap-1 mb-1.5">
           {WEEKDAY_NAMES.map((name, i) => (
             <button
@@ -72,8 +72,8 @@ export function RecurrencePicker({ current, onChange, onClose }: RecurrencePicke
           <button
             type="button"
             onClick={applyCustom}
-            className="text-xs font-medium transition-colors"
-            style={{ color: 'var(--cyan)' }}
+            className="text-xs font-medium transition-colors text-[var(--cyan)]"
+            
           >
             Apply custom
           </button>

@@ -32,7 +32,7 @@ export const NewsCard = memo(function NewsCard({ item }: { item: NewsItem }) {
   )
 
   const content = (
-    <div className="flex flex-col h-full rounded-lg border border-[var(--border)] bg-[var(--card)] overflow-hidden transition-colors hover:bg-[var(--hover)]">
+    <div className="flex flex-col h-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden transition-colors hover:border-[var(--neon-dim)]">
       {showImage && (
         <div className="relative aspect-video overflow-hidden bg-[var(--hover)]">
           <Image
@@ -45,17 +45,17 @@ export const NewsCard = memo(function NewsCard({ item }: { item: NewsItem }) {
           />
         </div>
       )}
-      <div className="flex flex-col flex-1 p-3">
-        <div className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
-          {item.sourceName && <span>{item.sourceName}</span>}
-          {item.sourceName && item.publishedAt && <span>·</span>}
+      <div className="flex flex-col flex-1 p-4">
+        <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          {item.sourceName && <span className="font-semibold text-[var(--neon)]">{item.sourceName}</span>}
+          {item.sourceName && item.publishedAt && <span className="text-[var(--muted-2)]">·</span>}
           {relTime && <span>{relTime}</span>}
         </div>
-        <h3 className="mt-1 font-medium text-sm leading-snug line-clamp-2">
+        <h3 className="mt-2 font-semibold text-base leading-snug line-clamp-2">
           {item.title}
         </h3>
         {item.summary && (
-          <p className="mt-1 text-xs text-[var(--muted-2)] line-clamp-2 flex-1">{item.summary}</p>
+          <p className="mt-1.5 text-sm text-[var(--muted)] line-clamp-2 flex-1 leading-relaxed">{item.summary}</p>
         )}
       </div>
     </div>

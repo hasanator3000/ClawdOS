@@ -155,7 +155,7 @@ export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compa
               </span>
             )}
             {projectName && (
-              <span className="text-[10px] font-medium" style={{ color: 'var(--cyan)' }}>
+              <span className="text-[10px] font-medium text-[var(--cyan)]" >
                 {projectName}
               </span>
             )}
@@ -165,12 +165,12 @@ export const TaskCard = memo(function TaskCard({ task, onUpdate, onDelete, compa
               </span>
             )}
             {task.dueTime && (
-              <span className="text-[10px]" style={{ color: 'var(--muted)' }}>
+              <span className="text-[10px] text-[var(--muted)]" >
                 {task.dueTime}
               </span>
             )}
             {task.recurrenceRule && (
-              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--cyan)' }} title={recurrenceLabel(task.recurrenceRule)}>
+              <span className="text-[10px] flex items-center gap-0.5 text-[var(--cyan)]"  title={recurrenceLabel(task.recurrenceRule)}>
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>

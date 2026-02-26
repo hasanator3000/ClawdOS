@@ -70,8 +70,8 @@ export function ContentTopBar() {
           className="w-full pl-10 pr-14 py-2.5 rounded-xl text-sm outline-none bg-[var(--card)] border border-[var(--border)] text-[var(--fg)] focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim),0_0_12px_var(--neon-dim)]"
         />
         <div
-          className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] px-1.5 py-0.5 rounded"
-          style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] px-1.5 py-0.5 rounded text-[var(--muted)] border border-[var(--border)]"
+          
         >
           ⌘K
         </div>
@@ -91,8 +91,8 @@ export function ContentTopBar() {
                 key={page.path}
                 type="button"
                 onClick={() => handleSelect(page.path)}
-                className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-[var(--hover)]"
-                style={{ color: 'var(--fg)' }}
+                className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-[var(--hover)] text-[var(--fg)]"
+                
               >
                 <svg
                   width="14"

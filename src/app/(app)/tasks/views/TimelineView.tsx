@@ -156,8 +156,8 @@ export function TimelineView({ tasks, onUpdate, onDelete, onSelectTask, projectM
       <div className="space-y-3">
         {/* Zoom controls */}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium" style={{ color: 'var(--muted)' }}>Timeline</h3>
-          <div className="flex p-0.5 rounded-lg" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+          <h3 className="text-sm font-medium text-[var(--muted)]" >Timeline</h3>
+          <div className="flex p-0.5 rounded-lg bg-[var(--card)] border border-[var(--border)]" >
             {(['week', 'month'] as const).map((level) => (
               <button key={level} type="button" onClick={() => setZoom(level)} className="px-3 py-1 rounded-md text-xs font-medium transition-colors"
                 style={{ background: zoom === level ? 'var(--neon)' : 'transparent', color: zoom === level ? 'var(--bg)' : 'var(--muted)' }}>
@@ -168,10 +168,10 @@ export function TimelineView({ tasks, onUpdate, onDelete, onSelectTask, projectM
         </div>
 
         {/* Scrollable timeline */}
-        <div ref={scrollRef} className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)' }}>
+        <div ref={scrollRef} className="overflow-x-auto rounded-xl border border-[var(--border)]" >
           <div style={{ minWidth: totalDays * dayWidth }}>
             {/* Week headers */}
-            <div className="flex" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="flex border-b border-b-[var(--border)]" >
               {weeks.map((w, i) => (
                 <div key={i} className="text-xs font-mono py-2 text-center flex-shrink-0"
                   style={{ width: 7 * dayWidth, color: 'var(--muted)', background: 'var(--card)', borderRight: '1px solid var(--border)' }}>
@@ -181,7 +181,7 @@ export function TimelineView({ tasks, onUpdate, onDelete, onSelectTask, projectM
             </div>
 
             {/* Day headers */}
-            <div className="flex" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="flex border-b border-b-[var(--border)]" >
               {days.map(({ date, dateStr }) => {
                 const isToday = dateStr === todayStr
                 const isWeekend = date.getDay() === 0 || date.getDay() === 6
@@ -223,7 +223,7 @@ export function TimelineView({ tasks, onUpdate, onDelete, onSelectTask, projectM
         {/* Undated */}
         {undatedTasks.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--muted)' }}>No date ({undatedTasks.length})</h3>
+            <h3 className="text-sm font-medium mb-2 text-[var(--muted)]" >No date ({undatedTasks.length})</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {undatedTasks.map((task) => <TaskCard key={task.id} task={task} onUpdate={onUpdate} onDelete={onDelete} showStatus onSelect={onSelectTask} projectName={task.projectId ? projectMap?.get(task.projectId) : undefined} />)}
             </div>

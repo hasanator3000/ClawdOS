@@ -1,6 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
@@ -49,7 +48,6 @@ export async function createProject(name: string): Promise<{ project?: Project; 
     const project = await withUser(session.userId, async (client) => {
       return createProjectRepo(client, workspace.id, trimmed)
     })
-    revalidatePath('/tasks')
     return { project }
   } catch (error) {
     log.error('createProject failed', { error: error instanceof Error ? error.message : String(error) })
@@ -68,7 +66,6 @@ export async function deleteProject(projectId: string): Promise<{ success?: bool
       return deleteProjectRepo(client, projectId)
     })
     if (!deleted) return { error: 'Project not found' }
-    revalidatePath('/tasks')
     return { success: true }
   } catch (error) {
     log.error('deleteProject failed', { error: error instanceof Error ? error.message : String(error) })

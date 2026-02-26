@@ -7,8 +7,9 @@ import { getTagColor } from '@/lib/tag-colors'
 import { recurrenceLabel } from '@/lib/recurrence'
 import { completeTask, reopenTask, deleteTask, updateTask, updateTaskPriority, fetchSubtasks } from './actions'
 import { DateTimePicker } from './DateTimePicker'
-import { PRIORITY_LABELS, PRIORITY_COLORS, STATUS_META } from './task-item/constants'
+import { PRIORITY_COLORS, STATUS_META } from './task-item/constants'
 import { DueDate } from './task-item/DueDate'
+import { PriorityEditor } from './task-item/PriorityEditor'
 import { SubtasksPanel } from './task-item/SubtasksPanel'
 
 interface TaskItemProps {
@@ -23,7 +24,6 @@ interface TaskItemProps {
 
 export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0, onSelect, projectName }: TaskItemProps) {
   const [isPending, startTransition] = useTransition()
-  const [priorityMode, setPriorityMode] = useState(false)
   const [dateMode, setDateMode] = useState(false)
   const [subtasksOpen, setSubtasksOpen] = useState(false)
   const [subtasks, setSubtasks] = useState<Task[]>([])
@@ -36,15 +36,6 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
       if (res.tasks) setSubtasks(res.tasks)
     })
   }, [subtasksOpen, task.id])
-
-  useEffect(() => {
-    if (!priorityMode) return
-    const handleClick = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.priority-dropdown')) setPriorityMode(false)
-    }
-    const timer = setTimeout(() => document.addEventListener('click', handleClick), 0)
-    return () => { clearTimeout(timer); document.removeEventListener('click', handleClick) }
-  }, [priorityMode])
 
   const handleToggleComplete = () => {
     // Optimistic: toggle status immediately
@@ -71,7 +62,6 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
   const handlePriorityChange = (p: number) => {
     const updated = { ...task, priority: p }
     onUpdate(updated)
-    setPriorityMode(false)
     startTransition(async () => {
       const result = await updateTaskPriority(task.id, p)
       if (!result.success) onUpdate(task)
@@ -104,7 +94,11 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
     // Optimistic: remove immediately
     onDelete(task.id)
     startTransition(async () => {
-      await deleteTask(task.id)
+      const result = await deleteTask(task.id)
+      if (result.error) {
+        // Rollback: re-add task on failure
+        onUpdate(task)
+      }
     })
   }
 
@@ -112,20 +106,23 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
 
   return (
     <div style={{ marginLeft: depth > 0 ? 20 : 0 }}>
-      <div className="flex items-center gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-lg group hover:border-[var(--neon-dim)] transition-colors">
+      <div
+        className="flex items-center gap-4 px-4 py-3.5 bg-[var(--card)] border border-[var(--border)] rounded-xl group hover:border-[var(--neon-dim)] transition-colors"
+        style={task.priority > 0 ? { borderLeftWidth: '3px', borderLeftColor: PRIORITY_COLORS[task.priority] } : undefined}
+      >
         {/* Checkbox */}
         <button
           type="button"
           onClick={handleToggleComplete}
           disabled={isPending}
-          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+          className={`w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
             task.status === 'done'
               ? 'bg-[var(--green)] border-[var(--green)] text-[var(--bg)]'
               : 'border-[var(--border)] hover:border-[var(--neon)]'
           }`}
         >
           {task.status === 'done' && (
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
           )}
@@ -133,21 +130,21 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
 
         {/* Title + description */}
         <div className="flex-1 min-w-0">
-          <div className={`font-medium ${task.status === 'done' ? 'line-through text-[var(--muted)]' : ''}`}>
+          <div className={`text-[15px] font-medium leading-snug ${task.status === 'done' ? 'line-through text-[var(--muted)]' : ''}`}>
             {task.title}
           </div>
           {(task.description || projectName) && (
-            <div className="flex items-center gap-2 text-sm text-[var(--muted)] truncate">
-              {projectName && <span className="text-[10px] font-medium" style={{ color: 'var(--cyan)' }}>{projectName}</span>}
+            <div className="flex items-center gap-2 text-sm text-[var(--muted)] truncate mt-0.5">
+              {projectName && <span className="text-[11px] font-medium text-[var(--cyan)]" >{projectName}</span>}
               {task.description && <span className="truncate">{task.description}</span>}
             </div>
           )}
           {task.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-0.5">
+            <div className="flex flex-wrap gap-1.5 mt-1">
               {task.tags.map((tag) => {
                 const tc = getTagColor(tag)
                 return (
-                  <span key={tag} className="text-[9px] font-medium px-1.5 py-px rounded-full" style={{ color: tc.color, background: tc.bg }}>
+                  <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ color: tc.color, background: tc.bg }}>
                     {tag}
                   </span>
                 )
@@ -159,7 +156,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
         {/* Status badge */}
         {STATUS_META[task.status] && (
           <span
-            className="text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0"
+            className="text-[11px] font-medium px-2 py-1 rounded-md flex-shrink-0"
             style={{ color: STATUS_META[task.status].color, background: STATUS_META[task.status].bg }}
           >
             {STATUS_META[task.status].label}
@@ -169,11 +166,11 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
         {/* Recurrence indicator */}
         {task.recurrenceRule && (
           <span
-            className="text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 flex items-center gap-1"
+            className="text-[11px] font-medium px-2 py-1 rounded-md flex-shrink-0 flex items-center gap-1"
             style={{ color: 'var(--cyan)', background: 'rgba(0, 188, 212, 0.12)' }}
             title={recurrenceLabel(task.recurrenceRule)}
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             {recurrenceLabel(task.recurrenceRule)}
@@ -182,35 +179,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
 
         {/* Priority badge + editor */}
         <div className="flex items-center gap-1.5 relative">
-          {priorityMode ? (
-            <div className="priority-dropdown flex gap-1 rounded-lg p-1 shadow-lg" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-              {[0, 1, 2, 3, 4].map((p) => (
-                <button
-                  type="button"
-                  key={p}
-                  onClick={() => handlePriorityChange(p)}
-                  className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
-                    task.priority === p ? 'bg-[var(--neon-dim)]' : 'hover:bg-[var(--surface)]'
-                  }`}
-                  title={PRIORITY_LABELS[p] || 'None'}
-                >
-                  {p === 0 ? (
-                    <span className="text-xs text-[var(--muted)]">—</span>
-                  ) : (
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: PRIORITY_COLORS[p] }} />
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : task.priority > 0 ? (
-            <button type="button" onClick={() => setPriorityMode(true)} className="text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity" style={{ color: PRIORITY_COLORS[task.priority] }}>
-              {PRIORITY_LABELS[task.priority]}
-            </button>
-          ) : (
-            <button type="button" onClick={() => setPriorityMode(true)} className="opacity-0 group-hover:opacity-100 p-0.5 transition-opacity" title="Set priority">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h2V3H3zm4 0v12h10l-4-6 4-6H7z" /></svg>
-            </button>
-          )}
+          <PriorityEditor priority={task.priority} onPriorityChange={handlePriorityChange} />
         </div>
 
         {/* Due date */}
@@ -226,7 +195,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
               className="p-1 text-[var(--muted)] hover:text-[var(--neon)] transition-colors opacity-0 group-hover:opacity-100"
               title="Set due date"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </button>
@@ -248,7 +217,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
           <button
             type="button"
             onClick={() => setSubtasksOpen(!subtasksOpen)}
-            className={`p-1 flex items-center gap-1 rounded transition-colors ${
+            className={`p-1.5 flex items-center gap-1 rounded-md transition-colors ${
               subtasksOpen
                 ? 'text-[var(--neon)]'
                 : subtaskCount > 0 || subtasks.length > 0
@@ -257,11 +226,11 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
             }`}
             title="Subtasks"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8m-8 6h16" />
             </svg>
             {(subtaskCount > 0 || subtasks.length > 0) && (
-              <span className="text-[10px] font-mono font-medium">
+              <span className="text-[11px] font-mono font-medium">
                 {subtasks.length || subtaskCount}
               </span>
             )}
@@ -270,8 +239,8 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
 
         {/* Open detail panel */}
         {onSelect && (
-          <button type="button" onClick={() => onSelect(task.id)} className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--neon)] transition-colors" aria-label="Open details">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          <button type="button" onClick={() => onSelect(task.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--muted)] hover:text-[var(--neon)] transition-colors" aria-label="Open details">
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         )}
 
@@ -280,10 +249,10 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
           type="button"
           onClick={handleDelete}
           disabled={isPending}
-          className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--red)] transition-colors"
+          className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--muted)] hover:text-[var(--red)] transition-colors"
           aria-label="Delete task"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         </button>

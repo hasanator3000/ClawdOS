@@ -2,12 +2,17 @@
 
 import { useState, useEffect, useTransition, useCallback, useRef, useMemo } from 'react'
 import type { NewsItem, NewsSource, NewsTab } from '@/types/news'
+import dynamic from 'next/dynamic'
 import { NewsTabs } from './NewsTabs'
 import { NewsFeed } from './NewsFeed'
-import { NewsSourcesPanel } from './NewsSourcesPanel'
 import { NewsSearch } from './NewsSearch'
 import { NewsOnboarding } from './NewsOnboarding'
 import { refreshNews, getSources, getTabs } from './actions'
+
+const NewsSourcesPanel = dynamic(
+  () => import('./NewsSourcesPanel').then((m) => m.NewsSourcesPanel),
+  { ssr: false }
+)
 
 const ITEMS_PER_PAGE = 12
 

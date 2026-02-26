@@ -22,7 +22,7 @@ export function ListView({ tasks, onUpdate, onDelete, subtaskCounts, onSelectTas
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {tasks.map((task) => (
         <TaskItem
           key={task.id}

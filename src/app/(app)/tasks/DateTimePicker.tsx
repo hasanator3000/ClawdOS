@@ -123,7 +123,7 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
         <button type="button" onClick={prevMonth} className="p-1 rounded hover:bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--fg)] transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <span className="text-sm font-medium" style={{ color: 'var(--fg)' }}>
+        <span className="text-sm font-medium text-[var(--fg)]" >
           {MONTHS[viewMonth]} {viewYear}
         </span>
         <button type="button" onClick={nextMonth} className="p-1 rounded hover:bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--fg)] transition-colors">
@@ -134,7 +134,7 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
       {/* Day headers */}
       <div className="grid grid-cols-7 gap-0 mb-1">
         {DAYS.map((d) => (
-          <div key={d} className="text-center text-[10px] font-mono py-1" style={{ color: 'var(--muted)' }}>{d}</div>
+          <div key={d} className="text-center text-[10px] font-mono py-1 text-[var(--muted)]" >{d}</div>
         ))}
       </div>
 
@@ -181,7 +181,7 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
       </div>
 
       {/* Duration toggle */}
-      <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="mt-3 pt-3 border-t border-t-[var(--border)]" >
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -203,7 +203,7 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
       </div>
 
       {/* Time toggle + picker */}
-      <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="mt-2 pt-2 border-t border-t-[var(--border)]" >
         <button
           type="button"
           onClick={() => setShowTime(!showTime)}
@@ -228,7 +228,7 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
                 <option key={h} value={pad(h)}>{pad(h)}</option>
               ))}
             </select>
-            <span className="text-sm font-mono" style={{ color: 'var(--muted)' }}>:</span>
+            <span className="text-sm font-mono text-[var(--muted)]" >:</span>
             {/* Minute */}
             <select
               value={selectedMinute}
@@ -246,12 +246,12 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-t-[var(--border)]" >
         <button
           type="button"
           onClick={handleClear}
-          className="text-xs transition-colors"
-          style={{ color: 'var(--muted)' }}
+          className="text-xs transition-colors text-[var(--muted)]"
+          
           onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red)' }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)' }}
         >
@@ -261,8 +261,8 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-1.5 rounded-md text-xs transition-colors"
-            style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+            className="px-3 py-1.5 rounded-md text-xs transition-colors text-[var(--muted)] border border-[var(--border)]"
+            
           >
             Cancel
           </button>
@@ -270,8 +270,8 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
             type="button"
             onClick={handleSave}
             disabled={!selectedDate}
-            className="px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-30"
-            style={{ background: 'var(--neon)', color: 'var(--bg)' }}
+            className="px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-30 bg-[var(--neon)] text-[var(--bg)]"
+            
           >
             Save
           </button>

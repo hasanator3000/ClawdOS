@@ -24,62 +24,56 @@ export function RecentTasksWidget({ tasks }: RecentTasksWidgetProps) {
 
   return (
     <div
-      className="p-4 rounded-2xl"
-      style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+      className="p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)]"
+      
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <div
-          className="text-[10px] uppercase tracking-widest font-mono"
-          style={{ color: 'var(--muted)' }}
+          className="text-[11px] uppercase tracking-widest font-mono font-medium text-[var(--muted)]"
+          
         >
           Tasks
         </div>
         <Link
           href="/tasks"
-          className="text-xs text-[var(--muted)] hover:text-[var(--neon)] transition-colors"
+          className="text-sm text-[var(--muted)] hover:text-[var(--neon)] transition-colors"
         >
           View all
         </Link>
       </div>
 
       {pendingTasks.length === 0 ? (
-        <div className="py-8 text-center text-sm" style={{ color: 'var(--muted)' }}>
+        <div className="py-8 text-center text-sm text-[var(--muted)]" >
           No pending tasks
         </div>
       ) : (
-        <div className="space-y-0.5">
-          {pendingTasks.map((task, i) => {
+        <div className="space-y-1.5">
+          {pendingTasks.map((task) => {
             const color = getPriorityColor(task.priority, task.status)
             return (
               <div
                 key={task.id}
-                className="flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors"
-                style={{
-                  borderBottom: i < pendingTasks.length - 1 ? '1px solid var(--border)' : 'none',
-                }}
+                className="flex items-center gap-4 px-4 py-3.5 rounded-xl transition-colors border border-[var(--border)] bg-[rgba(255,255,255,0.02)]"
               >
-                {/* Diamond priority indicator */}
+                {/* Priority left accent */}
                 <div
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 w-1 self-stretch rounded-full"
                   style={{
-                    width: 5,
-                    height: 5,
-                    transform: 'rotate(45deg)',
                     background: color,
-                    boxShadow: `0 0 6px ${color}`,
+                    boxShadow: `0 0 8px ${color}`,
                   }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm truncate" style={{ color: 'var(--fg)' }}>{task.title}</div>
+                  <div className="text-[15px] font-medium truncate text-[var(--fg)]" >{task.title}</div>
                   {task.dueDate && (
-                    <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                    <div className="text-sm mt-0.5 text-[var(--muted)]" >
                       Due: {new Date(task.dueDate).toLocaleDateString()}
                     </div>
                   )}
                 </div>
                 {task.status === 'in_progress' && (
                   <span
-                    className="text-[10px] px-2 py-0.5 rounded-full font-mono"
+                    className="text-[11px] px-2.5 py-1 rounded-full font-mono font-medium"
                     style={{
                       background: 'rgba(251,191,36,0.1)',
                       color: 'var(--warm)',

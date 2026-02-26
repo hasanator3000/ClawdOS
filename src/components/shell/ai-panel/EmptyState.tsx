@@ -3,7 +3,7 @@
 /* Empty state with bot orb and hint chips */
 export function EmptyState() {
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6" style={{ color: 'var(--muted)' }}>
+    <div className="h-full flex flex-col items-center justify-center p-6 text-[var(--muted)]" >
       {/* Large orb */}
       <div className="relative mb-6" style={{ width: 64, height: 64 }}>
         <div
@@ -36,10 +36,10 @@ export function EmptyState() {
         />
       </div>
 
-      <div className="font-semibold text-sm mb-1" style={{ color: 'var(--fg)' }}>
+      <div className="font-semibold text-sm mb-1 text-[var(--fg)]" >
         Clawdbot
       </div>
-      <div className="text-xs text-center mb-5 max-w-[220px]" style={{ color: 'var(--muted)' }}>
+      <div className="text-xs text-center mb-5 max-w-[220px] text-[var(--muted)]" >
         Your AI assistant for tasks, questions, and everything in between.
       </div>
 

@@ -35,7 +35,7 @@ export class WidgetErrorBoundary extends Component<Props, State> {
             border: '1px solid var(--border)',
           }}
         >
-          <div className="text-xs" style={{ color: 'var(--red)' }}>
+          <div className="text-xs text-[var(--red)]" >
             {this.props.name}: {this.state.error.message}
           </div>
         </div>

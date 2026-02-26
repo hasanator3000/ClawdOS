@@ -113,8 +113,8 @@ export function TimelineTaskBar({ task, dayWidth, startIdx, spanDays, onUpdate, 
     >
       {/* Title */}
       <span
-        className="absolute inset-0 flex items-center px-2 text-[10px] font-medium truncate"
-        style={{ color: 'var(--bg)' }}
+        className="absolute inset-0 flex items-center px-2 text-[10px] font-medium truncate text-[var(--bg)]"
+        
       >
         {task.title}
       </span>

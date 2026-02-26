@@ -125,9 +125,9 @@ function KanbanColumn({
       >
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: column.color }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--fg)' }}>{column.label}</span>
+          <span className="text-sm font-medium text-[var(--fg)]" >{column.label}</span>
         </div>
-        <span className="text-xs font-mono px-1.5 py-0.5 rounded-md" style={{ background: 'var(--surface)', color: 'var(--muted)' }}>
+        <span className="text-xs font-mono px-1.5 py-0.5 rounded-md bg-[var(--surface)] text-[var(--muted)]" >
           {tasks.length}
         </span>
       </div>

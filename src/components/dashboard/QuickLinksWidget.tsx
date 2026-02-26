@@ -49,30 +49,30 @@ export function QuickLinksWidget() {
 
   return (
     <div
-      className="p-4 rounded-2xl"
-      style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+      className="p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)]"
+      
     >
       <div
-        className="text-[10px] uppercase tracking-widest font-mono mb-3"
-        style={{ color: 'var(--muted)' }}
+        className="text-[11px] uppercase tracking-widest font-mono mb-4 font-medium text-[var(--muted)]"
+        
       >
         Quick Access
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-4">
         {defaultLinks.map((link) => {
           const isActive = pathname === link.href
           return (
             <Link
               key={link.href}
               href={link.href}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl transition-colors border ${
+              className={`flex flex-col items-center justify-center p-5 rounded-xl transition-colors border ${
                 isActive
                   ? 'bg-[var(--neon-dim)] border-[var(--neon)] text-[var(--neon)]'
-                  : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--neon)]'
+                  : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--neon)] hover:border-[var(--neon-dim)]'
               }`}
             >
               {link.icon}
-              <span className="mt-2 text-sm font-medium">{link.label}</span>
+              <span className="mt-2.5 text-[15px] font-medium">{link.label}</span>
             </Link>
           )
         })}

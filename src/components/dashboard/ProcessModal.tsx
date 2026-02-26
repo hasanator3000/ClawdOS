@@ -120,13 +120,13 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
             borderColor: 'var(--border)',
           }}
         >
-          <h2 className="text-xl font-medium" style={{ color: 'var(--fg)' }}>
+          <h2 className="text-xl font-medium text-[var(--fg)]" >
             Manage Processes
           </h2>
           <button
             onClick={onClose}
-            className="text-2xl w-8 h-8 flex items-center justify-center rounded-md transition-colors"
-            style={{ color: 'var(--muted)' }}
+            className="text-2xl w-8 h-8 flex items-center justify-center rounded-md transition-colors text-[var(--muted)]"
+            
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--hover)'
             }}
@@ -164,7 +164,7 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
                 borderColor: 'var(--border)',
               }}
             >
-              <h3 className="text-sm font-medium mb-4" style={{ color: 'var(--fg)' }}>
+              <h3 className="text-sm font-medium mb-4 text-[var(--fg)]" >
                 {editingProcess ? 'Edit Process' : 'Create Process'}
               </h3>
               <ProcessForm
@@ -177,11 +177,11 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
 
           {/* Process list */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium" style={{ color: 'var(--muted)' }}>
+            <h3 className="text-sm font-medium text-[var(--muted)]" >
               All Processes ({localProcesses.length})
             </h3>
             {localProcesses.length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: 'var(--muted)' }}>
+              <p className="text-sm text-center py-8 text-[var(--muted)]" >
                 No processes yet. Create one to get started.
               </p>
             ) : (
@@ -203,7 +203,7 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-medium" style={{ color: 'var(--fg)' }}>
+                        <h4 className="text-sm font-medium text-[var(--fg)]" >
                           {process.title}
                         </h4>
                         <span
@@ -218,13 +218,13 @@ export function ProcessModal({ processes, onClose, onRefresh }: ProcessModalProp
                           {process.enabled ? '● Enabled' : '○ Disabled'}
                         </span>
                       </div>
-                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                      <p className="text-xs mt-1 text-[var(--muted)]" >
                         {process.description || 'No description'}
                       </p>
-                      <p className="text-xs mt-1 font-mono" style={{ color: 'var(--muted)' }}>
+                      <p className="text-xs mt-1 font-mono text-[var(--muted)]" >
                         Schedule: {process.schedule}
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                      <p className="text-xs mt-0.5 text-[var(--muted)]" >
                         Action: {process.actionType}
                       </p>
                     </div>
