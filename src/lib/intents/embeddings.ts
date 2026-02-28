@@ -19,9 +19,10 @@ const log = createLogger('intent-router')
 const queryCache = new MemoryCache<Float64Array>({ ttl: 10 * 60 * 1000, maxEntries: 200 })
 
 // Lazy-loaded pipeline function from @xenova/transformers
-type EmbedFn = (input: string | string[], options?: Record<string, unknown>) => Promise<{ data: Float64Array }>
-let pipelinePromise: Promise<EmbedFn> | null = null
-let embedFn: EmbedFn | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- @xenova/transformers FeatureExtractionPipeline has complex internal types
+let pipelinePromise: Promise<any> | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let embedFn: any = null
 
 /** Computed centroid for each intent card */
 interface IntentCentroid {
