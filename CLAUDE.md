@@ -297,7 +297,7 @@ Package tracking section at `/deliveries`. Add tracking numbers via UI or Telegr
 - **Webhook:** TrackingMore POST → `/api/webhooks/trackingmore` → lookup by tracking_number (no RLS) → updateDeliveryEvents in DB
 - **Graceful degradation:** If TrackingMore API fails, delivery still created locally with `pending` status
 
-**Known gaps (TODO):**
-- Chat read actions missing (`delivery.list`, `delivery.status`) — LLM can only write, not query deliveries
-- Webhook → Telegram notification not implemented — DB updates but no TG message sent
-- No HMAC signature verification on webhook (security gap)
+**Resolved (previously TODO):**
+- Chat read actions (`delivery.list`, `delivery.status`) — implemented in `actions-executor.ts`
+- Webhook → Telegram notification — implemented in webhook route (status change triggers TG message)
+- Webhook secret verification — `TRACKINGMORE_WEBHOOK_SECRET` env var checked against `x-webhook-secret` header

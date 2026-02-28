@@ -13,6 +13,16 @@ const log = createLogger('webhook-trackingmore')
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
+  // Verify webhook secret if configured
+  const secret = process.env.TRACKINGMORE_WEBHOOK_SECRET
+  if (secret) {
+    const provided = request.headers.get('x-webhook-secret') || request.headers.get('authorization')?.replace('Bearer ', '')
+    if (provided !== secret) {
+      log.warn('Webhook rejected: invalid secret')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
   let body: TrackingMoreWebhookPayload
   try {
     body = (await request.json()) as TrackingMoreWebhookPayload

@@ -22,11 +22,11 @@ import {
   findDeliveryById,
   deleteDelivery as deleteDeliveryRepo,
   updateDeliveryEvents,
-  type TrackingEvent,
   type DeliveryStatus,
 } from '@/lib/db/repositories/delivery.repository'
 import { detectCarrier, createTracking } from '@/lib/trackingmore/client'
 import type { TrackingMoreTracking } from '@/lib/trackingmore/types'
+import { mapTmStatus, extractEvents } from '@/lib/delivery-utils'
 import { bumpRevision } from '@/lib/revision-store'
 
 /** A single action payload from the Clawdbot <clawdos> block */
@@ -289,17 +289,8 @@ export async function executeActions(
           })
 
           if (tmData) {
-            const events: TrackingEvent[] = [
-              ...(tmData.origin_info?.trackinfo ?? []),
-              ...(tmData.destination_info?.trackinfo ?? []),
-            ].map((e) => ({ date: e.checkpoint_date ?? e.Date ?? '', description: e.tracking_detail ?? e.Details ?? '', location: e.location, status: e.checkpoint_delivery_status ?? e.checkpoint_status ?? '' }))
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
-            const statusMap: Record<string, DeliveryStatus> = {
-              transit: 'transit', inforeceived: 'transit', pickup: 'pickup',
-              delivered: 'delivered', expired: 'expired', undelivered: 'undelivered', exception: 'undelivered',
-            }
-            const status: DeliveryStatus = statusMap[tmData.delivery_status] ?? 'pending'
+            const events = extractEvents(tmData)
+            const status = mapTmStatus(tmData.delivery_status)
 
             return updateDeliveryEvents(client, d.id, events, status, tmData.substatus ?? null, tmData.latest_event ?? null, tmData.lastest_checkpoint_time ?? null) ?? d
           }

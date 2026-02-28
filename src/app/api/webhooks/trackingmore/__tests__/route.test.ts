@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mock dependencies before imports
 vi.mock('@/lib/logger', () => ({
@@ -7,6 +7,10 @@ vi.mock('@/lib/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   }),
+}))
+
+vi.mock('@/lib/revision-store', () => ({
+  bumpRevision: vi.fn(),
 }))
 
 const mockQuery = vi.fn()
@@ -37,9 +41,20 @@ function makeRequest(body: unknown): Request {
 }
 
 describe('TrackingMore webhook route', () => {
+  const originalEnv = process.env.TRACKINGMORE_WEBHOOK_SECRET
+
   beforeEach(() => {
     mockQuery.mockReset()
     mockRelease.mockReset()
+    delete process.env.TRACKINGMORE_WEBHOOK_SECRET
+  })
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.TRACKINGMORE_WEBHOOK_SECRET = originalEnv
+    } else {
+      delete process.env.TRACKINGMORE_WEBHOOK_SECRET
+    }
   })
 
   it('returns 400 for invalid JSON', async () => {
@@ -159,5 +174,73 @@ describe('TrackingMore webhook route', () => {
 
     const callArgs = (updateDeliveryEvents as ReturnType<typeof vi.fn>).mock.calls.at(-1)!
     expect(callArgs[3]).toBe('delivered') // mapped status
+  })
+
+  describe('webhook secret verification', () => {
+    it('rejects request when secret is set but not provided', async () => {
+      process.env.TRACKINGMORE_WEBHOOK_SECRET = 'test-secret-123'
+      const res = await POST(makeRequest({ event: 'test', data: { tracking_number: 'X' } }))
+      expect(res.status).toBe(401)
+    })
+
+    it('rejects request when secret does not match', async () => {
+      process.env.TRACKINGMORE_WEBHOOK_SECRET = 'test-secret-123'
+      const req = new Request('http://localhost:3000/api/webhooks/trackingmore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-webhook-secret': 'wrong-secret',
+        },
+        body: JSON.stringify({ event: 'test', data: { tracking_number: 'X' } }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(401)
+    })
+
+    it('accepts request when secret matches via x-webhook-secret header', async () => {
+      process.env.TRACKINGMORE_WEBHOOK_SECRET = 'test-secret-123'
+      mockQuery.mockResolvedValue({ rows: [] })
+      const req = new Request('http://localhost:3000/api/webhooks/trackingmore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-webhook-secret': 'test-secret-123',
+        },
+        body: JSON.stringify({
+          event: 'TRACKING_UPDATED',
+          data: { tracking_number: 'TEST', courier_code: 'ups', delivery_status: 'transit' },
+        }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(200)
+    })
+
+    it('accepts request when secret matches via Authorization Bearer', async () => {
+      process.env.TRACKINGMORE_WEBHOOK_SECRET = 'test-secret-123'
+      mockQuery.mockResolvedValue({ rows: [] })
+      const req = new Request('http://localhost:3000/api/webhooks/trackingmore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer test-secret-123',
+        },
+        body: JSON.stringify({
+          event: 'TRACKING_UPDATED',
+          data: { tracking_number: 'TEST', courier_code: 'ups', delivery_status: 'transit' },
+        }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(200)
+    })
+
+    it('allows all requests when no secret is configured', async () => {
+      // No TRACKINGMORE_WEBHOOK_SECRET set
+      mockQuery.mockResolvedValue({ rows: [] })
+      const res = await POST(makeRequest({
+        event: 'TRACKING_UPDATED',
+        data: { tracking_number: 'TEST', courier_code: 'ups', delivery_status: 'transit' },
+      }))
+      expect(res.status).toBe(200)
+    })
   })
 })
