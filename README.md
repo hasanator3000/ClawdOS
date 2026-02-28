@@ -22,7 +22,7 @@
   <a href="#how-it-works">How It Works</a> &middot;
   <a href="#security">Security</a> &middot;
   <a href="INSTALL.md">Install Guide</a> &middot;
-  <a href="docs/VISION.md">Vision</a>
+  <a href="VISION.md">Vision</a>
 </p>
 
 <p align="center">
