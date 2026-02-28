@@ -15,7 +15,8 @@ interface DateTimePickerProps {
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-export function DateTimePicker({ date, time, startDate: initStartDate, startTime: initStartTime, onSave, onCancel }: DateTimePickerProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function DateTimePicker({ date, time, startDate: initStartDate, startTime, onSave, onCancel }: DateTimePickerProps) {
   const today = new Date()
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
@@ -89,7 +90,7 @@ export function DateTimePicker({ date, time, startDate: initStartDate, startTime
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full mt-2 z-30 rounded-xl shadow-2xl p-4 w-[280px]"
+      className="fixed left-4 right-4 md:left-auto md:right-0 md:absolute top-auto md:top-full bottom-20 md:bottom-auto mt-2 z-30 rounded-xl shadow-2xl p-4 md:w-[280px]"
       style={{
         background: 'var(--bg)',
         border: '1px solid var(--border)',

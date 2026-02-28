@@ -15,6 +15,18 @@ import {
   assignSourceToTab as assignSourceToTabRepo,
   findTabsByWorkspace,
 } from '@/lib/db/repositories/news-tab.repository'
+import {
+  createDelivery as createDeliveryRepo,
+  findDeliveryByTracking,
+  findDeliveriesByWorkspace,
+  findDeliveryById,
+  deleteDelivery as deleteDeliveryRepo,
+  updateDeliveryEvents,
+  type TrackingEvent,
+  type DeliveryStatus,
+} from '@/lib/db/repositories/delivery.repository'
+import { detectCarrier, createTracking } from '@/lib/trackingmore/client'
+import type { TrackingMoreTracking } from '@/lib/trackingmore/types'
 
 /** A single action payload from the Clawdbot <clawdos> block */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,6 +41,7 @@ const ALLOWED_PATHS = new Set([
   '/today',
   '/news',
   '/tasks',
+  '/deliveries',
   '/settings',
   '/settings/telegram',
   '/settings/password',
@@ -224,6 +237,154 @@ export async function executeActions(
         results.push({ action: 'news.tab.create', tab })
       } catch (err) {
         results.push({ action: 'news.tab.create', error: String(err) })
+      }
+    }
+
+    // Delivery actions
+    if (k === 'delivery.track') {
+      const trackingNumber = String(action?.trackingNumber || '').trim()
+      if (!trackingNumber || !workspaceId) continue
+
+      // Check for duplicate
+      const existing = await withUser(userId, (client) =>
+        findDeliveryByTracking(client, workspaceId, trackingNumber)
+      )
+      if (existing) {
+        results.push({ action: 'delivery.track', error: 'Already tracked', delivery: existing })
+        continue
+      }
+
+      try {
+        let courierCode: string | undefined
+        let courierName: string | undefined
+        let trackingmoreId: string | undefined
+        let tmData: TrackingMoreTracking | undefined
+
+        // Auto-detect carrier
+        try {
+          const carriers = await detectCarrier(trackingNumber)
+          if (carriers.length > 0) {
+            courierCode = carriers[0].courier_code
+            courierName = carriers[0].courier_name
+          }
+        } catch { /* carrier detection optional */ }
+
+        // Register in TrackingMore
+        try {
+          tmData = await createTracking({ tracking_number: trackingNumber, courier_code: courierCode })
+          trackingmoreId = tmData.id
+          if (tmData.courier_code) courierCode = tmData.courier_code
+          if (tmData.courier_name) courierName = tmData.courier_name
+        } catch { /* TrackingMore registration optional */ }
+
+        const delivery = await withUser(userId, async (client) => {
+          const d = await createDeliveryRepo(client, {
+            workspaceId,
+            trackingNumber,
+            courierCode,
+            courierName,
+            title: action?.title ? String(action.title) : undefined,
+            trackingmoreId,
+          })
+
+          if (tmData) {
+            const events: TrackingEvent[] = [
+              ...(tmData.origin_info?.trackinfo ?? []),
+              ...(tmData.destination_info?.trackinfo ?? []),
+            ].map((e) => ({ date: e.checkpoint_date ?? e.Date ?? '', description: e.tracking_detail ?? e.Details ?? '', location: e.location, status: e.checkpoint_delivery_status ?? e.checkpoint_status ?? '' }))
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+            const statusMap: Record<string, DeliveryStatus> = {
+              transit: 'transit', inforeceived: 'transit', pickup: 'pickup',
+              delivered: 'delivered', expired: 'expired', undelivered: 'undelivered', exception: 'undelivered',
+            }
+            const status: DeliveryStatus = statusMap[tmData.delivery_status] ?? 'pending'
+
+            return updateDeliveryEvents(client, d.id, events, status, tmData.substatus ?? null, tmData.latest_event ?? null, tmData.lastest_checkpoint_time ?? null) ?? d
+          }
+
+          return d
+        })
+
+        results.push({ action: 'delivery.track', delivery })
+      } catch (err) {
+        results.push({ action: 'delivery.track', error: String(err) })
+      }
+    }
+
+    if (k === 'delivery.remove') {
+      const deliveryId = String(action?.deliveryId || '').trim()
+      if (!deliveryId) continue
+
+      try {
+        const ok = await withUser(userId, (client) => deleteDeliveryRepo(client, deliveryId))
+        results.push({ action: 'delivery.remove', deliveryId, success: Boolean(ok) })
+      } catch (err) {
+        results.push({ action: 'delivery.remove', error: String(err) })
+      }
+    }
+
+    if (k === 'delivery.list') {
+      if (!workspaceId) {
+        results.push({ action: 'delivery.list', error: 'No workspace' })
+        continue
+      }
+      try {
+        const statusFilter = action?.status ? String(action.status) : undefined
+        const deliveries = await withUser(userId, (client) =>
+          findDeliveriesByWorkspace(client, workspaceId, {
+            status: statusFilter as DeliveryStatus | undefined,
+            limit: 20,
+          })
+        )
+        const summary = deliveries.map((d) => ({
+          id: d.id,
+          title: d.title || d.trackingNumber,
+          trackingNumber: d.trackingNumber,
+          courier: d.courierName || d.courierCode || 'Unknown',
+          status: d.status,
+          lastEvent: d.lastEvent,
+        }))
+        results.push({ action: 'delivery.list', count: deliveries.length, deliveries: summary })
+      } catch (err) {
+        results.push({ action: 'delivery.list', error: String(err) })
+      }
+    }
+
+    if (k === 'delivery.status') {
+      const deliveryId = String(action?.deliveryId || '').trim()
+      const trackingNumber = String(action?.trackingNumber || '').trim()
+      if (!deliveryId && !trackingNumber) {
+        results.push({ action: 'delivery.status', error: 'Need deliveryId or trackingNumber' })
+        continue
+      }
+      try {
+        const delivery = deliveryId
+          ? await withUser(userId, (client) => findDeliveryById(client, deliveryId))
+          : workspaceId
+            ? await withUser(userId, (client) => findDeliveryByTracking(client, workspaceId!, trackingNumber))
+            : null
+        if (!delivery) {
+          results.push({ action: 'delivery.status', error: 'Delivery not found' })
+          continue
+        }
+        results.push({
+          action: 'delivery.status',
+          id: delivery.id,
+          title: delivery.title || delivery.trackingNumber,
+          trackingNumber: delivery.trackingNumber,
+          courier: delivery.courierName || delivery.courierCode || 'Unknown',
+          status: delivery.status,
+          substatus: delivery.substatus,
+          lastEvent: delivery.lastEvent,
+          lastEventAt: delivery.lastEventAt,
+          origin: delivery.origin,
+          destination: delivery.destination,
+          eta: delivery.eta,
+          eventsCount: delivery.events?.length ?? 0,
+        })
+      } catch (err) {
+        results.push({ action: 'delivery.status', error: String(err) })
       }
     }
   }

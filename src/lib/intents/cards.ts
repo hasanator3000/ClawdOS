@@ -104,14 +104,17 @@ export const INTENT_CARDS: IntentCard[] = [
       // Explicit RU
       'добавь задачу', 'создай задачу', 'новая задача', 'создай таск',
       'добавь новую задачу', 'добавь таск', 'запиши задачу', 'создай новый таск',
+      'записать задачу', 'поставь задачу', 'добавь в список дел',
       // Explicit EN
       'add task', 'create task', 'new task', 'add a new task', 'create a todo',
+      'add to my list', 'jot down', 'note to self', 'put on my list',
       // Implicit — "need to do something"
       'надо купить молоко', 'нужно позвонить врачу', 'не забыть забрать посылку',
       'надо бы сходить в магазин', 'нужно сделать уборку',
       'запиши что нужно купить продукты', 'хочу записать напоминание',
-      'нужно не забыть оплатить счёт',
+      'нужно не забыть оплатить счёт', 'запомни что надо',
       'need to buy groceries', 'dont forget to call mom', 'remember to send email',
+      'remind me to', 'i need to',
       // With typos
       'добвь задачу', 'создй задачу', 'дабавь таск',
       // Imperative (bare actions that imply task creation)
@@ -151,9 +154,11 @@ export const INTENT_CARDS: IntentCard[] = [
       'фильтр задач', 'только активные задачи', 'только рабочие задачи',
       'что у меня на сегодня', 'что мне нужно сделать сегодня',
       'хочу посмотреть что сделано', 'что на сегодня',
+      'мои задачи', 'покажи список дел', 'что делать',
       'show completed tasks', 'show active tasks', 'show all tasks',
       'filter tasks', 'list tasks', 'what tasks do i have',
       'show my tasks for today', 'filter by completed',
+      'my tasks', 'show tasks list', 'to-do list', 'todo list',
     ],
     resolve: (input) => {
       const filter = detectFilter(input)
@@ -167,8 +172,9 @@ export const INTENT_CARDS: IntentCard[] = [
     examples: [
       'открой задачи', 'перейди в задачи', 'зайди в задачи',
       'открой таски', 'перейди в таски', 'раздел задачи',
-      'страница задач', 'вкладка задачи',
+      'страница задач', 'вкладка задачи', 'список дел',
       'open tasks', 'go to tasks', 'navigate to tasks', 'tasks page', 'tasks section',
+      'show tasks page', 'tasks tab',
     ],
     resolve: () => ({ type: 'navigation', target: '/tasks', label: 'Tasks' }),
   },
@@ -179,7 +185,9 @@ export const INTENT_CARDS: IntentCard[] = [
     examples: [
       'открой настройки', 'перейди в настройки', 'зайди в настройки',
       'настройки', 'раздел настроек', 'параметры', 'страница настроек',
+      'параметры системы', 'конфигурация', 'опции',
       'open settings', 'go to settings', 'settings page', 'settings', 'preferences',
+      'system settings', 'config', 'options', 'prefs',
     ],
     resolve: () => ({ type: 'navigation', target: '/settings', label: 'Settings' }),
   },
@@ -190,8 +198,9 @@ export const INTENT_CARDS: IntentCard[] = [
     examples: [
       'открой новости', 'перейди в новости', 'покажи новости',
       'зайди в новости', 'новости', 'лента новостей',
-      'что нового в мире', 'раздел новостей', 'новостная лента',
-      'open news', 'go to news', 'news feed', 'show news', 'news', 'whats new',
+      'раздел новостей', 'новостная лента', 'рсс', 'фиды', 'подписки',
+      'open news', 'go to news', 'news feed', 'show news', 'news',
+      'rss feeds', 'my feeds', 'subscriptions', 'news page',
     ],
     resolve: () => ({ type: 'navigation', target: '/news', label: 'News' }),
   },
@@ -201,10 +210,31 @@ export const INTENT_CARDS: IntentCard[] = [
     id: 'navigation.dashboard',
     examples: [
       'открой дашборд', 'главная', 'домой', 'на главную',
-      'перейди на главную', 'дашборд', 'dashboard', 'home',
-      'go home', 'main page', 'open dashboard', 'сегодня', 'today',
+      'перейди на главную', 'дашборд', 'панель управления',
+      'главная страница', 'обзор',
+      'dashboard', 'home', 'go home', 'main page', 'open dashboard',
+      'сегодня', 'today', 'overview', 'start page', 'main',
     ],
     resolve: () => ({ type: 'navigation', target: '/today', label: 'Dashboard' }),
+  },
+
+  // --- Navigation: Deliveries ---
+  {
+    id: 'navigation.deliveries',
+    examples: [
+      // RU explicit
+      'открой посылки', 'перейди в посылки', 'покажи доставки', 'мои посылки',
+      'раздел посылок', 'трекинг', 'доставки', 'отслеживание',
+      'зайди в доставки', 'статус посылок', 'что с посылками', 'где мои посылки',
+      'страница доставок', 'раздел доставки', 'покажи отслеживание',
+      'мои доставки', 'посылки', 'трек посылок', 'парселы',
+      // EN
+      'open deliveries', 'go to deliveries', 'my packages', 'tracking',
+      'deliveries', 'parcels', 'show deliveries', 'package tracking',
+      'where are my packages', 'delivery status', 'show parcels',
+      'deliveries page', 'my deliveries', 'track packages',
+    ],
+    resolve: () => ({ type: 'navigation', target: '/deliveries', label: 'Deliveries' }),
   },
 
   // --- News: Source management ---
@@ -244,5 +274,26 @@ export const INTENT_CARDS: IntentCard[] = [
       'открой вкладку крипто', 'open crypto tab',
     ],
     resolve: () => null, // Needs LLM to resolve tab name -> tab ID
+  },
+
+  // --- News: Review / Digest ---
+  {
+    id: 'news.review',
+    examples: [
+      // RU
+      'обзор новостей', 'краткий обзор', 'дайджест новостей', 'что нового в мире',
+      'расскажи новости', 'пересказ новостей', 'сводка новостей', 'ньюз дайджест',
+      'что пишут', 'что происходит', 'главные новости', 'топ новостей',
+      'последние новости', 'краткие новости', 'новостной обзор',
+      'что интересного', 'что важного', 'новости коротко',
+      'расскажи что нового', 'кратко по новостям', 'выжимка новостей',
+      // EN
+      'news review', 'news digest', 'news summary', 'whats happening',
+      'top news', 'headlines', 'latest news', 'brief news',
+      'news briefing', 'give me news', 'catch me up on news',
+      'what happened today', 'news roundup', 'tell me the news',
+      'quick news update', 'news recap',
+    ],
+    resolve: () => ({ type: 'news.review' as const }),
   },
 ]

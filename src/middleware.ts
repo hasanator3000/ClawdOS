@@ -13,6 +13,8 @@ function isPublicPath(pathname: string) {
   return (
     pathname === '/access' ||
     pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/webhooks/') ||
+    pathname.startsWith('/api/cron/') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml'
@@ -22,6 +24,8 @@ function isPublicPath(pathname: string) {
 function isCsrfExempt(pathname: string): boolean {
   if (CSRF_EXEMPT_PATHS.has(pathname)) return true
   if (pathname.startsWith('/_next')) return true
+  if (pathname.startsWith('/api/webhooks/')) return true
+  if (pathname.startsWith('/api/cron/')) return true
   return false
 }
 

@@ -263,3 +263,41 @@ When adding a feature that uses external repos, APIs, or CLIs — document it in
 **Files:** `settings/skills/skills-actions.ts` (disk read + clawdhub CLI), `marketplace-actions.ts` (ClawdTM proxy), `InstalledSkillCard.tsx`, `MarketplaceCard.tsx`, `SkillsList.tsx` (3-tab orchestrator).
 
 **Flow:** Marketplace search → ClawdTM API → cards with Install button → server action runs `clawdhub install <slug>` → refreshes installed list from disk.
+
+### Deliveries / Package Tracking (2026-02-26)
+
+Package tracking section at `/deliveries`. Add tracking numbers via UI or Telegram chat, auto-detect carrier, receive webhook status updates from TrackingMore.
+
+**External deps:**
+- **TrackingMore API v3** — `https://api.trackingmore.com/v3`. Auth: `Tracking-Api-Key` header. Supports 1500+ carriers (US, intl, Russia). NOTE: v3 not v4 (v4 returns 404). Response format: `{code, message, data}`. API has typo: `lastest_checkpoint_time` (not `latest`).
+- **ENV:** `TRACKINGMORE_API_KEY` in `.env.local`
+
+**Files created:**
+- `db/migrations/012_deliveries_schema.sql` — `content.delivery` table with RLS
+- `src/lib/db/repositories/delivery.repository.ts` — CRUD + event updates
+- `src/lib/trackingmore/client.ts` — server-side API client (detect, create, realtime, delete, get)
+- `src/lib/trackingmore/types.ts` — TypeScript types for TrackingMore v3
+- `src/app/api/webhooks/trackingmore/route.ts` — webhook receiver (POST, no auth/CSRF)
+- `src/app/(app)/deliveries/` — page, DeliveryList, DeliveryCard, DeliveryDetail, AddDeliveryForm, actions, loading, error
+- Tests: `delivery.repository.test.ts` (16), `client.test.ts` (9), `route.test.ts` (6), `actions.test.ts` (12)
+
+**Files modified:**
+- `src/middleware.ts` — exempt `/api/webhooks/` from CSRF + auth
+- `src/lib/nav/sections.ts` — added deliveries section with aliases
+- `src/components/layout/sidebar/nav-icons.tsx` — package icon
+- `src/components/shell/BottomTabBar.tsx` — "Parcels" tab
+- `src/lib/ai/actions-executor.ts` — `delivery.track` + `delivery.remove` actions
+- `src/lib/ai/stream-processor.ts` — `delivery.refresh` SSE event
+- `src/app/api/ai/chat/route.ts` — actions 10-11 in system prompt
+- `src/lib/validation-schemas.ts` — `createDeliverySchema`, `deliveryIdSchema`
+
+**Flow:**
+- **Add via UI:** Form → server action → detectCarrier() → createTracking() → DB insert → update events
+- **Add via chat:** User msg → Clawdbot LLM → `<clawdos>{"actions":[{"k":"delivery.track",...}]}</clawdos>` → actions-executor → same flow → SSE `delivery.refresh` → UI updates live
+- **Webhook:** TrackingMore POST → `/api/webhooks/trackingmore` → lookup by tracking_number (no RLS) → updateDeliveryEvents in DB
+- **Graceful degradation:** If TrackingMore API fails, delivery still created locally with `pending` status
+
+**Known gaps (TODO):**
+- Chat read actions missing (`delivery.list`, `delivery.status`) — LLM can only write, not query deliveries
+- Webhook → Telegram notification not implemented — DB updates but no TG message sent
+- No HMAC signature verification on webhook (security gap)

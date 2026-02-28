@@ -11,7 +11,7 @@ const WORKSPACE = '/root/clawd'
 export type AgentFile = {
   name: string
   path: string
-  category: 'core' | 'skills' | 'memory' | 'config'
+  category: 'core' | 'skills' | 'memory' | 'config' | 'rules'
   size: string
   modified: string
 }
@@ -70,6 +70,19 @@ async function collectFiles(): Promise<AgentFile[]> {
   }
   await walkMemory('memory', '')
 
+  // Rules (agent behavior files, loaded into system prompt)
+  try {
+    const rulesEntries = await readdir(join(WORKSPACE, 'rules'))
+    for (const entry of rulesEntries) {
+      try {
+        const s = await stat(join(WORKSPACE, 'rules', entry))
+        if (s.isFile()) {
+          files.push({ name: entry, path: join('rules', entry), category: 'rules', size: formatSize(s.size), modified: s.mtime.toISOString() })
+        }
+      } catch { /* skip */ }
+    }
+  } catch { /* skip */ }
+
   // Config
   try {
     const configEntries = await readdir(join(WORKSPACE, 'config'))
@@ -99,7 +112,7 @@ export default async function FilesPage() {
         <div className="text-sm text-[var(--muted)]">{files.length} files</div>
       </div>
       <div className="text-sm text-[var(--muted)]">
-        Workspace files from Clawdbot agent. Core identity, skills, memory, and configuration.
+        Workspace files from Clawdbot agent. Core identity, skills, memory, rules, and configuration.
       </div>
       <FilesList files={files} />
     </div>

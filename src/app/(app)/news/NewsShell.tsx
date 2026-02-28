@@ -39,6 +39,7 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
 
   // Sync all props atomically when server data changes (workspace switch, revalidation)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from server props
     setAllNews(initialNews)
     setSources(initialSources)
     setTabs(initialTabs)
@@ -87,12 +88,13 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   // Scroll to top and reset pagination when filters change
   useEffect(() => {
     feedRef.current?.scrollTo(0, 0)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination on filter change
     setDisplayedCount(ITEMS_PER_PAGE)
   }, [activeTabId, debouncedSearch])
 
   // Refs for stable event handlers
   const tabsRef = useRef(tabs)
-  tabsRef.current = tabs
+  useEffect(() => { tabsRef.current = tabs }, [tabs])
 
   // Listen for custom events — single registration on mount
   useEffect(() => {
@@ -172,9 +174,9 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
   return (
     <div className="flex flex-col h-[calc(100dvh-3rem)]">
       {/* Header — pinned */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4 shrink-0">
         <h1 className="text-2xl font-bold">News</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <NewsSearch value={search} onChange={setSearch} />
           <button
             type="button"
@@ -202,7 +204,7 @@ export function NewsShell({ initialNews, initialSources, initialTabs, initialSou
       )}
 
       {/* Feed — scrolls independently */}
-      <div ref={feedRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-4">
+      <div ref={feedRef} className="flex-1 min-h-0 overflow-y-auto -mx-4 px-4 md:-mx-6">
         <NewsFeed
           items={displayedNews}
           onLoadMore={handleLoadMore}

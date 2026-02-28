@@ -119,6 +119,16 @@ export async function processStreamWithActions(
                           encoder.encode(`data: ${JSON.stringify({ type: 'news.refresh', actions: newsActions })}\n\n`)
                         )
                       }
+
+                      // Notify client about delivery mutations for UI refresh
+                      const deliveryActions = result.results.filter((r) =>
+                        r.action?.startsWith('delivery.')
+                      )
+                      if (deliveryActions.length > 0) {
+                        controller.enqueue(
+                          encoder.encode(`data: ${JSON.stringify({ type: 'delivery.refresh', actions: deliveryActions })}\n\n`)
+                        )
+                      }
                     }
                   }
                 }

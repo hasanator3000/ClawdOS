@@ -183,5 +183,14 @@ export const weatherQuerySchema = z.object({
   city: z.string().min(1, 'City required').max(100),
 })
 
+// --- Delivery schemas ---
+export const createDeliverySchema = z.object({
+  trackingNumber: z.string().min(4, 'Tracking number too short').max(100),
+  courierCode: z.string().max(50).optional(),
+  title: z.string().max(200).optional(),
+})
+
+export const deliveryIdSchema = z.string().uuid('Invalid delivery ID')
+
 // Reusable UUID validator for single-string validations in server actions
 export const uuidSchema = z.string().uuid('Invalid ID')

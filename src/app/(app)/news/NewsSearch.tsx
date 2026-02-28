@@ -12,7 +12,7 @@ export function NewsSearch({ value, onChange }: Props) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder="Search news..."
-      className="px-3 py-1.5 bg-[var(--input-bg)] text-[var(--input-fg)] border border-[var(--border)] rounded-lg text-sm placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] w-48"
+      className="px-3 py-1.5 bg-[var(--input-bg)] text-[var(--input-fg)] border border-[var(--border)] rounded-lg text-sm placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] flex-1 md:w-48 md:flex-none min-w-0"
     />
   )
 }

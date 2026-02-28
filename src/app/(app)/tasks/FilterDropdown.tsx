@@ -18,8 +18,8 @@ export function FilterDropdown({ label, activeColor, isActive, minWidth = '160px
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--neon-dim)] transition-colors text-sm flex items-center gap-2 justify-between"
-        style={{ minWidth, color: isActive ? (activeColor || 'var(--neon)') : 'var(--fg)' }}
+        className="w-full md:w-auto px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--neon-dim)] transition-colors text-sm flex items-center gap-2 justify-between"
+        style={{ minWidth: undefined, color: isActive ? (activeColor || 'var(--neon)') : 'var(--fg)' }}
       >
         <span>{label}</span>
         <svg

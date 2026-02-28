@@ -26,6 +26,7 @@ export type CommandResult =
   | { type: 'news.sources.open' }
   | { type: 'news.search'; query: string }
   | { type: 'news.tab.switch'; tabName: string }
+  | { type: 'news.review' }
 
 export interface CommandContext {
   workspaceId: string | null
@@ -51,6 +52,7 @@ const ALLOWED_PATHS = new Set([
   '/today',
   '/news',
   '/tasks',
+  '/deliveries',
   '/settings',
   '/settings/telegram',
   '/settings/password',

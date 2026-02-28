@@ -3,8 +3,9 @@
 import dynamic from 'next/dynamic'
 import { useCommandPalette } from '@/hooks/useCommandPalette'
 import { useAIPanel } from '@/hooks/useAIPanel'
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { AIPanelProvider } from '@/contexts/AIPanelContext'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const CommandPalette = dynamic(() => import('./CommandPalette').then((m) => m.CommandPalette), {
   ssr: false,
@@ -34,6 +35,7 @@ export function Shell({ children }: ShellProps) {
     if (typeof window === 'undefined') return
 
     // Hydrate initial value
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration from localStorage
     setRailExpanded(localStorage.getItem(RAIL_STORAGE_KEY) === 'true')
 
     // Listen for changes from SidebarClient (which dispatches StorageEvent)
@@ -46,17 +48,9 @@ export function Shell({ children }: ShellProps) {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
-  const toggleRail = useCallback(() => {
-    setRailExpanded((prev) => {
-      const next = !prev
-      localStorage.setItem(RAIL_STORAGE_KEY, String(next))
-      return next
-    })
-  }, [])
-
   // Open AI panel when any component dispatches clawdos:ai-prefill
   const openRef = useRef(aiPanel.open)
-  openRef.current = aiPanel.open
+  useEffect(() => { openRef.current = aiPanel.open }, [aiPanel.open])
 
   useEffect(() => {
     const handlePrefill = () => openRef.current()
@@ -64,11 +58,14 @@ export function Shell({ children }: ShellProps) {
     return () => window.removeEventListener('clawdos:ai-prefill', handlePrefill)
   }, [])
 
+  const isMobile = useIsMobile()
+
   const gridColumns = useMemo(() => {
+    if (isMobile) return '1fr'
     const rail = railExpanded ? 'var(--rail-w-open)' : 'var(--rail-w)'
     const chat = aiPanel.isOpen && aiPanel.isHydrated ? `${aiPanel.width}px` : '0px'
     return `${rail} 1fr ${chat}`
-  }, [railExpanded, aiPanel.isOpen, aiPanel.isHydrated, aiPanel.width])
+  }, [isMobile, railExpanded, aiPanel.isOpen, aiPanel.isHydrated, aiPanel.width])
 
   const aiPanelCtx = useMemo(
     () => ({ isOpen: aiPanel.isOpen, toggle: aiPanel.toggle, isHydrated: aiPanel.isHydrated }),
@@ -79,7 +76,7 @@ export function Shell({ children }: ShellProps) {
     <AIPanelProvider value={aiPanelCtx}>
       {/* 3-column CSS Grid: rail | content | chat */}
       <div
-        className="h-screen relative z-[1]"
+        className="h-screen relative z-[1] overflow-x-hidden max-w-[100vw]"
         style={{
           display: 'grid',
           gridTemplateColumns: gridColumns,
@@ -87,8 +84,8 @@ export function Shell({ children }: ShellProps) {
       >
         {children}
 
-        {/* AI Panel (third grid column) */}
-        {aiPanel.isHydrated && (
+        {/* AI Panel (third grid column) — hidden on mobile, bottom sheet in Phase 20 */}
+        {aiPanel.isHydrated && !isMobile && (
           <AIPanel
             isOpen={aiPanel.isOpen}
             width={aiPanel.width}

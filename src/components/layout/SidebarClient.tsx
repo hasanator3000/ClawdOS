@@ -47,6 +47,7 @@ export default function SidebarClient({ username }: { username?: string }) {
 
   // Hydrate state from localStorage
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration from localStorage
     setIsMounted(true)
     setPinnedIdsState(getPinnedIds())
     setRailExpanded(localStorage.getItem(RAIL_STORAGE_KEY) === 'true')
@@ -128,7 +129,7 @@ export default function SidebarClient({ username }: { username?: string }) {
 
   return (
     <nav
-      className="flex flex-col gap-1 border-r border-[var(--border)] overflow-y-auto overflow-x-visible h-screen"
+      className="hidden md:flex flex-col gap-1 border-r border-[var(--border)] overflow-y-auto overflow-x-visible h-screen"
       style={{ background: 'rgba(6,6,10,0.92)', padding: '20px 0' }}
     >
       {/* Brand + toggle */}

@@ -19,7 +19,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-baseline justify-between pr-12">
+      <div className="flex items-baseline justify-between pr-0 md:pr-12">
         <h1 className="text-xl font-semibold">Settings</h1>
         <div className="text-sm text-[var(--muted)]">User: {session.username}</div>
       </div>
@@ -65,7 +65,7 @@ export default async function SettingsPage() {
       <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
         <h2 className="text-base font-semibold">Clawdbot</h2>
         <p className="mt-2 text-[15px] text-[var(--muted)]">Agent skills, commands, and workspace files.</p>
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex flex-col md:flex-row gap-3">
           <Link className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--fg)] transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]" href="/settings/skills">Skills & Marketplace</Link>
           <Link className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--fg)] transition-colors hover:bg-[var(--hover)] hover:border-[var(--neon-dim)]" href="/settings/files">Agent Files</Link>
         </div>

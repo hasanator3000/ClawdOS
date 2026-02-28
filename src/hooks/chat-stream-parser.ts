@@ -132,6 +132,7 @@ export type ChatEvent =
   | { type: 'news.refresh'; actions: unknown }
   | { type: 'news.sources.open' }
   | { type: 'news.tab.switch'; tabId?: string; tabName?: string }
+  | { type: 'delivery.refresh'; actions: unknown }
   | { type: 'workspace.switch'; workspaceId: string }
   | { type: 'delta'; content: string }
   | { type: 'done' }
@@ -162,6 +163,9 @@ export function parseChatEvent(data: string): ChatEvent {
   }
   if (evt?.type === 'news.refresh') {
     return { type: 'news.refresh', actions: evt.actions }
+  }
+  if (evt?.type === 'delivery.refresh') {
+    return { type: 'delivery.refresh', actions: evt.actions }
   }
   if (evt?.type === 'news.sources.open') {
     return { type: 'news.sources.open' }
@@ -218,6 +222,11 @@ export function dispatchChatEvent(event: ChatEvent, deps: DispatchDeps): void {
 
     case 'news.refresh':
       window.dispatchEvent(new CustomEvent('clawdos:news-refresh', { detail: { actions: event.actions } }))
+      deps.scheduleRefresh()
+      break
+
+    case 'delivery.refresh':
+      window.dispatchEvent(new CustomEvent('clawdos:delivery-refresh', { detail: { actions: event.actions } }))
       deps.scheduleRefresh()
       break
 

@@ -32,6 +32,13 @@ export const SECTIONS: Section[] = [
     sidebar: true,
   },
   {
+    id: 'deliveries',
+    title: 'Deliveries',
+    path: '/deliveries',
+    aliases: ['deliveries', 'delivery', 'посылки', 'посылка', 'доставка', 'доставки', 'трек', 'трекинг', 'tracking', 'packages', 'parcels'],
+    sidebar: true,
+  },
+  {
     id: 'settings',
     title: 'Settings',
     path: '/settings',

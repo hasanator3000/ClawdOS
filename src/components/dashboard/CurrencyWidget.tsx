@@ -103,7 +103,7 @@ export function CurrencyWidget({ preferences }: CurrencyWidgetProps) {
 
     let interval: ReturnType<typeof setInterval> | null = null
     const start = () => {
-      if (!interval) interval = setInterval(fetchRates, 5 * 60 * 1000)
+      if (!interval) interval = setInterval(fetchRates, 2 * 60 * 1000)
     }
     const stop = () => {
       if (interval) { clearInterval(interval); interval = null }

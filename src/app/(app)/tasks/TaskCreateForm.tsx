@@ -90,8 +90,8 @@ export function TaskCreateForm({ onSubmit, disabled }: TaskCreateFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {/* Main row: input + priority + date + add */}
-      <div className="flex gap-2">
+      {/* Main row: input on top, controls below on mobile */}
+      <div className="flex flex-col md:flex-row gap-2">
         <input
           ref={inputRef}
           type="text"
@@ -102,75 +102,78 @@ export function TaskCreateForm({ onSubmit, disabled }: TaskCreateFormProps) {
           disabled={disabled}
         />
 
-        {/* Priority selector */}
-        <div className="flex items-center gap-0.5 bg-[var(--card)] border border-[var(--border)] rounded-lg px-1">
-          {PRIORITY_OPTIONS.map((opt) => (
+        {/* Controls row: priority + date + submit */}
+        <div className="flex gap-2 items-center">
+          {/* Priority selector */}
+          <div className="flex items-center gap-0.5 bg-[var(--card)] border border-[var(--border)] rounded-lg px-1">
+            {PRIORITY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setPriority(opt.value)}
+                className={`w-7 h-7 rounded flex items-center justify-center text-xs transition-all ${
+                  priority === opt.value
+                    ? 'scale-110'
+                    : 'opacity-40 hover:opacity-70'
+                }`}
+                title={opt.label}
+              >
+                {opt.value === 0 ? (
+                  <span className="text-[var(--muted)]">—</span>
+                ) : (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{
+                      background: opt.color,
+                      boxShadow: priority === opt.value ? `0 0 6px ${opt.color}` : 'none',
+                    }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Date picker trigger */}
+          <div className="relative">
             <button
-              key={opt.value}
               type="button"
-              onClick={() => setPriority(opt.value)}
-              className={`w-7 h-7 rounded flex items-center justify-center text-xs transition-all ${
-                priority === opt.value
-                  ? 'scale-110'
-                  : 'opacity-40 hover:opacity-70'
+              onClick={() => setShowPicker(!showPicker)}
+              className={`px-2.5 py-2 border rounded-lg transition-colors ${
+                hasDate
+                  ? 'bg-[var(--neon-dim)] border-[var(--neon)] text-[var(--neon)]'
+                  : 'bg-[var(--card)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]'
               }`}
-              title={opt.label}
+              title="Set due date"
             >
-              {opt.value === 0 ? (
-                <span className="text-[var(--muted)]">—</span>
-              ) : (
-                <span
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{
-                    background: opt.color,
-                    boxShadow: priority === opt.value ? `0 0 6px ${opt.color}` : 'none',
-                  }}
-                />
-              )}
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </button>
-          ))}
-        </div>
+            {showPicker && (
+              <DateTimePicker
+                date={dueDate}
+                time={dueTime}
+                startDate={startDate}
+                startTime={startTime}
+                onSave={handleDateSave}
+                onCancel={() => setShowPicker(false)}
+              />
+            )}
+          </div>
 
-        {/* Date picker trigger */}
-        <div className="relative">
+          {/* Submit */}
           <button
-            type="button"
-            onClick={() => setShowPicker(!showPicker)}
-            className={`px-2.5 py-2 border rounded-lg transition-colors ${
-              hasDate
-                ? 'bg-[var(--neon-dim)] border-[var(--neon)] text-[var(--neon)]'
-                : 'bg-[var(--card)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]'
-            }`}
-            title="Set due date"
+            type="submit"
+            disabled={!title.trim() || disabled}
+            className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-90 ml-auto md:ml-0"
+            style={{
+              background: 'linear-gradient(135deg, var(--neon), var(--pink))',
+              color: 'var(--bg)',
+            }}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            Add
           </button>
-          {showPicker && (
-            <DateTimePicker
-              date={dueDate}
-              time={dueTime}
-              startDate={startDate}
-              startTime={startTime}
-              onSave={handleDateSave}
-              onCancel={() => setShowPicker(false)}
-            />
-          )}
         </div>
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={!title.trim() || disabled}
-          className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
-          style={{
-            background: 'linear-gradient(135deg, var(--neon), var(--pink))',
-            color: 'var(--bg)',
-          }}
-        >
-          Add
-        </button>
       </div>
 
       {/* Smart date preview (SDATE-02) */}

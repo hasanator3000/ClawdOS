@@ -15,6 +15,7 @@ import { executeActions } from '@/lib/ai/actions-executor'
 import { processStreamWithActions } from '@/lib/ai/stream-processor'
 import { buildFastPathResponse } from '@/lib/ai/fast-path-builders'
 import { ensureConversation, saveAssistantMessage } from '@/lib/ai/conversation'
+import { loadWebUIRules } from '@/lib/ai/agent-rules-loader'
 import { getGateway, getTelegramUserIdForSessionUser } from '../utils/gateway'
 
 const log = createLogger('ai-chat')
@@ -69,7 +70,10 @@ export async function POST(request: Request) {
 
   // --- Layer 2: No fast-path match → forward to Clawdbot LLM ---
 
-  const telegramUserId = await getTelegramUserIdForSessionUser(session.userId)
+  const [telegramUserId, agentRules] = await Promise.all([
+    getTelegramUserIdForSessionUser(session.userId),
+    loadWebUIRules(),
+  ])
 
   const system = [
     'You are Clawdbot running inside ClawdOS WebUI.',
@@ -84,7 +88,7 @@ export async function POST(request: Request) {
     'Format: <clawdos>{"actions":[...]}</clawdos>',
     '',
     'Available actions:',
-    '1. Navigate: {"k":"navigate","to":"/tasks"}  (allowed: /today, /news, /tasks, /settings, /settings/telegram, /settings/password)',
+    '1. Navigate: {"k":"navigate","to":"/tasks"}  (allowed: /today, /news, /tasks, /deliveries, /settings, /settings/telegram, /settings/password)',
     '2. Create task: {"k":"task.create","title":"Task title","description":"Optional","priority":2}',
     '3. Complete task: {"k":"task.complete","taskId":"uuid-here"}',
     '4. Reopen task: {"k":"task.reopen","taskId":"uuid-here"}',
@@ -93,6 +97,10 @@ export async function POST(request: Request) {
     '7. Add news source: {"k":"news.source.add","url":"https://...","title":"Optional display name","tabs":["TabName1","TabName2"]}',
     '8. Remove news source: {"k":"news.source.remove","sourceId":"uuid-here"}',
     '9. Create news tab: {"k":"news.tab.create","name":"Technology"}',
+    '10. Track delivery: {"k":"delivery.track","trackingNumber":"1Z999AA10123456784","title":"Optional name"}',
+    '11. Remove delivery: {"k":"delivery.remove","deliveryId":"uuid-here"}',
+    '12. List deliveries: {"k":"delivery.list","status":"transit"} (status optional, omit for all active)',
+    '13. Get delivery status: {"k":"delivery.status","trackingNumber":"1Z999..."} (or use "deliveryId":"uuid")',
     '',
     'RSS Feed Catalog (use these URLs when user asks to set up news):',
     '--- AI/ML ---',
@@ -143,6 +151,7 @@ export async function POST(request: Request) {
     '- You can add many sources at once — they are created instantly, feeds load in background',
     '- Never invent taskIds - if unknown, ask user',
     '- Never reveal secrets (tokens/passwords)',
+    ...(agentRules ? ['', 'Section behavior rules (loaded from agent files):', agentRules] : []),
   ].join('\n')
 
   const { url, token } = getGateway()

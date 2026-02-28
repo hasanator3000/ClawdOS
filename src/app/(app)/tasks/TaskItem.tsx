@@ -107,7 +107,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
   return (
     <div style={{ marginLeft: depth > 0 ? 20 : 0 }}>
       <div
-        className="flex items-center gap-4 px-4 py-3.5 bg-[var(--card)] border border-[var(--border)] rounded-xl group hover:border-[var(--neon-dim)] transition-colors"
+        className="flex items-center gap-2 md:gap-4 px-3 md:px-4 py-3.5 bg-[var(--card)] border border-[var(--border)] rounded-xl group hover:border-[var(--neon-dim)] transition-colors"
         style={task.priority > 0 ? { borderLeftWidth: '3px', borderLeftColor: PRIORITY_COLORS[task.priority] } : undefined}
       >
         {/* Checkbox */}
@@ -153,20 +153,20 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
           )}
         </div>
 
-        {/* Status badge */}
+        {/* Status badge — hidden on mobile (visible in detail panel) */}
         {STATUS_META[task.status] && (
           <span
-            className="text-[11px] font-medium px-2 py-1 rounded-md flex-shrink-0"
+            className="hidden md:inline-flex text-[11px] font-medium px-2 py-1 rounded-md flex-shrink-0"
             style={{ color: STATUS_META[task.status].color, background: STATUS_META[task.status].bg }}
           >
             {STATUS_META[task.status].label}
           </span>
         )}
 
-        {/* Recurrence indicator */}
+        {/* Recurrence indicator — hidden on mobile */}
         {task.recurrenceRule && (
           <span
-            className="text-[11px] font-medium px-2 py-1 rounded-md flex-shrink-0 flex items-center gap-1"
+            className="hidden md:flex text-[11px] font-medium px-2 py-1 rounded-md flex-shrink-0 items-center gap-1"
             style={{ color: 'var(--cyan)', background: 'rgba(0, 188, 212, 0.12)' }}
             title={recurrenceLabel(task.recurrenceRule)}
           >
@@ -192,7 +192,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
             <button
               type="button"
               onClick={() => setDateMode(!dateMode)}
-              className="p-1 text-[var(--muted)] hover:text-[var(--neon)] transition-colors opacity-0 group-hover:opacity-100"
+              className="p-1 text-[var(--muted)] hover:text-[var(--neon)] transition-colors md:opacity-0 md:group-hover:opacity-100"
               title="Set due date"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -222,7 +222,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
                 ? 'text-[var(--neon)]'
                 : subtaskCount > 0 || subtasks.length > 0
                   ? 'text-[var(--cyan)]'
-                  : 'text-[var(--muted)] hover:text-[var(--fg)] opacity-0 group-hover:opacity-100'
+                  : 'text-[var(--muted)] hover:text-[var(--fg)] md:opacity-0 md:group-hover:opacity-100'
             }`}
             title="Subtasks"
           >
@@ -239,7 +239,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
 
         {/* Open detail panel */}
         {onSelect && (
-          <button type="button" onClick={() => onSelect(task.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--muted)] hover:text-[var(--neon)] transition-colors" aria-label="Open details">
+          <button type="button" onClick={() => onSelect(task.id)} className="md:opacity-0 md:group-hover:opacity-100 p-1.5 text-[var(--muted)] hover:text-[var(--neon)] transition-colors" aria-label="Open details">
             <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         )}
@@ -249,7 +249,7 @@ export function TaskItem({ task, onUpdate, onDelete, depth = 0, subtaskCount = 0
           type="button"
           onClick={handleDelete}
           disabled={isPending}
-          className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--muted)] hover:text-[var(--red)] transition-colors"
+          className="md:opacity-0 md:group-hover:opacity-100 p-1.5 text-[var(--muted)] hover:text-[var(--red)] transition-colors"
           aria-label="Delete task"
         >
           <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,7 +1,7 @@
 schema: content
-description: "Контент — дайджесты, новости, RSS-источники"
-version: 3
-last_updated: 2026-02-22
+description: "Контент — дайджесты, новости, RSS-источники, доставки"
+version: 4
+last_updated: 2026-02-26
 
 # NOTE: Пока таблицы в public.* (локальный этап). Позже переедем в content.*.
 
@@ -169,3 +169,47 @@ tables:
         - { name: processes_insert, for: INSERT, with_check: "core.is_workspace_member(workspace_id) AND created_by = core.current_user_id()" }
         - { name: processes_update, for: UPDATE, using: "core.is_workspace_member(workspace_id)", with_check: "core.is_workspace_member(workspace_id)" }
         - { name: processes_delete, for: DELETE, using: "core.is_workspace_member(workspace_id)" }
+
+  delivery:
+    schema: content
+    description: "Package/shipment tracking (TrackingMore integration)"
+    columns:
+      id: { type: uuid, primary_key: true, default: gen_random_uuid() }
+      workspace_id:
+        type: uuid
+        nullable: false
+        references: core.workspace(id)
+        on_delete: CASCADE
+      tracking_number: { type: text, nullable: false }
+      courier_code: { type: text, nullable: true }
+      courier_name: { type: text, nullable: true }
+      title: { type: text, nullable: true }
+      status:
+        type: text
+        nullable: false
+        default: "'pending'"
+        check: "status IN ('pending','transit','pickup','delivered','expired','undelivered')"
+      substatus: { type: text, nullable: true }
+      origin: { type: text, nullable: true }
+      destination: { type: text, nullable: true }
+      eta: { type: timestamptz, nullable: true }
+      last_event: { type: text, nullable: true }
+      last_event_at: { type: timestamptz, nullable: true }
+      trackingmore_id: { type: text, nullable: true }
+      events: { type: jsonb, nullable: false, default: "'[]'" }
+      created_by: { type: uuid, nullable: true, references: "core.user(id)", on_delete: SET NULL }
+      created_at: { type: timestamptz, nullable: false, default: now() }
+      updated_at: { type: timestamptz, nullable: false, default: now() }
+    constraints:
+      - { name: delivery_ws_tracking_uniq, type: unique, columns: [workspace_id, tracking_number] }
+    indexes:
+      - { name: delivery_workspace_idx, columns: [workspace_id], unique: false }
+      - { name: delivery_workspace_status_idx, columns: [workspace_id, status], unique: false }
+      - { name: delivery_tracking_number_idx, columns: [tracking_number], unique: false }
+    rls:
+      enabled: true
+      policies:
+        - { name: delivery_select, for: SELECT, using: "core.is_workspace_member(workspace_id)" }
+        - { name: delivery_insert, for: INSERT, with_check: "core.is_workspace_member(workspace_id) AND created_by = core.current_user_id()" }
+        - { name: delivery_update, for: UPDATE, using: "core.is_workspace_member(workspace_id)", with_check: "core.is_workspace_member(workspace_id)" }
+        - { name: delivery_delete, for: DELETE, using: "core.is_workspace_member(workspace_id)" }

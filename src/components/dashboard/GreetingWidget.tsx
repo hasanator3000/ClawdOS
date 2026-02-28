@@ -135,13 +135,9 @@ export function GreetingWidget({ username, timezone, weatherCity }: GreetingWidg
   }, [timeFmt, dateFmt, tz])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial time hydration
     updateTime()
   }, [updateTime])
-
-  // Re-trigger on tick changes
-  useEffect(() => {
-    updateTime()
-  })
 
   // Fetch weather on mount + every 15 min
   useEffect(() => {
@@ -200,9 +196,8 @@ export function GreetingWidget({ username, timezone, weatherCity }: GreetingWidg
       <div className="flex items-start justify-between gap-4">
         <div>
           <div
-            className="font-mono tabular-nums font-bold"
+            className="font-mono tabular-nums font-bold text-4xl md:text-[3.5rem]"
             style={{
-              fontSize: '3.5rem',
               lineHeight: 1.1,
               background: 'linear-gradient(180deg, var(--fg), var(--muted))',
               WebkitBackgroundClip: 'text',
@@ -262,13 +257,13 @@ export function GreetingWidget({ username, timezone, weatherCity }: GreetingWidg
       {/* System gauges row */}
       {system && (
         <div
-          className="mt-4 pt-4 flex items-center gap-5 border-t border-t-[var(--border)]"
-          
+          className="mt-4 pt-4 flex items-center gap-3 md:gap-5 border-t border-t-[var(--border)]"
+
         >
           <GaugeRing percent={system.cpu.usage} label="CPU" />
           <GaugeRing percent={system.memory.percent} label="RAM" />
           <GaugeRing percent={system.disk.percent} label="Disk" />
-          <div className="ml-auto flex flex-col items-end gap-0.5">
+          <div className="ml-auto hidden md:flex flex-col items-end gap-0.5">
             <div className="flex items-center gap-1.5">
               <div
                 className="w-1.5 h-1.5 rounded-full"

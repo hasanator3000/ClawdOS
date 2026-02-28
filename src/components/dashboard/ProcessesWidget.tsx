@@ -18,6 +18,7 @@ interface ProcessesWidgetProps {
   workspaceId: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ProcessesWidget({ initialProcesses, workspaceId }: ProcessesWidgetProps) {
   const [processes, setProcesses] = useState(initialProcesses)
   const [modalOpen, setModalOpen] = useState(false)
@@ -57,13 +58,13 @@ export function ProcessesWidget({ initialProcesses, workspaceId }: ProcessesWidg
           border: '1px solid var(--border)',
         }}
       >
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-[var(--fg)]" >
+        <div className="flex items-center justify-between gap-2 mb-5">
+          <h2 className="text-lg font-semibold text-[var(--fg)] truncate" >
             Active Processes
           </h2>
           <button
             onClick={() => setModalOpen(true)}
-            className="px-4 py-2 rounded-lg border text-sm font-medium transition-colors hover:border-[var(--neon-dim)]"
+            className="px-3 md:px-4 py-2 rounded-lg border text-sm font-medium transition-colors hover:border-[var(--neon-dim)] shrink-0"
             style={{
               borderColor: 'var(--border)',
               color: 'var(--fg)',

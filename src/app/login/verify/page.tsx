@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
+import { withUser } from '@/lib/db'
+import { findWorkspacesByUserId } from '@/lib/db/repositories/workspace.repository'
+import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/constants'
 
 async function verify(formData: FormData) {
   'use server'
@@ -24,6 +28,18 @@ async function verify(formData: FormData) {
   session.pendingUserId = undefined
   session.pendingUsername = undefined
   await session.save()
+
+  // Set active workspace cookie to the user's first workspace (personal > shared)
+  const workspaces = await withUser(session.userId, (client) => findWorkspacesByUserId(client))
+  if (workspaces.length > 0) {
+    const cookieStore = await cookies()
+    cookieStore.set(ACTIVE_WORKSPACE_COOKIE, workspaces[0].id, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+    })
+  }
 
   redirect('/today')
 }

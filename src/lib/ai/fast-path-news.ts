@@ -1,5 +1,6 @@
 import { withUser } from '@/lib/db'
 import { findTabsByWorkspace } from '@/lib/db/repositories/news-tab.repository'
+import { findNewsByWorkspace } from '@/lib/db/repositories/news.repository'
 import { sseResponse } from './sse-utils'
 
 export function buildNewsSourcesOpenResponse(encoder: TextEncoder): Response {
@@ -116,6 +117,65 @@ export async function buildNewsTabSwitchResponse(
         encoder.encode(
           `data: ${JSON.stringify({ type: 'news.tab.switch', tabId: resolvedTabId, tabName: resolvedTabName })}\n\n`
         )
+      )
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+  return sseResponse(stream)
+}
+
+export async function buildNewsReviewResponse(
+  encoder: TextEncoder,
+  userId: string,
+  workspaceId: string | null
+): Promise<Response> {
+  if (!workspaceId) {
+    // No workspace — just navigate to news
+    const stream = new ReadableStream({
+      start(controller) {
+        const content = 'Открываю новости.'
+        const evt = {
+          id: 'clawdos-news-review',
+          object: 'chat.completion.chunk',
+          choices: [{ index: 0, delta: { role: 'assistant', content } }],
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/news' })}\n\n`)
+        )
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.close()
+      },
+    })
+    return sseResponse(stream)
+  }
+
+  const items = await withUser(userId, (client) =>
+    findNewsByWorkspace(client, workspaceId, { limit: 7 })
+  )
+
+  const stream = new ReadableStream({
+    start(controller) {
+      let content: string
+      if (items.length === 0) {
+        content = 'Пока нет новостей. Добавь источники через панель RSS.'
+      } else {
+        const lines = items.map((item, i) => {
+          const source = item.sourceName ? ` (${item.sourceName})` : ''
+          return `${i + 1}. ${item.title}${source}`
+        })
+        content = `Последние новости:\n${lines.join('\n')}`
+      }
+
+      const evt = {
+        id: 'clawdos-news-review',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content } }],
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`))
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'navigation', target: '/news' })}\n\n`)
       )
       controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       controller.close()

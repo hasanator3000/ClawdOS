@@ -1,189 +1,73 @@
 # ClawdOS — Installation Guide
 
-Complete step-by-step installation with verification. Designed to be followed by a human or an AI agent.
+Complete installation guide with verification steps. Designed for both human developers and AI agents.
+
+**Prerequisites:** Node.js >= 22, Docker running, [OpenClaw](https://github.com/openclaw/openclaw) agent running on port 18789.
 
 ---
 
-## Pre-flight Checks
+## Quick Install (Recommended)
 
-Before starting, verify all prerequisites. Every check must pass.
-
-### 1. Node.js >= 22
+One command does everything — dependencies, database, secrets, user creation:
 
 ```bash
-node --version
-# Expected: v22.x.x or higher
+git clone https://github.com/hasanator3000/ClawdOS.git && cd ClawdOS && npm install && npm run setup
 ```
 
-If missing: install via [nvm](https://github.com/nvm-sh/nvm) or [nodejs.org](https://nodejs.org)
-
-### 2. Docker is running
-
-```bash
-docker info > /dev/null 2>&1 && echo "OK" || echo "FAIL"
-# Expected: OK
-```
-
-If missing: install [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
-
-### 3. Port 5432 is free (PostgreSQL)
-
-```bash
-lsof -i :5432 2>/dev/null | grep LISTEN || echo "Port free"
-# Expected: "Port free" or already running clawdos-db container
-```
-
-### 4. Port 3000 is free (ClawdOS web)
-
-```bash
-lsof -i :3000 2>/dev/null | grep LISTEN || echo "Port free"
-# Expected: "Port free"
-```
-
-### 5. Port 18789 is free (Clawdbot gateway)
-
-```bash
-lsof -i :18789 2>/dev/null | grep LISTEN || echo "Port free"
-# Expected: "Port free" (unless Clawdbot is already running)
-```
-
----
-
-## Step 1: Clone and Install
-
-```bash
-git clone <repo-url> && cd clawdos
-npm install
-```
-
-**Verify:**
-```bash
-ls node_modules/.package-lock.json && echo "OK"
-# Expected: OK
-```
-
----
-
-## Step 2: Run Setup
-
-```bash
-npm run setup
-```
-
-This single command does everything:
-
+`npm run setup` handles:
 1. Creates `.env.local` from `.env.local.example`
-2. Generates secrets: `SESSION_PASSWORD`, `CLAWDBOT_TOKEN`, `CLAWDOS_CONSULT_TOKEN`
+2. Generates secrets (`SESSION_PASSWORD`, `CLAWDBOT_TOKEN`, `CLAWDOS_CONSULT_TOKEN`)
 3. Starts PostgreSQL via `docker compose up -d`
 4. Waits for DB readiness (up to 30 seconds)
-5. Detects fresh vs existing DB:
-   - **Fresh:** applies `db/schema.sql` (complete baseline)
-   - **Existing:** runs `scripts/migrate.mjs` (incremental)
+5. Detects fresh vs existing DB — applies full schema or incremental migrations
 6. Prompts for first user credentials (interactive)
 
-**Verify:**
+**Verify setup:**
 ```bash
-# .env.local exists with generated secrets
-grep SESSION_PASSWORD .env.local | grep -v "^#" && echo "OK"
-
-# PostgreSQL is running
+grep SESSION_PASSWORD .env.local | grep -v "^#" && echo "ENV OK"
 docker compose ps --status=running -q db && echo "DB running"
-
-# Database has tables
 docker compose exec -T db psql -U clawdos -d clawdos -c "SELECT count(*) FROM core.\"user\"" 2>/dev/null && echo "Schema OK"
 ```
 
 ---
 
-## Step 3: Connect Clawdbot
+## Connect OpenClaw
 
-ClawdOS is the UI. **Clawdbot is the AI brain.** They communicate over HTTP on localhost.
-
-### Architecture
+ClawdOS is the UI. **OpenClaw is the AI brain.** They communicate over HTTP on localhost.
 
 ```
-Browser  ──POST /api/ai/chat──>  ClawdOS (Next.js)  ──POST /v1/chat/completions──>  Clawdbot
-         <──SSE stream──────────                     <──SSE stream────────────────
+Browser  ──▶  ClawdOS (Next.js :3000)  ──▶  OpenClaw agent (:18789)
+         ◀──  SSE stream                ◀──  SSE stream
 ```
 
-### API Contract
+### Token exchange
 
-ClawdOS sends requests to Clawdbot using an **OpenAI-compatible** chat completions API:
+`npm run setup` auto-generates a shared `CLAWDBOT_TOKEN`. Both ClawdOS and OpenClaw must use the same token.
 
-**Endpoint:** `POST ${CLAWDBOT_URL}/v1/chat/completions`
-
-**Headers:**
-```
-Authorization: Bearer ${CLAWDBOT_TOKEN}
-Content-Type: application/json
-x-clawdbot-agent-id: main
-```
-
-**Request body:**
-```json
-{
-  "model": "clawdbot",
-  "stream": true,
-  "user": "clawdos:<userId>:ws:<workspaceId>",
-  "messages": [
-    { "role": "system", "content": "You are Clawdbot running inside ClawdOS WebUI..." },
-    { "role": "user", "content": "User's message here" }
-  ]
-}
-```
-
-**Response:** OpenAI-compatible SSE stream (or JSON when `stream: false`)
-
-```
-data: {"choices":[{"delta":{"content":"Hello"},"index":0}]}
-
-data: {"choices":[{"delta":{"content":" there!"},"index":0}]}
-
-data: [DONE]
-```
-
-### Token Exchange
-
-ClawdOS and Clawdbot must share the same `CLAWDBOT_TOKEN`. This token was auto-generated during setup.
-
-**Read the token from ClawdOS:**
+**Read the token:**
 ```bash
 grep CLAWDBOT_TOKEN .env.local | cut -d= -f2
 ```
 
-**Configure Clawdbot** to accept this token on port `18789`. The exact configuration depends on your Clawdbot setup — the key requirements are:
-
-1. Listen on `http://127.0.0.1:18789` (loopback only — never expose to network)
+**Configure OpenClaw** to accept this token. Key requirements:
+1. Listen on `http://127.0.0.1:18789` (loopback only)
 2. Accept `Authorization: Bearer <token>` matching the token above
-3. Serve `POST /v1/chat/completions` with OpenAI-compatible request/response
+3. Serve `POST /v1/chat/completions` (OpenAI-compatible)
 4. Support `stream: true` (SSE) and `stream: false` (JSON)
 
-### Consult Endpoint (Optional)
+If OpenClaw runs on a different host/port, update `CLAWDBOT_URL` in `.env.local`.
 
-ClawdOS also has a meta-query endpoint at `POST /api/consult`. This lets Clawdbot (or other agents) ask questions about ClawdOS architecture and capabilities.
+### Environment variables (auto-set by setup)
 
-**Auth:** Session cookie OR `x-clawdos-consult-token` header
-
-```bash
-# Token was auto-generated during setup:
-grep CLAWDOS_CONSULT_TOKEN .env.local | cut -d= -f2
-```
-
-### Environment Variables for Clawdbot Connection
-
-These are already set in `.env.local` after setup:
-
-| Variable | Value | Purpose |
-|----------|-------|---------|
-| `CLAWDBOT_URL` | `http://127.0.0.1:18789` | Where ClawdOS sends AI requests |
-| `CLAWDBOT_TOKEN` | *(auto-generated hex)* | Shared auth token |
-| `CLAWDOS_CONSULT_TOKEN` | *(auto-generated hex)* | Auth for `/api/consult` endpoint |
-
-If Clawdbot runs on a different host/port, update `CLAWDBOT_URL` in `.env.local`.
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CLAWDBOT_URL` | `http://127.0.0.1:18789` | OpenClaw gateway URL |
+| `CLAWDBOT_TOKEN` | *(auto-generated)* | Shared auth token |
+| `CLAWDOS_CONSULT_TOKEN` | *(auto-generated)* | Auth for `/api/consult` endpoint |
 
 ---
 
-## Step 4: Start ClawdOS
+## Start ClawdOS
 
 ```bash
 # Development
@@ -195,43 +79,37 @@ npm run build && npm start
 
 **Verify:**
 ```bash
-# App is responding
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/login
 # Expected: 200
 ```
 
+> **Production note:** If running via systemd (see [DEPLOY.md](DEPLOY.md)), use `systemctl start clawdos` instead of `npm start`.
+
 ---
 
-## Step 5: Post-Install Verification
+## Post-Install Verification
 
-Run through this checklist to confirm everything works:
+| Check | How |
+|-------|-----|
+| Login page loads | Open `http://localhost:3000` |
+| Login works | Use credentials from setup |
+| Dashboard renders | Greeting, time, quick links visible |
+| Navigation works | Sidebar links to Tasks, News, Settings |
+| AI chat works | Send a message, get streaming response |
+| AI actions work | Say "create a task called Test" — task appears |
 
-### Basic functionality
-- [ ] Open `http://localhost:3000` — login page loads
-- [ ] Log in with the credentials created during setup
-- [ ] Dashboard shows greeting, time, and quick links
-- [ ] Navigate to Tasks, News, Settings via sidebar
+---
 
-### AI chat (requires Clawdbot running)
-- [ ] Click chat toggle — AI panel opens
-- [ ] Send a message — get a streaming response
-- [ ] Say "create a task called Test" — task appears in Tasks page
-- [ ] Say "navigate to news" — page switches to News
-
-### Workspace isolation
-- [ ] Workspace name shows in sidebar
-- [ ] Data is scoped to the active workspace
-
-### If something fails
+## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Login page doesn't load | App not running | `npm run dev` |
 | "Unauthorized" after login | Bad session secret | Delete `.env.local`, re-run `npm run setup` |
 | Database connection error | PostgreSQL not running | `npm run db:up` |
-| Chat says "Upstream error" | Clawdbot not running or wrong token | Start Clawdbot, verify token matches |
+| Chat says "Upstream error" | OpenClaw not running or wrong token | Start OpenClaw, verify token matches |
 | Chat says "CLAWDBOT_TOKEN is not set" | Missing env var | Check `.env.local` has `CLAWDBOT_TOKEN=...` |
-| 502 on chat | Clawdbot unreachable | Verify Clawdbot is on `127.0.0.1:18789` |
+| 502 on chat | OpenClaw unreachable | Verify OpenClaw is on `127.0.0.1:18789` |
 | Tasks don't save | RLS issue | Check user has workspace membership |
 
 ---
@@ -240,14 +118,10 @@ Run through this checklist to confirm everything works:
 
 For password recovery via Telegram:
 
-1. Create a bot via [@BotFather](https://t.me/BotFather) on Telegram
-2. Get the bot token
-3. Add to `.env.local`:
-   ```
-   TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-   ```
-4. Restart the app
-5. Go to Settings → Telegram → link your Telegram account
+1. Create a bot via [@BotFather](https://t.me/BotFather)
+2. Add to `.env.local`: `TELEGRAM_BOT_TOKEN=<your-bot-token>`
+3. Restart the app
+4. Go to Settings → Telegram → link your account
 
 ---
 
@@ -256,14 +130,12 @@ For password recovery via Telegram:
 If exposing ClawdOS over IP (not recommended), add a gate token:
 
 ```bash
-# Generate token
 openssl rand -base64 32
-
-# Add to .env.local
-ACCESS_TOKEN=<paste-token-here>
+# Add to .env.local:
+# ACCESS_TOKEN=<paste-token-here>
 ```
 
-Users will need to enter this token once to access the app. Stored in a cookie after first entry.
+Users enter this token once to access the app. Stored in a cookie after first entry.
 
 ---
 
@@ -272,9 +144,9 @@ Users will need to enter this token once to access the app. Stored in a cookie a
 | Command | What it does |
 |---------|-------------|
 | `npm run setup` | Full setup: env + Docker + schema + user |
-| `npm run dev` | Start dev server on :3000 |
+| `npm run dev` | Dev server on :3000 |
 | `npm run build` | Production build |
-| `npm start` | Start production server |
+| `npm start` | Production server |
 | `npm run db:up` | Start PostgreSQL container |
 | `npm run db:down` | Stop PostgreSQL container |
 | `npm run db:migrate` | Apply pending migrations |
@@ -283,17 +155,16 @@ Users will need to enter this token once to access the app. Stored in a cookie a
 
 ---
 
-## File Structure (Key Files)
+## Key Files
 
 ```
-.env.local              ← Your secrets (gitignored, auto-generated)
-.env.local.example      ← Template for .env.local
-docker-compose.yml      ← PostgreSQL container definition
-db/schema.sql           ← Complete baseline schema (fresh installs)
-db/migrations/          ← Incremental migrations (upgrades)
+.env.local              ← Secrets (gitignored, auto-generated by setup)
+.env.local.example      ← Template
+docker-compose.yml      ← PostgreSQL container
+db/schema.sql           ← Complete baseline schema
+db/migrations/          ← Incremental migrations
 scripts/setup.mjs       ← One-command setup script
-src/app/api/ai/chat/    ← Clawdbot proxy (where AI requests go)
-src/app/api/consult/    ← Meta-query endpoint for agents
-CLAUDE.md               ← AI agent entry point (read this file first)
-RULES/                  ← Developer guide (9 files)
+scripts/auto-host.sh    ← Automated deploy for AI agents (see DEPLOY.md)
+CLAUDE.md               ← AI agent instructions
+RULES/                  ← Developer guide (10 files)
 ```

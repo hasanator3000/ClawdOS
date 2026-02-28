@@ -8,6 +8,7 @@ const CATEGORY_META: Record<string, { label: string; color: string; bg: string }
   core: { label: 'Core', color: 'var(--neon)', bg: 'rgba(167, 139, 250, 0.12)' },
   skills: { label: 'Skill', color: 'var(--cyan)', bg: 'rgba(0, 188, 212, 0.12)' },
   memory: { label: 'Memory', color: 'var(--warm)', bg: 'rgba(255, 171, 64, 0.12)' },
+  rules: { label: 'Rules', color: 'var(--green)', bg: 'rgba(110, 231, 183, 0.12)' },
   config: { label: 'Config', color: 'var(--muted)', bg: 'rgba(128, 128, 128, 0.12)' },
 }
 
@@ -16,6 +17,7 @@ const CATEGORIES: Array<{ value: string; label: string }> = [
   { value: 'core', label: 'Core' },
   { value: 'skills', label: 'Skills' },
   { value: 'memory', label: 'Memory' },
+  { value: 'rules', label: 'Rules' },
   { value: 'config', label: 'Config' },
 ]
 
@@ -116,6 +118,7 @@ export function FilesList({ files }: FilesListProps) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cancelEditing/closeFile/saveFile are stable within render
   }, [selectedFile, isEditing, editContent, fileContent])
 
   return (

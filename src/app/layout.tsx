@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Outfit, Space_Mono } from 'next/font/google'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -21,6 +21,13 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: 'ClawdOS',
   description: 'Personal ops dashboard',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
 }
 
 function getBuildId(): string {

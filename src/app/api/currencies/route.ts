@@ -13,9 +13,9 @@ export interface CurrencyRate {
   type: 'fiat' | 'crypto'
 }
 
-// Per-config cache (keyed by config hash), 5 min TTL
+// Per-config cache (keyed by config hash), 2 min TTL
 const cache = new Map<string, { rates: CurrencyRate[]; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000
+const CACHE_TTL = 2 * 60 * 1000
 const MAX_CACHE_ENTRIES = 20
 
 // Defaults

@@ -77,8 +77,11 @@ id_ed25519*
 db/backups/
 /backups/
 
-# Dev-only files (architecture docs, planning, agent rules)
+# Dev-only files (architecture docs, planning, brainstorms)
 /dev/
+.planning/
+integr.md
+so_cool_strategy.md
 
 # IDE and local
 .idea/

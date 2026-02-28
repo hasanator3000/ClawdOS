@@ -98,6 +98,9 @@ export function TaskFilters({
 
   const selectedPriority = PRIORITY_OPTIONS.find((opt) => opt.value === filterState.priority)
 
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const hasActiveFilters = filterState.priority !== 'all' || filterState.tags.length > 0 || filterState.projectId !== 'all'
+
   return (
     <div className="space-y-4">
       {/* Status tabs */}
@@ -107,7 +110,7 @@ export function TaskFilters({
             key={s}
             type="button"
             onClick={() => handleStatusChange(s)}
-            className={`px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
+            className={`px-3 md:px-4 py-2 -mb-px border-b-2 transition-colors text-sm ${
               filterState.status === s
                 ? 'border-[var(--neon)] text-[var(--neon)]'
                 : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
@@ -118,8 +121,42 @@ export function TaskFilters({
         ))}
       </div>
 
-      {/* Filters row */}
+      {/* Search + filter toggle (mobile) */}
       <div className="flex gap-2">
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search tasks..."
+            className="w-full px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-colors pr-10"
+          />
+          {searchQuery && (
+            <button type="button" onClick={handleClearSearch} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--muted)] hover:text-[var(--fg)] transition-colors" aria-label="Clear search">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          )}
+        </div>
+
+        {/* Mobile filter toggle */}
+        <button
+          type="button"
+          onClick={() => setFiltersOpen(!filtersOpen)}
+          className={`md:hidden px-3 py-2 rounded-lg border text-sm flex items-center gap-1.5 transition-colors ${
+            hasActiveFilters || filtersOpen
+              ? 'bg-[var(--neon-dim)] border-[var(--neon)] text-[var(--neon)]'
+              : 'bg-[var(--card)] border-[var(--border)] text-[var(--muted)]'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-[var(--neon)]" />}
+        </button>
+      </div>
+
+      {/* Filter dropdowns — always visible on desktop, toggleable on mobile */}
+      <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-2`}>
         {/* Priority */}
         <FilterDropdown
           label={selectedPriority?.label || 'All priorities'}
@@ -197,22 +234,6 @@ export function TaskFilters({
             )}
           </FilterDropdown>
         )}
-
-        {/* Search */}
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search tasks..."
-            className="w-full px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--neon)] focus:shadow-[0_0_0_1px_var(--neon-dim)] transition-colors pr-10"
-          />
-          {searchQuery && (
-            <button type="button" onClick={handleClearSearch} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--muted)] hover:text-[var(--fg)] transition-colors" aria-label="Clear search">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          )}
-        </div>
       </div>
     </div>
   )

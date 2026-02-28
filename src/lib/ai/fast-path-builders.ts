@@ -10,6 +10,7 @@ import {
   buildNewsSourcesOpenResponse,
   buildNewsSearchResponse,
   buildNewsTabSwitchResponse,
+  buildNewsReviewResponse,
 } from './fast-path-news'
 
 /**
@@ -43,6 +44,9 @@ export function buildFastPathResponse(
 
     case 'news.tab.switch':
       return buildNewsTabSwitchResponse(result.tabName, encoder, userId, workspaceId)
+
+    case 'news.review':
+      return buildNewsReviewResponse(encoder, userId, workspaceId)
   }
 }
 
