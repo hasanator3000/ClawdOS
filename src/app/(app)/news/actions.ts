@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { bumpRevision } from '@/lib/revision-store'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
@@ -60,6 +61,7 @@ export async function addSource(url: string, tabIds?: string[]) {
     })
 
     revalidatePath('/news')
+    bumpRevision('news')
     return result
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Failed to add source'
@@ -82,6 +84,7 @@ export async function removeSource(sourceId: string) {
     if (!deleted) return { error: 'Source not found' }
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { success: true }
   } catch {
     return { error: 'Failed to remove source' }
@@ -106,6 +109,7 @@ export async function toggleSource(sourceId: string) {
     if (!source) return { error: 'Source not found' }
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { source }
   } catch {
     return { error: 'Failed to toggle source' }
@@ -127,6 +131,7 @@ export async function createTab(name: string) {
     )
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { tab }
   } catch {
     return { error: 'Failed to create tab' }
@@ -144,6 +149,7 @@ export async function deleteTab(tabId: string) {
     if (!deleted) return { error: 'Tab not found' }
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { success: true }
   } catch {
     return { error: 'Failed to delete tab' }
@@ -160,6 +166,7 @@ export async function reorderTabs(tabIds: string[]) {
     await withUser(session.userId, (client) => reorderTabsRepo(client, tabIds))
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { success: true }
   } catch {
     return { error: 'Failed to reorder tabs' }
@@ -178,6 +185,7 @@ export async function assignSourceToTab(sourceId: string, tabId: string) {
     await withUser(session.userId, (client) => assignRepo(client, sourceId, tabId))
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { success: true }
   } catch {
     return { error: 'Failed to assign source to tab' }
@@ -196,6 +204,7 @@ export async function removeSourceFromTab(sourceId: string, tabId: string) {
     await withUser(session.userId, (client) => removeAssignRepo(client, sourceId, tabId))
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { success: true }
   } catch {
     return { error: 'Failed to remove source from tab' }

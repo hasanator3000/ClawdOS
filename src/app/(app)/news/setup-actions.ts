@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { bumpRevision } from '@/lib/revision-store'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
@@ -145,6 +146,7 @@ export async function setupNewsTopics(userTopics: string) {
     })
 
     revalidatePath('/news')
+    bumpRevision('news')
     return { success: true, topicCount: config.tabs.length }
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Setup failed'

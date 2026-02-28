@@ -1,5 +1,6 @@
 'use server'
 
+import { bumpRevision } from '@/lib/revision-store'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
@@ -153,6 +154,7 @@ export async function addDelivery(params: {
       return d
     })
 
+    bumpRevision('deliveries')
     return { delivery }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -187,6 +189,7 @@ export async function removeDelivery(id: string): Promise<{ success?: boolean; e
 
     // Delete from DB
     await withUser(session.userId, (client) => deleteDeliveryRepo(client, id))
+    bumpRevision('deliveries')
     return { success: true }
   } catch (err) {
     log.error('Remove delivery failed', { error: err instanceof Error ? err.message : String(err) })
@@ -274,6 +277,7 @@ export async function refreshDelivery(id: string): Promise<{ delivery?: Delivery
       })
     )
 
+    bumpRevision('deliveries')
     return { delivery: updated ?? delivery }
   } catch (err) {
     log.error('Refresh delivery failed', { error: err instanceof Error ? err.message : String(err) })

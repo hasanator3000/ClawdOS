@@ -1,6 +1,7 @@
 'use server'
 
 import { getSession } from '@/lib/auth/session'
+import { bumpRevision } from '@/lib/revision-store'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
 import { createLogger } from '@/lib/logger'
@@ -39,7 +40,7 @@ export async function createTask(params: Omit<CreateTaskParams, 'workspaceId'>) 
       return createTaskRepo(client, { ...params, workspaceId: workspace.id })
     })
 
-
+    bumpRevision('tasks')
     return { task }
   } catch (error) {
     log.error('Create task failed', { error: error instanceof Error ? error.message : String(error) })
@@ -63,6 +64,7 @@ export async function updateTask(taskId: string, params: UpdateTaskParams) {
     if (!task) {
       return { error: 'Task not found' }
     }
+    bumpRevision('tasks')
     return { task }
   } catch (error) {
     log.error('Update task failed', { error: error instanceof Error ? error.message : String(error) })
@@ -84,6 +86,7 @@ export async function deleteTask(taskId: string) {
     if (!deleted) {
       return { error: 'Task not found' }
     }
+    bumpRevision('tasks')
     return { success: true }
   } catch (error) {
     log.error('Delete task failed', { error: error instanceof Error ? error.message : String(error) })
@@ -138,6 +141,7 @@ export async function completeTask(taskId: string): Promise<{ task?: Task; nextT
     if (!result.task) {
       return { error: 'Task not found' }
     }
+    bumpRevision('tasks')
     return { task: result.task, nextTask: result.nextTask ?? undefined }
   } catch (error) {
     log.error('Complete task failed', { error: error instanceof Error ? error.message : String(error) })
@@ -159,6 +163,7 @@ export async function reopenTask(taskId: string) {
     if (!task) {
       return { error: 'Task not found' }
     }
+    bumpRevision('tasks')
     return { task }
   } catch (error) {
     log.error('Reopen task failed', { error: error instanceof Error ? error.message : String(error) })
@@ -200,6 +205,7 @@ export async function updateTaskPriority(
     if (!result) {
       return { success: false, error: 'Failed to update task' }
     }
+    bumpRevision('tasks')
     return { success: true, task: result }
   } catch (err) {
     log.error('updateTaskPriority failed', { error: err instanceof Error ? err.message : String(err) })
@@ -231,6 +237,7 @@ export async function updateTaskDate(
     if (!task) {
       return { error: 'Task not found' }
     }
+    bumpRevision('tasks')
     return { task }
   } catch (error) {
     log.error('updateTaskDate failed', { error: error instanceof Error ? error.message : String(error) })
@@ -290,6 +297,7 @@ export async function updateRecurrence(
     })
     if (!task) return { error: 'Task not found' }
 
+    bumpRevision('tasks')
     return { task }
   } catch (error) {
     log.error('updateRecurrence failed', { error: error instanceof Error ? error.message : String(error) })

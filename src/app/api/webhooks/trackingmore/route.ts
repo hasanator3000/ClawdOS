@@ -6,6 +6,7 @@ import { sendTelegramMessage } from '@/lib/telegram/send'
 import { mapTmStatus, extractEvents, buildStatusChangeMessage } from '@/lib/delivery-utils'
 import type { TrackingMoreWebhookPayload } from '@/lib/trackingmore/types'
 import type { DeliveryStatus } from '@/lib/db/repositories/delivery.repository'
+import { bumpRevision } from '@/lib/revision-store'
 
 const log = createLogger('webhook-trackingmore')
 
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
       )
 
       log.info('Delivery updated via webhook', { deliveryId, status, eventsCount: events.length })
+      bumpRevision('deliveries')
 
       // Send Telegram notification if status changed
       if (status !== oldStatus) {

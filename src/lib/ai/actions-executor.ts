@@ -27,6 +27,7 @@ import {
 } from '@/lib/db/repositories/delivery.repository'
 import { detectCarrier, createTracking } from '@/lib/trackingmore/client'
 import type { TrackingMoreTracking } from '@/lib/trackingmore/types'
+import { bumpRevision } from '@/lib/revision-store'
 
 /** A single action payload from the Clawdbot <clawdos> block */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -387,6 +388,18 @@ export async function executeActions(
         results.push({ action: 'delivery.status', error: String(err) })
       }
     }
+  }
+
+  // Bump revision counters for any domains that were mutated
+  const mutated = new Set(results.map((r) => r.action))
+  if (['task.create', 'task.complete', 'task.reopen', 'task.delete', 'task.priority'].some((a) => mutated.has(a))) {
+    bumpRevision('tasks')
+  }
+  if (['news.source.add', 'news.source.remove', 'news.tab.create'].some((a) => mutated.has(a))) {
+    bumpRevision('news')
+  }
+  if (['delivery.track', 'delivery.remove'].some((a) => mutated.has(a))) {
+    bumpRevision('deliveries')
   }
 
   return { navigation: navigationTarget, results }

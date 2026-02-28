@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { bumpRevision } from '@/lib/revision-store'
 import { getSession } from '@/lib/auth/session'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { withUser } from '@/lib/db'
@@ -40,6 +41,7 @@ export async function createProcessAction(
     })
 
     revalidatePath('/today')
+    bumpRevision('settings')
     return { data: process }
   } catch (error) {
     log.error('Create process failed', { error: error instanceof Error ? error.message : String(error) })
@@ -63,6 +65,7 @@ export async function toggleProcessAction(id: string) {
     }
 
     revalidatePath('/today')
+    bumpRevision('settings')
     return { success: true, data: process }
   } catch (error) {
     log.error('Toggle process failed', { error: error instanceof Error ? error.message : String(error) })
@@ -91,6 +94,7 @@ export async function updateProcessAction(
     }
 
     revalidatePath('/today')
+    bumpRevision('settings')
     return { data: process }
   } catch (error) {
     log.error('Update process failed', { error: error instanceof Error ? error.message : String(error) })
@@ -114,6 +118,7 @@ export async function deleteProcessAction(id: string) {
     }
 
     revalidatePath('/today')
+    bumpRevision('settings')
     return { success: true }
   } catch (error) {
     log.error('Delete process failed', { error: error instanceof Error ? error.message : String(error) })

@@ -6,6 +6,7 @@ import { sendTelegramMessage } from '@/lib/telegram/send'
 import { getTracking } from '@/lib/trackingmore/client'
 import { mapTmStatus, extractEvents, buildStatusChangeMessage } from '@/lib/delivery-utils'
 import type { DeliveryStatus } from '@/lib/db/repositories/delivery.repository'
+import { bumpRevision } from '@/lib/revision-store'
 
 const log = createLogger('cron-refresh-deliveries')
 
@@ -106,6 +107,7 @@ export async function GET(request: Request) {
       }
     }
 
+    if (updated > 0) bumpRevision('deliveries')
     log.info('Cron refresh complete', { total: deliveries.length, updated, errors })
     return NextResponse.json({ ok: true, refreshed: deliveries.length, updated, errors })
   } finally {

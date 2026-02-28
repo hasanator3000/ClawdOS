@@ -6,6 +6,7 @@ import { useAIPanel } from '@/hooks/useAIPanel'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { AIPanelProvider } from '@/contexts/AIPanelContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useExternalSync } from '@/hooks/useExternalSync'
 
 const CommandPalette = dynamic(() => import('./CommandPalette').then((m) => m.CommandPalette), {
   ssr: false,
@@ -59,6 +60,9 @@ export function Shell({ children }: ShellProps) {
   }, [])
 
   const isMobile = useIsMobile()
+
+  // Poll for external changes (webhooks, Telegram, other tabs, cron)
+  useExternalSync()
 
   const gridColumns = useMemo(() => {
     if (isMobile) return '1fr'
