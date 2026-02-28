@@ -6,14 +6,27 @@ import { FilesList } from './FilesList'
 
 export const dynamic = 'force-dynamic'
 
-const WORKSPACE = '/root/clawd'
+const AGENT_WORKSPACE = '/root/clawd'
+const CLAWDOS_ROOT = '/root/clawd/apps/clawdos'
+const CLAUDE_RULES = '/root/.claude/rules'
+
+export type FileCategory =
+  | 'agent-core'
+  | 'agent-rules'
+  | 'clawdos-rules'
+  | 'skills'
+  | 'memory'
+  | 'config'
+  | 'claude-rules'
 
 export type AgentFile = {
   name: string
+  /** Path relative to its root directory — used by actions.ts to resolve full path */
   path: string
-  category: 'core' | 'skills' | 'memory' | 'config' | 'rules'
+  category: FileCategory
   size: string
   modified: string
+  readOnly?: boolean
 }
 
 function formatSize(bytes: number): string {
@@ -22,81 +35,93 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-async function collectFiles(): Promise<AgentFile[]> {
+async function safeReaddir(dir: string): Promise<string[]> {
+  try { return await readdir(dir) } catch { return [] }
+}
+
+async function safeStat(path: string) {
+  try { return await stat(path) } catch { return null }
+}
+
+async function collectDir(
+  dir: string,
+  category: FileCategory,
+  pathPrefix: string,
+  opts?: { readOnly?: boolean; namePrefix?: string; recurse?: boolean }
+): Promise<AgentFile[]> {
   const files: AgentFile[] = []
+  const entries = await safeReaddir(dir)
 
-  // Core .md files in root
-  const rootEntries = await readdir(WORKSPACE)
-  for (const entry of rootEntries) {
-    if (!entry.endsWith('.md')) continue
-    try {
-      const s = await stat(join(WORKSPACE, entry))
-      if (!s.isFile()) continue
-      files.push({ name: entry, path: entry, category: 'core', size: formatSize(s.size), modified: s.mtime.toISOString() })
-    } catch { /* skip */ }
+  for (const entry of entries) {
+    const full = join(dir, entry)
+    const s = await safeStat(full)
+    if (!s) continue
+
+    if (s.isDirectory() && opts?.recurse) {
+      const sub = await collectDir(full, category, join(pathPrefix, entry), opts)
+      files.push(...sub)
+    } else if (s.isFile()) {
+      const displayName = opts?.namePrefix ? `${opts.namePrefix}${entry}` : entry
+      files.push({
+        name: displayName,
+        path: join(pathPrefix, entry),
+        category,
+        size: formatSize(s.size),
+        modified: s.mtime.toISOString(),
+        readOnly: opts?.readOnly,
+      })
+    }
   }
+  return files
+}
 
-  // Skills: skills/*/SKILL.md
-  try {
-    const skillDirs = await readdir(join(WORKSPACE, 'skills'))
-    for (const dir of skillDirs) {
-      const skillPath = join('skills', dir, 'SKILL.md')
-      try {
-        const s = await stat(join(WORKSPACE, skillPath))
-        if (s.isFile()) {
+async function collectFiles(): Promise<AgentFile[]> {
+  const groups = await Promise.all([
+    // Agent Core: /root/clawd/*.md
+    (async () => {
+      const entries = await safeReaddir(AGENT_WORKSPACE)
+      const files: AgentFile[] = []
+      for (const e of entries) {
+        if (!e.endsWith('.md')) continue
+        const s = await safeStat(join(AGENT_WORKSPACE, e))
+        if (s?.isFile()) {
+          files.push({ name: e, path: e, category: 'agent-core', size: formatSize(s.size), modified: s.mtime.toISOString() })
+        }
+      }
+      return files
+    })(),
+
+    // Agent Rules: /root/clawd/rules/
+    collectDir(join(AGENT_WORKSPACE, 'rules'), 'agent-rules', 'rules'),
+
+    // ClawdOS Rules: RULES/ in project
+    collectDir(join(CLAWDOS_ROOT, 'RULES'), 'clawdos-rules', 'RULES'),
+
+    // Workspace Skills: /root/clawd/skills/*/SKILL.md
+    (async () => {
+      const files: AgentFile[] = []
+      const dirs = await safeReaddir(join(AGENT_WORKSPACE, 'skills'))
+      for (const dir of dirs) {
+        const skillPath = join('skills', dir, 'SKILL.md')
+        const s = await safeStat(join(AGENT_WORKSPACE, skillPath))
+        if (s?.isFile()) {
           files.push({ name: `${dir}/SKILL.md`, path: skillPath, category: 'skills', size: formatSize(s.size), modified: s.mtime.toISOString() })
         }
-      } catch { /* skip */ }
-    }
-  } catch { /* skip */ }
-
-  // Memory
-  async function walkMemory(dir: string, relPrefix: string) {
-    try {
-      const entries = await readdir(join(WORKSPACE, dir))
-      for (const entry of entries) {
-        const rel = join(relPrefix, entry)
-        const full = join(WORKSPACE, dir, entry)
-        try {
-          const s = await stat(full)
-          if (s.isDirectory()) {
-            await walkMemory(join(dir, entry), rel)
-          } else if (s.isFile()) {
-            files.push({ name: rel, path: join(dir, entry), category: 'memory', size: formatSize(s.size), modified: s.mtime.toISOString() })
-          }
-        } catch { /* skip */ }
       }
-    } catch { /* skip */ }
-  }
-  await walkMemory('memory', '')
+      return files
+    })(),
 
-  // Rules (agent behavior files, loaded into system prompt)
-  try {
-    const rulesEntries = await readdir(join(WORKSPACE, 'rules'))
-    for (const entry of rulesEntries) {
-      try {
-        const s = await stat(join(WORKSPACE, 'rules', entry))
-        if (s.isFile()) {
-          files.push({ name: entry, path: join('rules', entry), category: 'rules', size: formatSize(s.size), modified: s.mtime.toISOString() })
-        }
-      } catch { /* skip */ }
-    }
-  } catch { /* skip */ }
+    // Memory: /root/clawd/memory/ (recursive)
+    collectDir(join(AGENT_WORKSPACE, 'memory'), 'memory', 'memory', { recurse: true }),
 
-  // Config
-  try {
-    const configEntries = await readdir(join(WORKSPACE, 'config'))
-    for (const entry of configEntries) {
-      try {
-        const s = await stat(join(WORKSPACE, 'config', entry))
-        if (s.isFile()) {
-          files.push({ name: entry, path: join('config', entry), category: 'config', size: formatSize(s.size), modified: s.mtime.toISOString() })
-        }
-      } catch { /* skip */ }
-    }
-  } catch { /* skip */ }
+    // Config: /root/clawd/config/
+    collectDir(join(AGENT_WORKSPACE, 'config'), 'config', 'config'),
 
-  return files.sort((a, b) => a.name.localeCompare(b.name))
+    // Claude Rules: ~/.claude/rules/
+    collectDir(CLAUDE_RULES, 'claude-rules', 'claude-rules'),
+  ])
+
+  return groups.flat().sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export default async function FilesPage() {
@@ -112,7 +137,7 @@ export default async function FilesPage() {
         <div className="text-sm text-[var(--muted)]">{files.length} files</div>
       </div>
       <div className="text-sm text-[var(--muted)]">
-        Workspace files from Clawdbot agent. Core identity, skills, memory, rules, and configuration.
+        Browse and edit agent workspace files — identity, rules, skills, memory, and configuration.
       </div>
       <FilesList files={files} />
     </div>

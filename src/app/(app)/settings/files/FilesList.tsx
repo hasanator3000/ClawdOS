@@ -1,39 +1,39 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import type { AgentFile } from './page'
+import type { AgentFile, FileCategory } from './page'
 import { readAgentFile, writeAgentFile } from './actions'
+import { FilePanel } from './FilePanel'
+import { CreateFileModal } from './CreateFileModal'
 
-const CATEGORY_META: Record<string, { label: string; color: string; bg: string }> = {
-  core: { label: 'Core', color: 'var(--neon)', bg: 'rgba(167, 139, 250, 0.12)' },
-  skills: { label: 'Skill', color: 'var(--cyan)', bg: 'rgba(0, 188, 212, 0.12)' },
-  memory: { label: 'Memory', color: 'var(--warm)', bg: 'rgba(255, 171, 64, 0.12)' },
-  rules: { label: 'Rules', color: 'var(--green)', bg: 'rgba(110, 231, 183, 0.12)' },
-  config: { label: 'Config', color: 'var(--muted)', bg: 'rgba(128, 128, 128, 0.12)' },
+const CATEGORY_META: Record<FileCategory, { label: string; color: string; bg: string; description: string }> = {
+  'agent-core':    { label: 'Agent Core',    color: 'var(--neon)',  bg: 'rgba(167, 139, 250, 0.12)', description: 'Identity, soul, tools — who the agent is' },
+  'agent-rules':   { label: 'Agent Rules',   color: 'var(--green)', bg: 'rgba(110, 231, 183, 0.12)', description: 'Behavior rules loaded into agent system prompt' },
+  'clawdos-rules': { label: 'ClawdOS Rules', color: 'var(--cyan)',  bg: 'rgba(0, 188, 212, 0.12)',   description: 'Developer guide for this codebase (RULES/)' },
+  'skills':        { label: 'Skills',        color: 'var(--warm)',  bg: 'rgba(255, 171, 64, 0.12)',   description: 'Installed workspace skill definitions' },
+  'memory':        { label: 'Memory',        color: 'var(--fg)',    bg: 'rgba(255, 255, 255, 0.06)',  description: 'Persistent agent memory and context' },
+  'config':        { label: 'Config',        color: 'var(--muted)', bg: 'rgba(128, 128, 128, 0.12)',  description: 'Agent configuration files' },
+  'claude-rules':  { label: 'Claude Rules',  color: 'var(--red)',   bg: 'rgba(251, 113, 133, 0.12)',  description: 'Claude Code rules (~/.claude/rules/)' },
 }
 
-const CATEGORIES: Array<{ value: string; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'core', label: 'Core' },
-  { value: 'skills', label: 'Skills' },
-  { value: 'memory', label: 'Memory' },
-  { value: 'rules', label: 'Rules' },
-  { value: 'config', label: 'Config' },
+const CATEGORY_ORDER: FileCategory[] = [
+  'agent-core', 'agent-rules', 'clawdos-rules', 'skills', 'memory', 'config', 'claude-rules',
 ]
 
-interface FilesListProps {
-  files: AgentFile[]
-}
+const CREATABLE_CATEGORIES: FileCategory[] = [
+  'agent-core', 'agent-rules', 'clawdos-rules', 'memory', 'config', 'claude-rules',
+]
 
-export function FilesList({ files }: FilesListProps) {
+export function FilesList({ files }: { files: AgentFile[] }) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedCategory, setSelectedCategory] = useState<'all' | FileCategory>('all')
   const [selectedFile, setSelectedFile] = useState<AgentFile | null>(null)
   const [fileContent, setFileContent] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
   const [isPending, startTransition] = useTransition()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -45,6 +45,10 @@ export function FilesList({ files }: FilesListProps) {
     }
     return true
   })
+
+  const grouped = CATEGORY_ORDER
+    .map((cat) => ({ cat, files: filtered.filter((f) => f.category === cat) }))
+    .filter((g) => g.files.length > 0)
 
   const openFile = (file: AgentFile) => {
     setSelectedFile(file)
@@ -102,7 +106,6 @@ export function FilesList({ files }: FilesListProps) {
     })
   }
 
-  // Keyboard shortcuts
   useEffect(() => {
     if (!selectedFile) return
     const handler = (e: KeyboardEvent) => {
@@ -110,7 +113,6 @@ export function FilesList({ files }: FilesListProps) {
         if (isEditing) cancelEditing()
         else closeFile()
       }
-      // Ctrl+S / Cmd+S to save when editing
       if (isEditing && (e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         saveFile()
@@ -118,177 +120,145 @@ export function FilesList({ files }: FilesListProps) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- cancelEditing/closeFile/saveFile are stable within render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile, isEditing, editContent, fileContent])
+
+  const createCategory = selectedCategory !== 'all' && CREATABLE_CATEGORIES.includes(selectedCategory)
+    ? selectedCategory
+    : undefined
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search files..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--fg)] placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
-      />
+      {/* Toolbar */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Search files..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--fg)] placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
+        />
+        <button
+          type="button"
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-medium text-[var(--fg)] transition-colors hover:border-[var(--neon-dim)] hover:text-[var(--neon)]"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New File
+        </button>
+      </div>
 
-      {/* Category tabs */}
-      <div className="flex gap-2 border-b border-[var(--border)]">
-        {CATEGORIES.map((cat) => {
-          const count = cat.value === 'all' ? files.length : files.filter((f) => f.category === cat.value).length
-          if (count === 0 && cat.value !== 'all') return null
-          const isActive = selectedCategory === cat.value
+      {/* Category filter chips */}
+      <div className="flex flex-wrap gap-2">
+        <FilterChip label="All" count={files.length} active={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')} />
+        {CATEGORY_ORDER.map((cat) => {
+          const count = files.filter((f) => f.category === cat).length
+          if (count === 0) return null
           return (
-            <button
-              key={cat.value}
-              onClick={() => setSelectedCategory(cat.value)}
-              className={`px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'border-b-2 border-[var(--neon)] text-[var(--fg)]'
-                  : 'border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
-              }`}
-            >
-              {cat.label} ({count})
-            </button>
+            <FilterChip
+              key={cat}
+              label={CATEGORY_META[cat].label}
+              count={count}
+              active={selectedCategory === cat}
+              color={CATEGORY_META[cat].color}
+              onClick={() => setSelectedCategory(cat)}
+            />
           )
         })}
       </div>
 
       {/* File list */}
-      {filtered.length > 0 ? (
-        <div className="space-y-2.5">
-          {filtered.map((file) => {
-            const meta = CATEGORY_META[file.category]
-            return (
-              <button
-                key={file.path}
-                type="button"
-                onClick={() => openFile(file)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors border border-[var(--border)] bg-[var(--card)] hover:border-[var(--neon-dim)]"
-              >
-                <span className="text-[15px] font-medium text-[var(--fg)] flex-1 truncate">{file.name}</span>
-                {meta && (
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-md shrink-0" style={{ color: meta.color, background: meta.bg }}>
-                    {meta.label}
-                  </span>
-                )}
-                <span className="text-xs text-[var(--muted)] shrink-0 tabular-nums">{file.size}</span>
-                <svg className="w-4 h-4 shrink-0 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            )
-          })}
+      {selectedCategory === 'all' ? (
+        grouped.map(({ cat, files: catFiles }) => (
+          <CategoryGroup key={cat} meta={CATEGORY_META[cat]} files={catFiles} onOpen={openFile} />
+        ))
+      ) : filtered.length > 0 ? (
+        <div className="space-y-1.5">
+          {filtered.map((file) => <FileRow key={file.path} file={file} meta={CATEGORY_META[file.category]} onOpen={openFile} />)}
         </div>
       ) : (
         <div className="py-12 text-center text-[var(--muted)]">No files match your search</div>
       )}
 
-      {/* File viewer/editor panel */}
+      {/* Overlays */}
       {selectedFile && (
-        <div className="fixed inset-0 z-50 flex justify-end" onClick={(e) => { if (e.target === e.currentTarget) closeFile() }}>
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="relative w-full max-w-[640px] bg-[var(--bg)] border-l border-[var(--border)] flex flex-col shadow-2xl animate-slide-in">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <h2 className="text-sm font-semibold text-[var(--fg)] truncate">{selectedFile.name}</h2>
-                {CATEGORY_META[selectedFile.category] && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
-                    style={{ color: CATEGORY_META[selectedFile.category].color, background: CATEGORY_META[selectedFile.category].bg }}>
-                    {CATEGORY_META[selectedFile.category].label}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                {!isEditing && fileContent && !fileContent.startsWith('Error:') && (
-                  <button
-                    type="button"
-                    onClick={startEditing}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors text-[var(--fg)] hover:bg-[var(--surface)] border border-[var(--border)]"
-                    
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit
-                  </button>
-                )}
-                {saveStatus === 'saved' && (
-                  <span className="text-xs text-[var(--green)] font-medium px-2">Saved</span>
-                )}
-                <button type="button" onClick={closeFile} className="p-1 text-[var(--muted)] hover:text-[var(--fg)] transition-colors">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto">
-              {isPending && !isEditing ? (
-                <div className="p-4 text-sm text-[var(--muted)]">Loading...</div>
-              ) : isEditing ? (
-                <textarea
-                  ref={textareaRef}
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  spellCheck={false}
-                  className="w-full h-full min-h-[400px] p-4 text-xs font-mono text-[var(--fg)] bg-transparent leading-relaxed resize-none focus:outline-none"
-                  style={{ tabSize: 2 }}
-                />
-              ) : fileContent ? (
-                <pre className="p-4 text-xs font-mono text-[var(--fg)] whitespace-pre-wrap break-words leading-relaxed">{fileContent}</pre>
-              ) : null}
-            </div>
-
-            {/* Footer */}
-            <div className="px-4 py-2 border-t border-[var(--border)] shrink-0">
-              {isEditing ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {saveStatus === 'error' && (
-                      <span className="text-xs text-[var(--red)]">{saveError}</span>
-                    )}
-                    <span className="text-xs text-[var(--muted)]">
-                      {editContent !== fileContent ? 'Unsaved changes' : 'No changes'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={cancelEditing}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={saveFile}
-                      disabled={isPending || editContent === fileContent}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-40"
-                      style={{
-                        background: 'var(--neon)',
-                        color: 'var(--bg)',
-                      }}
-                    >
-                      {isPending ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-[var(--muted)]">
-                  {selectedFile.path} &middot; {selectedFile.size}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <FilePanel
+          file={selectedFile} content={fileContent}
+          isLoading={isPending && !isEditing} isEditing={isEditing}
+          editContent={editContent} saveStatus={saveStatus} saveError={saveError}
+          textareaRef={textareaRef}
+          onEdit={startEditing} onCancelEdit={cancelEditing}
+          onSave={saveFile} onClose={closeFile} onEditChange={setEditContent}
+        />
       )}
-
-      <style>{`
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        .animate-slide-in { animation: slideIn 0.2s ease-out; }
-      `}</style>
+      {showCreate && (
+        <CreateFileModal defaultCategory={createCategory} onClose={() => setShowCreate(false)} />
+      )}
     </div>
+  )
+}
+
+/* ─── Leaf components ─── */
+
+function FilterChip({ label, count, active, color, onClick }: {
+  label: string; count: number; active: boolean; color?: string; onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all ${
+        active
+          ? 'border border-[var(--neon-dim)] bg-[rgba(167,139,250,0.1)] text-[var(--fg)]'
+          : 'border border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--neon-dim)]'
+      }`}
+    >
+      {color && <span className="w-2 h-2 rounded-full" style={{ background: color }} />}
+      {label}
+      <span className="opacity-60">{count}</span>
+    </button>
+  )
+}
+
+function CategoryGroup({ meta, files, onOpen }: {
+  meta: { label: string; color: string; description: string }; files: AgentFile[]; onOpen: (f: AgentFile) => void
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 pt-2">
+        <span className="w-2 h-2 rounded-full" style={{ background: meta.color }} />
+        <h3 className="text-sm font-semibold text-[var(--fg)]">{meta.label}</h3>
+        <span className="text-xs text-[var(--muted)]">{meta.description}</span>
+      </div>
+      <div className="space-y-1.5">
+        {files.map((file) => <FileRow key={file.path} file={file} meta={CATEGORY_META[file.category]} onOpen={onOpen} />)}
+      </div>
+    </div>
+  )
+}
+
+function FileRow({ file, meta, onOpen }: {
+  file: AgentFile; meta: { label: string; color: string; bg: string }; onOpen: (f: AgentFile) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(file)}
+      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-colors border border-[var(--border)] bg-[var(--card)] hover:border-[var(--neon-dim)]"
+    >
+      <span className="text-[14px] font-medium text-[var(--fg)] flex-1 truncate">{file.name}</span>
+      {file.readOnly && (
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-[var(--muted)] bg-[rgba(128,128,128,0.12)]">read-only</span>
+      )}
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0" style={{ color: meta.color, background: meta.bg }}>
+        {meta.label}
+      </span>
+      <span className="text-xs text-[var(--muted)] shrink-0 tabular-nums">{file.size}</span>
+      <svg className="w-4 h-4 shrink-0 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
   )
 }
