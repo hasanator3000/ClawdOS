@@ -50,7 +50,7 @@ export function CalendarSpanBars({ tasks, grid, viewYear, viewMonth }: CalendarS
 
     // Find cell indexes for start and end
     let startIdx = cellDates.indexOf(visStart)
-    let endIdx = cellDates.lastIndexOf(visEnd)
+    const endIdx = cellDates.lastIndexOf(visEnd)
     if (startIdx < 0 || endIdx < 0) continue
 
     // Split across week rows

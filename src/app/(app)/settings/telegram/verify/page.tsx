@@ -11,6 +11,7 @@ async function verify(formData: FormData) {
   const code = String(formData.get('code') || '').trim()
   const session = await getSession()
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- iron-session extended field
   const telegramUserId = (session as any).pendingTelegramUserId as string | undefined
 
   if (!session.userId || !session.pendingChallengeId || !telegramUserId) {
@@ -27,6 +28,7 @@ async function verify(formData: FormData) {
   })
 
   session.pendingChallengeId = undefined
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- iron-session extended field
   ;(session as any).pendingTelegramUserId = undefined
   await session.save()
 

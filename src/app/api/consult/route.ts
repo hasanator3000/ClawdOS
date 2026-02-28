@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const json = (await upstream.json().catch(() => null)) as any
+  const json = (await upstream.json().catch(() => null)) as { choices?: Array<{ message?: { content?: unknown } }> } | null
   const answer = json?.choices?.[0]?.message?.content
   return NextResponse.json({ answer: typeof answer === 'string' ? answer : '' })
 }

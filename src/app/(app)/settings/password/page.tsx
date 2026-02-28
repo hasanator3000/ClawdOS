@@ -29,7 +29,8 @@ async function startPasswordChange(formData: FormData) {
     session.pendingUsername = session.username
     session.pendingChallengeId = ch.id
     // stash new password temporarily in cookie session (encrypted by iron-session)
-    ;(session as any).pendingNewPassword = next
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- iron-session extended field
+  ;(session as any).pendingNewPassword = next
     await session.save()
 
     redirect('/settings/password/verify')

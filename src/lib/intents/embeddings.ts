@@ -19,8 +19,9 @@ const log = createLogger('intent-router')
 const queryCache = new MemoryCache<Float64Array>({ ttl: 10 * 60 * 1000, maxEntries: 200 })
 
 // Lazy-loaded pipeline function from @xenova/transformers
-let pipelinePromise: Promise<any> | null = null
-let embedFn: any = null
+type EmbedFn = (input: string | string[], options?: Record<string, unknown>) => Promise<{ data: Float64Array }>
+let pipelinePromise: Promise<EmbedFn> | null = null
+let embedFn: EmbedFn | null = null
 
 /** Computed centroid for each intent card */
 interface IntentCentroid {

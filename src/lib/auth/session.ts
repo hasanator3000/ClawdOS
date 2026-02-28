@@ -27,5 +27,6 @@ export const getSession = cache(async (): Promise<IronSession<SessionData>> => {
     throw new Error('SESSION_PASSWORD is not set')
   }
   const cookieStore = await cookies()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Next.js cookies() type mismatch with iron-session
   return getIronSession<SessionData>(cookieStore as any, sessionOptions)
 })

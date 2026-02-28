@@ -36,6 +36,7 @@ async function startLink(formData: FormData) {
   }
 
   session.pendingChallengeId = ch.id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- iron-session extended field
   ;(session as any).pendingTelegramUserId = telegramUserId
   await session.save()
 

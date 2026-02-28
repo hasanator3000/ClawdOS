@@ -29,21 +29,11 @@
   <img src="docs/screenshots/dash-chat.png" width="800" alt="ClawdOS — Dashboard with AI Chat" />
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/canban.png" width="400" alt="Task Management — Kanban Board" />
-  <img src="docs/screenshots/news.png" width="400" alt="News & RSS Aggregator" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/task-edit.png" width="400" alt="Task Detail View" />
-  <img src="docs/screenshots/marketplace.png" width="400" alt="Skill Marketplace" />
-</p>
-
 ---
 
 ## What is ClawdOS?
 
-**ClawdOS is the web interface for [OpenClaw](https://github.com/openclaw/openclaw)** (formerly Moltbot / Clawdbot) — the open-source personal AI agent with 44K+ stars.
+**ClawdOS is the web interface for [OpenClaw](https://github.com/openclaw/openclaw)** (formerly Moltbot / Clawdbot) — the open-source personal AI agent with 237K+ stars.
 
 OpenClaw is the brain. **ClawdOS is the eyes and hands.** It gives your OpenClaw agent a full productivity workspace — task management, news feeds, package tracking, dashboards, a skill marketplace — all controlled by AI through natural language.
 
@@ -85,9 +75,18 @@ A streaming chat panel connected to your OpenClaw agent. But it's not just a cha
 
 Workspace-scoped tasks with priorities (0–4), due dates, tags, projects, and filters. Create them from the UI or by telling your AI. Kanban, calendar, and timeline views.
 
+<p align="center">
+  <img src="docs/screenshots/canban.png" width="400" alt="Task Management — Kanban Board" />
+  <img src="docs/screenshots/task-edit.png" width="400" alt="Task Detail View" />
+</p>
+
 ### News & RSS
 
 Feed reader with custom tabs, full-text search, and 50+ pre-configured sources across AI, tech, crypto, finance, and world news. Add sources by pasting a URL or asking the AI.
+
+<p align="center">
+  <img src="docs/screenshots/news.png" width="700" alt="News & RSS Aggregator" />
+</p>
 
 ### Package Tracking
 
@@ -97,9 +96,17 @@ Track deliveries from 1500+ carriers worldwide (powered by TrackingMore). Add tr
 
 Live greeting, weather, crypto & fiat exchange rates (2-min refresh), system gauges, OpenClaw agent metrics, recent tasks, and quick-access links.
 
+<p align="center">
+  <img src="docs/screenshots/dash.png" width="700" alt="ClawdOS Dashboard" />
+</p>
+
 ### Skill Marketplace
 
 Browse and install OpenClaw skills from the marketplace. GitHub, Slack, Notion, weather, coding agents, and more. Managed through [ClawdHub](https://clawdhub.com).
+
+<p align="center">
+  <img src="docs/screenshots/marketplace.png" width="700" alt="Skill Marketplace" />
+</p>
 
 ### Command Palette
 

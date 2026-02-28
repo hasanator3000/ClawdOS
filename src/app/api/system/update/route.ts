@@ -26,8 +26,8 @@ export async function POST() {
     })
     // Exit 0 means up to date
     return NextResponse.json({ error: 'Already up to date' }, { status: 409 })
-  } catch (err: any) {
-    if (err.status === 2) {
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 2) {
       // Exit 2 = update available, proceed
     } else {
       return NextResponse.json({ error: 'Failed to check for updates' }, { status: 500 })
