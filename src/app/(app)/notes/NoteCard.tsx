@@ -2,6 +2,18 @@
 
 import type { Note } from '@/lib/db/repositories/note.repository'
 
+/** SVG tiled emoji pattern — grid is rotated but emojis stay upright */
+function emojiPattern(icon: string): string {
+  const r = 10 // grid rotation angle (applied on the div)
+  const svg = [
+    `<svg xmlns='http://www.w3.org/2000/svg' width='80' height='70'>`,
+    `<text x='20' y='28' font-size='20' text-anchor='middle' dominant-baseline='central' opacity='0.12' transform='rotate(${r},20,28)'>${icon}</text>`,
+    `<text x='60' y='58' font-size='15' text-anchor='middle' dominant-baseline='central' opacity='0.07' transform='rotate(${r},60,58)'>${icon}</text>`,
+    `</svg>`,
+  ].join('')
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+}
+
 /** Extract plain text preview from Plate JSON content */
 function extractPreview(content: unknown[], maxLen = 140): string {
   const texts: string[] = []
@@ -42,6 +54,9 @@ const COLOR_MAP: Record<string, string> = {
   cyan: 'bg-[var(--cyan)]',
 }
 
+/** CSS mask that fades content at the bottom — invisible when content is short */
+const FADE_MASK = 'linear-gradient(to bottom, black calc(100% - 32px), transparent 100%)'
+
 interface NoteCardProps {
   note: Note
   onEdit: () => void
@@ -58,12 +73,32 @@ export function NoteCard({ note, onEdit, onPin, onArchive, onDelete }: NoteCardP
     <button
       type="button"
       onClick={onEdit}
-      className="w-full text-left flex flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] transition-all hover:border-[var(--neon-dim)] hover:shadow-[0_0_20px_rgba(167,139,250,0.04)] group relative overflow-hidden"
+      className="w-full h-[200px] text-left flex flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] transition-all hover:border-[var(--neon-dim)] hover:shadow-[0_0_20px_rgba(167,139,250,0.04)] group relative overflow-hidden"
     >
-      {/* Color strip at top */}
-      {colorClass && <div className={`h-1 w-full ${colorClass} opacity-60`} />}
+      {/* Cover gradient or color strip at top */}
+      {note.coverImage ? (
+        <div className="relative h-16 w-full shrink-0 overflow-hidden" style={{ background: note.coverImage }}>
+          {note.icon && (
+            <div
+              className="absolute -inset-4 pointer-events-none"
+              aria-hidden="true"
+              style={{
+                backgroundImage: emojiPattern(note.icon),
+                backgroundRepeat: 'repeat',
+                backgroundSize: '80px 70px',
+                transform: 'rotate(-10deg) scale(1.2)',
+              }}
+            />
+          )}
+        </div>
+      ) : (
+        colorClass && <div className={`h-1 w-full ${colorClass} opacity-60`} />
+      )}
 
-      <div className="flex-1 p-4">
+      <div
+        className="flex-1 p-4 overflow-hidden"
+        style={{ maskImage: FADE_MASK, WebkitMaskImage: FADE_MASK }}
+      >
         {/* Title row */}
         <div className="flex items-start gap-2 mb-1.5">
           {note.icon && (
@@ -83,26 +118,26 @@ export function NoteCard({ note, onEdit, onPin, onArchive, onDelete }: NoteCardP
 
         {/* Preview */}
         {preview && (
-          <p className="text-sm text-[var(--muted)] line-clamp-3 leading-relaxed mb-3">{preview}</p>
+          <p className="text-sm text-[var(--muted)] leading-relaxed">{preview}</p>
         )}
+      </div>
 
-        {/* Footer: time + tags */}
-        <div className="flex items-center gap-2 mt-auto">
-          <span className="text-[11px] text-[var(--muted-2)]">{timeAgo(note.updatedAt)}</span>
-          {note.tags.length > 0 && (
-            <div className="flex gap-1 overflow-hidden">
-              {note.tags.slice(0, 2).map((t) => (
-                <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[rgba(167,139,250,0.1)] text-[var(--neon)] truncate max-w-[80px]">{t}</span>
-              ))}
-              {note.tags.length > 2 && (
-                <span className="text-[10px] text-[var(--muted-2)]">+{note.tags.length - 2}</span>
-              )}
-            </div>
-          )}
-          {note.status === 'archived' && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[rgba(128,128,128,0.12)] text-[var(--muted)]">archived</span>
-          )}
-        </div>
+      {/* Footer: time + tags — pinned to bottom */}
+      <div className="flex items-center gap-2 px-4 pb-3 shrink-0">
+        <span className="text-[11px] text-[var(--muted-2)]">{timeAgo(note.updatedAt)}</span>
+        {note.tags.length > 0 && (
+          <div className="flex gap-1 overflow-hidden">
+            {note.tags.slice(0, 2).map((t) => (
+              <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[rgba(167,139,250,0.1)] text-[var(--neon)] truncate max-w-[80px]">{t}</span>
+            ))}
+            {note.tags.length > 2 && (
+              <span className="text-[10px] text-[var(--muted-2)]">+{note.tags.length - 2}</span>
+            )}
+          </div>
+        )}
+        {note.status === 'archived' && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[rgba(128,128,128,0.12)] text-[var(--muted)]">archived</span>
+        )}
       </div>
 
       {/* Hover actions */}

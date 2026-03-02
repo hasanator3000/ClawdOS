@@ -6,6 +6,7 @@ import { useComboboxInput } from '@platejs/combobox/react'
 import { Editor, Transforms, Path } from 'slate'
 import { TogglePlugin } from '@platejs/toggle/react'
 import { insertColumnGroup } from '@platejs/layout'
+import { insertTable } from '@platejs/table'
 import { emptyParagraph } from './constants'
 
 // ── Slash command items ───────────────────────────────────
@@ -44,7 +45,7 @@ interface SlashCommandMenuProps {
   element: any
 }
 
-export function SlashCommandMenu({ element }: SlashCommandMenuProps) {
+export function SlashCommandMenu({ element: _element }: SlashCommandMenuProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editor = useEditorRef() as any
   const inputRef = useRef<HTMLInputElement>(null)
@@ -81,11 +82,8 @@ export function SlashCommandMenu({ element }: SlashCommandMenuProps) {
 
     // Insert the appropriate block
     if (item.type === 'table') {
-      // Insert a simple 3x3 table
-      const cell = () => ({ type: 'td', children: [emptyParagraph()] })
-      const row = () => ({ type: 'tr', children: [cell(), cell(), cell()] })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      Transforms.insertNodes(editor, [{ type: 'table', children: [row(), row(), row()] }, emptyParagraph()] as any)
+      // Use official Plate insertTable API — creates properly structured nodes
+      insertTable(editor, { colCount: 3, rowCount: 3 })
     } else if (item.type === 'code_block') {
       Transforms.insertNodes(editor, {
         type: 'code_block',

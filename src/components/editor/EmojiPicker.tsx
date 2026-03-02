@@ -38,7 +38,7 @@ export function EmojiPicker({ onSelect, onRemove, onClose }: EmojiPickerProps) {
   return (
     <div
       ref={ref}
-      className="absolute z-50 w-72 rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-xl shadow-black/50 p-3"
+      className="w-72 rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-xl shadow-black/50 p-3"
     >
       <input
         type="text"

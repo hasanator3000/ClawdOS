@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, type ComponentPropsWithRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { PlateElement, useEditorRef, useSelected } from 'platejs/react'
 import { TableProvider, useTableCellElement } from '@platejs/table/react'
 import { insertTableRow, insertTableColumn } from '@platejs/table'
@@ -11,13 +11,14 @@ import { ReactEditor } from 'slate-react'
 
 function TableFloatingToolbar({
   tablePath,
-   
   editor,
 }: {
   tablePath: Path
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editor: any
 }) {
+  const ref = useRef<HTMLDivElement>(null)
+
   const handleInsertRow = useCallback((before: boolean) => {
     try {
       Transforms.select(editor, Editor.start(editor, tablePath))
@@ -85,6 +86,7 @@ function TableFloatingToolbar({
 
   return (
     <div
+      ref={ref}
       contentEditable={false}
       className="absolute -top-9 left-0 z-10 flex items-center gap-px px-1 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-lg shadow-black/30 select-none whitespace-nowrap"
     >
@@ -108,12 +110,13 @@ function TableFloatingToolbar({
 }
 
 // ── Table Element (wrapper) ───────────────────────────
+// Official pattern: PlateElement renders <div>, real <table> is a child
 
-export function TableElement(props: ComponentPropsWithRef<typeof PlateElement>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function TableElement(props: any) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editor = useEditorRef() as any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const element = (props as any).element
+  const element = props.element
   const selected = useSelected()
 
   const [tablePath, setTablePath] = useState<Path | null>(null)
@@ -127,47 +130,51 @@ export function TableElement(props: ComponentPropsWithRef<typeof PlateElement>) 
     <TableProvider>
       <PlateElement
         {...props}
-        className="slate-table"
+        className="relative my-4"
       >
-        {/* Toolbar above table — in block flow, not inside <table> */}
         {selected && tablePath && (
           <TableFloatingToolbar editor={editor} tablePath={tablePath} />
         )}
-        <table className="w-full border-collapse table-fixed">
-          <tbody>{props.children}</tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse table-fixed">
+            <tbody>{props.children}</tbody>
+          </table>
+        </div>
       </PlateElement>
     </TableProvider>
   )
 }
 
 // ── Table Row Element ─────────────────────────────────
+// Official pattern: PlateElement as="tr" — renders <tr> directly
 
-export function TableRowElement(props: ComponentPropsWithRef<typeof PlateElement>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function TableRowElement(props: any) {
   return (
-    <PlateElement {...props} className="slate-tr">
+    <PlateElement {...props} as="tr" className="group/row">
       {props.children}
     </PlateElement>
   )
 }
 
 // ── Table Cell Element (td / th) ──────────────────────
+// Official pattern: PlateElement as="td"|"th"
 
-export function TableCellElement(props: ComponentPropsWithRef<typeof PlateElement>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function TableCellElement(props: any) {
   const cellData = useTableCellElement()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const element = (props as any).element
+  const element = props.element
   const isHeader = element?.type === 'th'
   const cellSelected = cellData?.selected ?? false
 
+  const cellClass = [
+    'border border-[rgba(255,255,255,0.15)] px-3 py-2.5 text-sm align-top text-[var(--fg)]',
+    isHeader ? 'font-semibold bg-[rgba(255,255,255,0.06)]' : '',
+    cellSelected ? 'bg-[rgba(167,139,250,0.08)]' : '',
+  ].join(' ')
+
   return (
-    <PlateElement
-      {...props}
-      className={[
-        isHeader ? 'slate-th' : 'slate-td',
-        cellSelected ? 'bg-[rgba(167,139,250,0.08)]' : '',
-      ].join(' ')}
-    >
+    <PlateElement {...props} as={isHeader ? 'th' : 'td'} className={cellClass}>
       {props.children}
     </PlateElement>
   )

@@ -1,10 +1,40 @@
 'use client'
 
 import React from 'react'
+import { useEditorRef } from 'platejs/react'
 import { useDraggable, useDropLine } from '@platejs/dnd'
+import { Editor } from 'slate'
+import { ReactEditor } from 'slate-react'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function DraggableBlock({ children, element }: { children: React.ReactNode; element: any }) {
+function useIsInsideTable(element: any): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editor = useEditorRef() as any
+
+  // Table structure elements themselves — skip immediately
+  if (element?.type === 'tr' || element?.type === 'td' || element?.type === 'th') {
+    return true
+  }
+
+  // Check if this element is nested inside a table cell
+  try {
+    const path = ReactEditor.findPath(editor, element)
+    const ancestors = Editor.levels(editor, { at: path, reverse: true })
+    for (const [node] of ancestors) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const type = (node as any).type
+      if (type === 'td' || type === 'th') return true
+      // Stop checking once we hit the table itself (no need to go higher)
+      if (type === 'table') return false
+    }
+  } catch { /* element not in tree yet */ }
+
+  return false
+}
+
+/** Inner component that uses DnD hooks — only rendered for non-table elements */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DraggableBlockInner({ children, element }: { children: React.ReactNode; element: any }) {
   const { handleRef, isDragging, nodeRef, previewRef } = useDraggable({
     element,
   })
@@ -50,4 +80,18 @@ export function DraggableBlock({ children, element }: { children: React.ReactNod
       {children}
     </div>
   )
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function DraggableBlock({ children, element }: { children: React.ReactNode; element: any }) {
+  const insideTable = useIsInsideTable(element)
+
+  // Skip DnD for table rows/cells AND any content inside table cells
+  // Wrapping <tr>/<td> in <div> breaks HTML table structure,
+  // and dragging content out of cells corrupts the table
+  if (insideTable) {
+    return <>{children}</>
+  }
+
+  return <DraggableBlockInner element={element}>{children}</DraggableBlockInner>
 }

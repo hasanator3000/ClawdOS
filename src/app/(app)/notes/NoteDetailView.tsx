@@ -18,6 +18,20 @@ const NoteEditor = dynamic(
 
 const log = createClientLogger('note-detail')
 
+/** SVG tiled emoji pattern — grid is rotated but emojis stay upright */
+function emojiPattern(icon: string): string {
+  // Tile with two emojis at different sizes; the div rotates the grid,
+  // the SVG counter-rotates each glyph so emojis stay upright
+  const r = 10 // grid rotation angle (applied on the div)
+  const svg = [
+    `<svg xmlns='http://www.w3.org/2000/svg' width='110' height='100'>`,
+    `<text x='28' y='38' font-size='30' text-anchor='middle' dominant-baseline='central' opacity='0.1' transform='rotate(${r},28,38)'>${icon}</text>`,
+    `<text x='83' y='78' font-size='22' text-anchor='middle' dominant-baseline='central' opacity='0.06' transform='rotate(${r},83,78)'>${icon}</text>`,
+    `</svg>`,
+  ].join('')
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+}
+
 interface NoteDetailViewProps {
   note: Note
   onBack: () => void
@@ -183,32 +197,65 @@ export function NoteDetailView({ note, onBack, onUpdate, onDelete }: NoteDetailV
       </div>
 
       {/* Cover image */}
-      {note.coverImage ? (
+      {note.coverImage && (
         <div
-          className="relative h-40 rounded-xl mb-4 -mx-2 group cursor-pointer"
+          className="relative h-40 rounded-xl mb-4 -mx-2 group overflow-hidden"
           style={{ background: note.coverImage }}
-          onClick={() => setShowCoverPicker(true)}
         >
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="px-3 py-1.5 rounded-lg bg-black/60 text-xs text-[var(--fg)]">Change cover</span>
+          {/* Emoji tiled pattern overlay */}
+          {note.icon && (
+            <div
+              className="absolute -inset-6 pointer-events-none"
+              aria-hidden="true"
+              style={{
+                backgroundImage: emojiPattern(note.icon),
+                backgroundRepeat: 'repeat',
+                backgroundSize: '110px 100px',
+                transform: 'rotate(-10deg) scale(1.15)',
+              }}
+            />
+          )}
+          {/* Hover buttons on cover */}
+          <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            <button
+              type="button"
+              onClick={() => setShowCoverPicker(true)}
+              className="px-2.5 py-1 rounded-md bg-black/60 text-xs text-[var(--fg)] hover:bg-black/80 transition-colors"
+            >
+              Change cover
+            </button>
+            <button
+              type="button"
+              onClick={handleRemoveCover}
+              className="px-2.5 py-1 rounded-md bg-black/60 text-xs text-[var(--fg)] hover:bg-black/80 transition-colors"
+            >
+              Remove
+            </button>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Action buttons: Add icon / Add cover (shown when missing) */}
+      {(!note.icon || !note.coverImage) && (
         <div className="flex items-center gap-2 mb-2">
           {!note.icon && (
             <button
-              onClick={() => setShowEmojiPicker(true)}
+              type="button"
+              onClick={() => { setShowCoverPicker(false); setShowEmojiPicker(true) }}
               className="text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
             >
               + Add icon
             </button>
           )}
-          <button
-            onClick={() => setShowCoverPicker(true)}
-            className="text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-          >
-            + Add cover
-          </button>
+          {!note.coverImage && (
+            <button
+              type="button"
+              onClick={() => { setShowEmojiPicker(false); setShowCoverPicker(true) }}
+              className="text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+            >
+              + Add cover
+            </button>
+          )}
         </div>
       )}
 
@@ -228,7 +275,8 @@ export function NoteDetailView({ note, onBack, onUpdate, onDelete }: NoteDetailV
         {note.icon && (
           <div className="relative inline-block mb-2">
             <button
-              onClick={() => setShowEmojiPicker(true)}
+              type="button"
+              onClick={() => { setShowCoverPicker(false); setShowEmojiPicker(true) }}
               className="text-5xl hover:opacity-80 transition-opacity cursor-pointer"
               title="Change icon"
             >
@@ -238,7 +286,7 @@ export function NoteDetailView({ note, onBack, onUpdate, onDelete }: NoteDetailV
         )}
 
         {showEmojiPicker && (
-          <div className="absolute left-0 top-16 z-50">
+          <div className="absolute left-0 z-50" style={{ top: note.icon ? '64px' : '0px' }}>
             <EmojiPicker
               onSelect={handleSetIcon}
               onRemove={handleRemoveIcon}
@@ -300,7 +348,7 @@ function CoverPicker({ onSelect, onRemove, onClose }: { onSelect: (gradient: str
   }, [onClose])
 
   return (
-    <div ref={ref} className="absolute z-50 w-80 rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-xl shadow-black/50 p-3">
+    <div ref={ref} className="absolute left-0 top-0 z-50 w-80 rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-xl shadow-black/50 p-3">
       <div className="text-xs text-[var(--muted)] mb-2 font-medium">Gradient covers</div>
       <div className="grid grid-cols-4 gap-2">
         {COVER_GRADIENTS.map((g) => (

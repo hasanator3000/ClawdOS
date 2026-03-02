@@ -39,8 +39,12 @@ import { MobileToolbar } from './MobileToolbar'
 // ── Toggle zone wrapper — adds visual highlight for toggle content ──────
 const hiddenStyle = { height: 0, margin: 0, overflow: 'hidden' as const, visibility: 'hidden' as const }
 
+// Element types that must NOT be wrapped in extra <div> (breaks HTML table structure)
+const TABLE_CHILD_TYPES = new Set(['tr', 'td', 'th'])
+
+/** Inner component that uses toggle hooks — only rendered for non-table elements */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ToggleZoneWrapper({ children, element }: { children: React.ReactNode; element: any }) {
+function ToggleZoneInner({ children, element }: { children: React.ReactNode; element: any }) {
   const visible = useIsVisible(element.id as string)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editor = useEditorRef() as any
@@ -59,6 +63,14 @@ function ToggleZoneWrapper({ children, element }: { children: React.ReactNode; e
   }
 
   return <>{children}</>
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ToggleZoneWrapper({ children, element }: { children: React.ReactNode; element: any }) {
+  // Skip wrapper for table rows/cells — wrapping <tr>/<td> in <div> breaks <table> layout
+  if (TABLE_CHILD_TYPES.has(element?.type)) return <>{children}</>
+
+  return <ToggleZoneInner element={element}>{children}</ToggleZoneInner>
 }
 
 // ── Custom todo plugin — simple block element with checkbox ──────
@@ -179,12 +191,7 @@ const CONTENT_STYLES = [
   '[&_a]:text-[var(--neon)] [&_a]:underline [&_a]:underline-offset-2',
   // Lists
   '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:mb-1.5 [&_li]:leading-relaxed',
-  // Tables — PlateElement is a block wrapper; actual <table> is inside it
-  '[&_.slate-table]:relative [&_.slate-table]:my-4',
-  '[&_.slate-table_table]:w-full [&_.slate-table_table]:border-collapse [&_.slate-table_table]:table-fixed',
-  '[&_.slate-tr]:table-row',
-  '[&_.slate-td]:table-cell [&_.slate-td]:border [&_.slate-td]:border-[rgba(255,255,255,0.15)] [&_.slate-td]:px-3 [&_.slate-td]:py-2.5 [&_.slate-td]:text-sm [&_.slate-td]:align-top [&_.slate-td]:text-[var(--fg)]',
-  '[&_.slate-th]:table-cell [&_.slate-th]:border [&_.slate-th]:border-[rgba(255,255,255,0.15)] [&_.slate-th]:px-3 [&_.slate-th]:py-2.5 [&_.slate-th]:text-sm [&_.slate-th]:font-semibold [&_.slate-th]:bg-[rgba(255,255,255,0.06)] [&_.slate-th]:text-[var(--fg)]',
+  // Tables — styled via TableComponents (as="tr"/as="td" renders real HTML elements)
   // Callout
   '[&_.slate-callout]:rounded-lg [&_.slate-callout]:border [&_.slate-callout]:border-[var(--border)] [&_.slate-callout]:p-3 [&_.slate-callout]:my-2 [&_.slate-callout]:bg-[rgba(255,255,255,0.03)]',
   // Horizontal rule
@@ -219,12 +226,7 @@ const COMPACT_STYLES = [
   '[&_a]:text-[var(--neon)] [&_a]:underline [&_a]:underline-offset-2',
   // Lists
   '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_li]:mb-1 [&_li]:leading-relaxed',
-  // Tables
-  '[&_.slate-table]:relative [&_.slate-table]:my-3',
-  '[&_.slate-table_table]:w-full [&_.slate-table_table]:border-collapse [&_.slate-table_table]:table-fixed',
-  '[&_.slate-tr]:table-row',
-  '[&_.slate-td]:table-cell [&_.slate-td]:border [&_.slate-td]:border-[rgba(255,255,255,0.15)] [&_.slate-td]:px-2 [&_.slate-td]:py-1.5 [&_.slate-td]:text-xs [&_.slate-td]:align-top [&_.slate-td]:text-[var(--fg)]',
-  '[&_.slate-th]:table-cell [&_.slate-th]:border [&_.slate-th]:border-[rgba(255,255,255,0.15)] [&_.slate-th]:px-2 [&_.slate-th]:py-1.5 [&_.slate-th]:text-xs [&_.slate-th]:font-semibold [&_.slate-th]:bg-[rgba(255,255,255,0.06)] [&_.slate-th]:text-[var(--fg)]',
+  // Tables — styled via TableComponents (as="tr"/as="td" renders real HTML elements)
   // Callout
   '[&_.slate-callout]:rounded-lg [&_.slate-callout]:border [&_.slate-callout]:border-[var(--border)] [&_.slate-callout]:p-2.5 [&_.slate-callout]:my-1.5 [&_.slate-callout]:bg-[rgba(255,255,255,0.03)]',
   // Horizontal rule
