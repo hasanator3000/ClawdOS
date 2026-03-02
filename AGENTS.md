@@ -35,7 +35,7 @@ src/app/(app)/           → Auth-protected pages (today, tasks, news, settings)
 src/app/api/ai/chat/     → Clawdbot proxy + action executor (the big one)
 src/lib/db/repositories/ → Database CRUD (raw pg + RLS)
 src/lib/db/index.ts      → Connection pool + withUser()
-db/migrations/           → SQL migrations (001-007)
+db/migrations/           → SQL migrations (001-015)
 db/schema_registry.yaml  → Schema manifest (YAML source of truth)
 scripts/setup.mjs        → One-command setup
 RULES/                   → Developer guide (9 files)

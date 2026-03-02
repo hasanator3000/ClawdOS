@@ -137,6 +137,7 @@ Reusable components live in `src/components/`:
 | `layout/` | App-level layout | `Sidebar`, `SidebarClient`, `sidebar/nav-icons` |
 | `shell/` | Shell infrastructure | `Shell`, `ShellWrapper`, `AIPanel`, `ContentTopBar`, `CommandPalette`, `BottomTabBar`, `MobileChatSheet`, `MobileDrawer`, `ai-panel/` (EmptyState, MessageBubble) |
 | `dashboard/` | Dashboard widgets | `GreetingWidget`, `CurrencyWidget`, `QuickLinksWidget`, `RecentTasksWidget`, `ProcessesWidget`, `ProcessForm`, `ProcessModal`, `SystemStatusWidget`, `AgentMetricsWidget` |
+| `editor/` | Plate v52 rich text editor | `NoteEditor` (main), `EditorToolbar`, `MobileToolbar`, `SlashCommandMenu`, `DraggableBlock`, `TableComponents`, `ImageElement`, `ColumnElements`, `TodoElement`, `ToggleElement`, `EmojiPicker`, `BlockExitPlugin` |
 | `system/` | System-level components | `BuildGuard` (stale-client detection + auto-reload), `UpdateBanner` (update notification) |
 | `ui/` | Shared error boundaries | `RouteErrorFallback`, `WidgetErrorBoundary` |
 

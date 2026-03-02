@@ -52,6 +52,7 @@ src/
       today/page.tsx    # Dashboard
       tasks/            # page.tsx + TaskList, TaskItem, TaskCreateForm, TaskFilters, FilterDropdown, DateTimePicker, actions.ts
       news/             # page.tsx + NewsShell, NewsSearch, components, actions.ts
+      notes/            # page.tsx + NotesList, NoteCard, NoteDetailView, SwipeableNoteCard, actions.ts
       deliveries/       # page.tsx + DeliveryList, DeliveryCard, DeliveryDetail, AddDeliveryForm, actions.ts
       settings/         # page.tsx + sub-pages (telegram, password, dashboard, skills, files)
         skills/           # Skills & Marketplace (3 tabs: Installed, Commands, Marketplace)
@@ -85,6 +86,10 @@ src/
     shell/              # Shell, ShellWrapper, AIPanel, ContentTopBar, CommandPalette
                         # BottomTabBar, MobileChatSheet, MobileDrawer
                         # ai-panel/ (EmptyState, MessageBubble)
+    editor/             # Plate v52 rich text editor + plugins
+                        # NoteEditor, EditorToolbar, MobileToolbar, SlashCommandMenu
+                        # DraggableBlock, TableComponents, ImageElement, ColumnElements
+                        # TodoElement, ToggleElement, EmojiPicker, BlockExitPlugin
     dashboard/          # GreetingWidget, CurrencyWidget, QuickLinksWidget, RecentTasksWidget
                         # ProcessesWidget, ProcessForm, ProcessModal, SystemStatusWidget, AgentMetricsWidget
     system/             # BuildGuard (stale-client detection), UpdateBanner (update notification)
@@ -145,7 +150,7 @@ src/
     constants.ts             # Shared constants
   types/                     # news.ts, session.ts, etc.
 db/
-  migrations/                # 001-012: main numbered migrations
+  migrations/                # 001-015: main numbered migrations
   schema/core/migrations/    # 0001-0005: namespace migrations
   schema/content/schema.yaml # Content schema YAML definitions
   functions/                 # SQL helper functions
@@ -178,9 +183,10 @@ scripts/
 | `/api/weather` | GET | Session | Weather data |
 | `/api/webhooks/trackingmore` | POST | None (webhook) | TrackingMore status updates |
 | `/api/workspaces` | GET | Session | List workspaces |
+| `/api/uploads` | POST | Session | Image upload for notes (5MB max, jpg/png/gif/webp) |
 | `/api/workspaces/switch` | POST | Session | Switch active workspace |
 
-## Migrations (001-012)
+## Migrations (001-015)
 
 | File | Content |
 |------|---------|
@@ -196,8 +202,11 @@ scripts/
 | `010_projects_schema.sql` | Project grouping for tasks |
 | `011_task_recurrence.sql` | recurrence_rule JSONB column for recurring tasks |
 | `012_deliveries_schema.sql` | Package tracking with TrackingMore integration |
+| `013_notes_schema.sql` | Notes table with JSONB content (Plate editor), tags, pinning, RLS |
+| `014_note_cover_icon.sql` | Emoji icon and cover image columns for notes |
+| `015_note_fulltext_search.sql` | Full-text search with tsvector + GIN index + auto-update trigger |
 
-## Repositories (12)
+## Repositories (13)
 
 | Repository | Entity | Complexity |
 |-----------|--------|-----------|
@@ -213,3 +222,4 @@ scripts/
 | `process.repository.ts` | Processes | Scheduled process management |
 | `project.repository.ts` | Projects | Task project grouping |
 | `delivery.repository.ts` | Deliveries | Package tracking, event updates, status management |
+| `note.repository.ts` | Notes | JSONB content (Plate), tags, pinning, full-text search (tsvector) |

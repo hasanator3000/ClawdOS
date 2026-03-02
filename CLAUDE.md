@@ -74,9 +74,10 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/login  # expect 200
 ## Key paths
 
 ```
-src/app/(app)/              → Auth-protected pages (today, tasks, news, settings)
+src/app/(app)/              → Auth-protected pages (today, tasks, news, notes, deliveries, settings)
 src/app/api/ai/chat/        → Clawdbot proxy + action executor
-src/lib/db/repositories/    → Database CRUD (raw pg + RLS)
+src/components/editor/      → Plate v52 rich text editor (14 files: NoteEditor, toolbar, DnD, tables, images, columns)
+src/lib/db/repositories/    → Database CRUD (raw pg + RLS) — 13 repositories
 src/lib/db/index.ts         → Connection pool + withUser() + drainPool()
 src/middleware.ts            → CSRF, rate limiting, auth gate
 src/instrumentation.ts      → SIGTERM/SIGINT graceful shutdown
@@ -85,7 +86,7 @@ src/lib/client-logger.ts    → Client-safe logger (for 'use client' components)
 src/lib/validation.ts       → withValidation(), validateAction(), formatZodErrors()
 src/lib/validation-schemas.ts → Centralized Zod schemas for all data entry points
 src/lib/security/rate-limiter.ts → Sliding-window rate limiter (in-memory)
-db/migrations/              → SQL migrations (001-009)
+db/migrations/              → SQL migrations (001-015)
 db/schema_registry.yaml     → Schema manifest (YAML source of truth)
 scripts/setup.mjs           → One-command setup
 scripts/backup.sh           → pg_dump backup with retention

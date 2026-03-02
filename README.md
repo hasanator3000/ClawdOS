@@ -2,7 +2,7 @@
   <a href="https://github.com/hasanator3000/ClawdOS/stargazers"><img src="https://img.shields.io/github/stars/hasanator3000/ClawdOS?style=flat-square&color=a78bfa" alt="Stars" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT" /></a>
   <a href="https://github.com/hasanator3000/ClawdOS/commits"><img src="https://img.shields.io/github/last-commit/hasanator3000/ClawdOS?style=flat-square&color=6ee7b7" alt="Last Commit" /></a>
-  <img src="https://img.shields.io/badge/version-0.2.1-blueviolet?style=flat-square" alt="v0.2.1" />
+  <img src="https://img.shields.io/badge/version-0.2.2-blueviolet?style=flat-square" alt="v0.2.2" />
 </p>
 
 <h1 align="center">
@@ -82,7 +82,7 @@ Workspace-scoped tasks with priorities (0–4), due dates, tags, projects, and f
 
 ### Notes
 
-Rich-text editor powered by [Plate](https://platejs.org) (v52). Headings, lists, blockquotes, code blocks, tables, toggles, callouts, and checkboxes — all from a `/` slash menu. Drag & drop blocks, paste or upload images with resize, insert multi-column layouts. Each note gets an emoji icon and cover image. Pinned notes appear in the sidebar for quick access. Full-text search across all content (PostgreSQL `tsvector` + GIN index). Mobile-optimized with a touch-friendly bottom toolbar and swipe actions.
+Rich-text editor powered by [Plate](https://platejs.org) (v52). Headings, lists, blockquotes, code blocks, tables with floating toolbar, toggles, callouts, and checkboxes — all from a `/` slash menu. Drag & drop blocks (with table-safe DnD that won't corrupt cells), paste or upload images with resize, insert multi-column layouts. Each note gets an emoji icon and gradient cover image with tiled emoji pattern overlay. Consistent card heights with CSS mask-image fade. Pinned notes appear in the sidebar for quick access. Full-text search across all content (PostgreSQL `tsvector` + GIN index). Mobile-optimized with a touch-friendly bottom toolbar and swipe actions.
 
 ### News & RSS
 
@@ -208,7 +208,7 @@ Built for self-hosting on a private network.
 | Auth | iron-session + Argon2id |
 | Validation | Zod 4 |
 | AI Runtime | OpenClaw gateway (OpenAI-compatible, SSE streaming) |
-| Rich Editor | Plate v52 (headings, images, DnD, columns, tables) |
+| Rich Editor | Plate v52 (headings, images, DnD, columns, tables, toggles, callouts, code blocks) |
 | RSS | fast-xml-parser |
 | ML | @xenova/transformers (offline embeddings for intent routing) |
 | Testing | Vitest + Testing Library |
@@ -241,7 +241,10 @@ src/
     webhooks/             #   External service callbacks
   components/
     shell/                #   App shell, AI panel, command palette
-    editor/               #   Plate v52 rich text editor + plugins
+    editor/               #   Plate v52 rich text editor (14 files)
+                          #     NoteEditor, EditorToolbar, MobileToolbar, SlashCommandMenu
+                          #     DraggableBlock, TableComponents, ImageElement, ColumnElements
+                          #     TodoElement, ToggleElement, EmojiPicker, BlockExitPlugin
     dashboard/            #   Dashboard widgets
   lib/
     db/repositories/      #   Raw pg queries with RLS
@@ -249,7 +252,7 @@ src/
     auth/                 #   Sessions, passwords, 2FA
 db/
   schema.sql              # Baseline schema
-  migrations/             # Incremental SQL migrations (001-015)
+  migrations/             # Incremental SQL migrations (001-015: core, tasks, news, deliveries, notes)
 ```
 
 ---
